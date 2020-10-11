@@ -8,15 +8,15 @@ package lab
 
 import (
 	"fmt"
-	bcc "github.com/azd1997/blockchain-consensus"
-	"github.com/azd1997/blockchain-consensus/lab/labrpc"
-	"github.com/azd1997/blockchain-consensus/requires"
 	"log"
 	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	bcc "github.com/azd1997/blockchain-consensus"
+	"github.com/azd1997/blockchain-consensus/lab/labrpc"
 )
 
 type config struct {
@@ -45,7 +45,7 @@ type nodeConfig struct {
 	connected bool
 	saved *bcc.ConsensusLog
 	nodeLog string	// 日志文件名
-	endnames []string	// 与节点相连的End列表
+	endnames map[string]string	// 与节点相连的End列表. 代表着：id -> endname 的传输通道， v则表示用来表示二者传输的通道名/临时文件名
 }
 
 var ncpu_once sync.Once
@@ -87,8 +87,8 @@ func make_config(t *testing.T, n int, unreliable bool, consensusType string) *co
 	}
 
 	// 连接所有节点
-	for i := 0; i < cfg.n; i++ {
-		cfg.connect(i)
+	for _, idnc := range cfg.nodes {
+		cfg.connect(idnc.id)
 	}
 
 	return cfg
@@ -145,17 +145,20 @@ func (cfg *config) start1(nodeid string) {
 
 	// a fresh set of outgoing ClientEnd names.
 	// so that old crashed instance's ClientEnds can't send.
-	cfg.endnames[i] = make([]string, cfg.n)
-	for j := 0; j < cfg.n; j++ {
-		cfg.endnames[i][j] = randstring(20)
+	if nc.endnames == nil {
+		nc.endnames = make(map[string]string)
+	}
+	for _, node := range cfg.nodes {	// 遍历所有节点，定义好自己去其他节点的连接名，方便之后根据该名称建立连接
+		nc.endnames[node.id] = fmt.Sprintf("%s-%s", nc.id, node.id)
 	}
 
 
 	// a fresh set of ClientEnds.
-	ends := make([]*labrpc.ClientEnd, cfg.n)
-	for j := 0; j < cfg.n; j++ {
-		ends[j] = cfg.net.MakeEnd(cfg.endnames[i][j])
-		cfg.net.Connect(cfg.endnames[i][j], j)
+	// 建立一批ClientEnds与之（前面的名字）对应
+	ends := make(map[string]*labrpc.ClientEnd)	// ends是自己向所有节点建立的单向连接集合
+	for _, node := range cfg.nodes {
+		ends[node.id] = cfg.net.MakeEnd(nc.endnames[node.id])
+		cfg.connect(nc.endnames[node.id])
 	}
 
 	cfg.mu.Lock()
@@ -173,6 +176,7 @@ func (cfg *config) start1(nodeid string) {
 	cfg.mu.Unlock()
 
 	// listen to messages from Raft indicating newly committed messages.
+	// 新起goroutine，处理外部请求消息
 	applyCh := make(chan ApplyMsg)
 	go func() {
 		for m := range applyCh {
@@ -220,39 +224,49 @@ func (cfg *config) start1(nodeid string) {
 	cfg.net.AddServer(i, srv)
 }
 
+// cleanup 杀死所有共识状态机，然后发出关闭信号
 func (cfg *config) cleanup() {
-	for i := 0; i < len(cfg.rafts); i++ {
-		if cfg.rafts[i] != nil {
-			cfg.rafts[i].Kill()
+	for id := range cfg.nodes {
+		if _, ok := cfg.nodes[id]; ok && cfg.nodes[id].css != nil {
+			cfg.nodes[id].css.Kill()
 		}
 	}
 	atomic.StoreInt32(&cfg.done, 1)
 }
 
-// attach server i to the net.
-func (cfg *config) connect(i int) {
-	//fmt.Printf("connect(%d)\n", i)
+// connect 将节点 nodeid 连接到共识网络net.
+func (cfg *config) connect(nodeid string) {
+	fmt.Printf("connect (%s)\n", nodeid)
 
-	cfg.connected[i] = true
+	if _, ok := cfg.nodes[nodeid]; !ok {
+		log.Printf("node <%s> doesn't exist\n", nodeid)
+		return	// 节点不存在，直接返回
+	}
+
+	nc := cfg.nodes[nodeid]
+
+	nc.connected = true
 
 	// outgoing ClientEnds
-	for j := 0; j < cfg.n; j++ {
-		if cfg.connected[j] {
-			endname := cfg.endnames[i][j]
+	// 将自己连向所有节点(包括自己)
+	for _, idnc := range cfg.nodes {
+		if idnc.connected {
+			endname := nc.endnames[idnc.id]
 			cfg.net.Enable(endname, true)
 		}
 	}
 
 	// incoming ClientEnds
-	for j := 0; j < cfg.n; j++ {
-		if cfg.connected[j] {
-			endname := cfg.endnames[j][i]
+	// 将所有节点连向自己
+	for _, idnc := range cfg.nodes {
+		if idnc.connected {
+			endname := idnc.endnames[nc.id]
 			cfg.net.Enable(endname, true)
 		}
 	}
 }
 
-// 将nodeid这台节点移除出整个网络
+// disconnect 将nodeid这台节点移除出整个网络
 func (cfg *config) disconnect(nodeid string) {
 	fmt.Printf("disconnect(%s)\n", nodeid)
 
@@ -261,21 +275,20 @@ func (cfg *config) disconnect(nodeid string) {
 	// 标记为未连接
 	nc.connected = false
 
-	// 将与之相关联的Ends关闭. 分“接入的”和“接出的”两类
-
-
 	// outgoing ClientEnds
-	for j := 0; j < cfg.n; j++ {
-		if cfg.endnames[i] != nil {
-			endname := cfg.endnames[i][j]
+	// 将自己连向所有节点(包括自己)的连接断开
+	for _, idnc := range cfg.nodes {
+		if idnc.connected {
+			endname := nc.endnames[idnc.id]
 			cfg.net.Enable(endname, false)
 		}
 	}
 
 	// incoming ClientEnds
-	for j := 0; j < cfg.n; j++ {
-		if cfg.endnames[j] != nil {
-			endname := cfg.endnames[j][i]
+	// 将所有节点连向自己的连接断开
+	for _, idnc := range cfg.nodes {
+		if idnc.connected {
+			endname := idnc.endnames[nc.id]
 			cfg.net.Enable(endname, false)
 		}
 	}
@@ -295,34 +308,34 @@ func (cfg *config) setlongreordering(longrel bool) {
 
 // check that there's exactly one leader.
 // try a few times in case re-elections are needed.
-func (cfg *config) checkOneLeader() int {
-	for iters := 0; iters < 10; iters++ {
-		time.Sleep(500 * time.Millisecond)
-		leaders := make(map[int][]int)
-		for i := 0; i < cfg.n; i++ {
-			if cfg.connected[i] {
-				if t, leader := cfg.rafts[i].GetState(); leader {
-					leaders[t] = append(leaders[t], i)
-				}
-			}
-		}
-		lastTermWithLeader := -1
-		for t, leaders := range leaders {
-			if len(leaders) > 1 {
-				cfg.t.Fatalf("term %d has %d (>1) leaders", t, len(leaders))
-			}
-			if t > lastTermWithLeader {
-				lastTermWithLeader = t
-			}
-		}
-
-		if len(leaders) != 0 {
-			return leaders[lastTermWithLeader][0]
-		}
-	}
-	cfg.t.Fatalf("expected one leader, got none")
-	return -1
-}
+//func (cfg *config) checkOneLeader() int {
+//	for iters := 0; iters < 10; iters++ {
+//		time.Sleep(500 * time.Millisecond)
+//		leaders := make(map[int][]int)
+//		for i := 0; i < cfg.n; i++ {
+//			if cfg.connected[i] {
+//				if t, leader := cfg.rafts[i].GetState(); leader {
+//					leaders[t] = append(leaders[t], i)
+//				}
+//			}
+//		}
+//		lastTermWithLeader := -1
+//		for t, leaders := range leaders {
+//			if len(leaders) > 1 {
+//				cfg.t.Fatalf("term %d has %d (>1) leaders", t, len(leaders))
+//			}
+//			if t > lastTermWithLeader {
+//				lastTermWithLeader = t
+//			}
+//		}
+//
+//		if len(leaders) != 0 {
+//			return leaders[lastTermWithLeader][0]
+//		}
+//	}
+//	cfg.t.Fatalf("expected one leader, got none")
+//	return -1
+//}
 
 // check that everyone agrees on the term.
 func (cfg *config) checkTerms() int {

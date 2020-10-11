@@ -6,6 +6,12 @@
 
 package defines
 
+import (
+	"encoding/binary"
+	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
+	"io"
+)
+
 // EntryType 条目类型，没有做预定义，具体解释由各个实现自行定义、解析
 type EntryType = uint8
 
@@ -22,3 +28,126 @@ type Entry struct {
 	Data []byte		// 区块/证明/交易 等序列化的数据
 }
 
+// Check 检查格式
+func (e *Entry) Check() error {
+	return nil
+}
+
+// Len 获取序列化后的长度
+func (e *Entry) Len() int {
+	return 8 + 2 + len(e.Base) + 1 + 4 + len(e.Data)
+}
+
+// Encode 编码
+func (e *Entry) Encode() ([]byte, error) {
+	var err error
+
+	// 检查格式
+	if err = e.Check(); err != nil {
+		return nil, err
+	}
+
+	// 获取缓冲
+	buf := bufferpool.Get()
+	defer bufferpool.Return(buf)
+
+	/* 序列化Entry */
+
+	// BaseIndex 4B
+	err = binary.Write(buf, binary.BigEndian, e.BaseIndex)
+	if err != nil {
+		return nil, err
+	}
+
+	// baselen 2B
+	baselen := uint16(len(e.Base))
+	err = binary.Write(buf, binary.BigEndian, baselen)
+	if err != nil {
+		return nil, err
+	}
+
+	// Base (baselen)B
+	err = binary.Write(buf, binary.BigEndian, e.Base)
+	if err != nil {
+		return nil, err
+	}
+
+	// Type 1B
+	err = binary.Write(buf, binary.BigEndian, e.Type)
+	if err != nil {
+		return nil, err
+	}
+
+	// datalen 4B
+	datalen := uint32(len(e.Data))
+	err = binary.Write(buf, binary.BigEndian, datalen)
+	if err != nil {
+		return nil, err
+	}
+
+	// Data (datalen)B
+	err = binary.Write(buf, binary.BigEndian, e.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+// Decode 解码
+func (e *Entry) Decode(r io.Reader) error {
+
+	// BaseIndex
+	err := binary.Read(r, binary.BigEndian, &e.BaseIndex)
+	if err != nil {
+		return err
+	}
+
+	// baselen
+	baselen := uint16(0)
+	err = binary.Read(r, binary.BigEndian, &baselen)
+	if err != nil {
+		return err
+	}
+	// Base
+	e.Base = make([]byte, baselen)
+	err = binary.Read(r, binary.BigEndian, e.Base)
+	if err != nil {
+		return err
+	}
+
+	// Type
+	err = binary.Read(r, binary.BigEndian, &e.Type)
+	if err != nil {
+		return err
+	}
+
+	// datalen
+	datalen := uint32(0)
+	err = binary.Read(r, binary.BigEndian, &datalen)
+	if err != nil {
+		return err
+	}
+	// Data
+	e.Data = make([]byte, datalen)
+	err = binary.Read(r, binary.BigEndian, e.Data)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+/*
+	序列化后的Entry格式：
+	(暂时不考虑字节对齐问题)
+
+	+--------------------------------------+
+	| BaseIndex(8B) | len(Base)(2B) | Base |
+	+--------------------------------------+
+	| Type(1B) | len(Data)(4B) |    Data   |
+	+--------------------------------------+
+
+	长度计算公式：
+	f(Entry) = 8 + 2 + len(Base) + 1 + 4 + len(Data)
+*/

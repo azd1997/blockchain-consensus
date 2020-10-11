@@ -70,6 +70,7 @@ type replyMsg struct {
 	reply []byte
 }
 
+// ClientEnd 针对Network而言的客户终端。 所有终端对网络的请求都通过Network.endCh传递，进而交给Network的所有servers去处理
 type ClientEnd struct {
 	endname interface{} // this end-point's name
 	ch      chan reqMsg // copy of Network.endCh

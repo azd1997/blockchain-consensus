@@ -24,5 +24,5 @@ func GenUniqueId() string {
 	number++
 	cur = number
 	lock.Unlock()
-	return fmt.Sprintf("id-%d", cur)
+	return fmt.Sprintf("node%d", cur)
 }
