@@ -2,36 +2,17 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="a308decb-1282-4354-b05f-723fd7fa09eb" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/bnet/conn.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/bnet/net.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/bnet/peer_info.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/defines/entry_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/defines/id.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/defines/msg_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/defines/request_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lab/channel_conn/channel_conn.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/net.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/readme.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/requires/default.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/requires/default/conn.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/requires/default/dialer.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/requires/default/listener.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/requires/default/tcp_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/listener.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/address/address.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/address/address_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/binary/binary.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/binary/binary_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/bufferpool/bytes.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bnet/peer_info_table.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bnet/peer_info_table_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/defines/peer_info_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/entry.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/entry.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/msg.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/msg.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/request.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/request.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lab/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/config.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lab/id.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/id.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lab/labrpc/labrpc.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/labrpc/labrpc.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bnet/conn.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnet/conn.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bnet/conn_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnet/conn_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bnet/net.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnet/net.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bnet/peer_info.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/defines/peer.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/peer_info.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/implements/pot/pot.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/requires/requires.go" beforeDir="false" afterPath="$PROJECT_DIR$/requires/requires.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -65,13 +46,15 @@
     <property name="settings.editor.selected.configurable" value="go.vgo" />
   </component>
   <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/defines" />
+      <recent name="$PROJECT_DIR$" />
+      <recent name="E:\GO\src\github.com\azd1997\blockchain-consensus" />
+      <recent name="E:\GO\src\github.com\azd1997\blockchain-consensus\lab" />
+    </key>
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$/bnet" />
       <recent name="E:\GO\src\github.com\azd1997\blockchain-consensus\labrpc" />
-    </key>
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="E:\GO\src\github.com\azd1997\blockchain-consensus" />
-      <recent name="E:\GO\src\github.com\azd1997\blockchain-consensus\lab" />
     </key>
   </component>
   <component name="RunDashboard">
@@ -86,69 +69,69 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Go Test.TestTCP in github.com/azd1997/blockchain-consensus/requires/default">
-    <configuration name="TestParseTCP4 in github.com/azd1997/blockchain-consensus/utils/address" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Go Test.TestPeerInfoTable in github.com/azd1997/blockchain-consensus/bnet">
+    <configuration name="TestConn in github.com/azd1997/blockchain-consensus/bnet" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="blockchain-consensus" />
-      <working_directory value="$PROJECT_DIR$/utils/address" />
+      <working_directory value="$PROJECT_DIR$/bnet" />
       <framework value="gotest" />
       <kind value="PACKAGE" />
-      <package value="github.com/azd1997/blockchain-consensus/utils/address" />
+      <package value="github.com/azd1997/blockchain-consensus/bnet" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestParseTCP4$" />
+      <pattern value="^TestConn$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestReadAndWrite in github.com/azd1997/blockchain-consensus/utils/binary" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestPeerInfo in github.com/azd1997/blockchain-consensus/bnet" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="blockchain-consensus" />
-      <working_directory value="$PROJECT_DIR$/utils/binary" />
+      <working_directory value="$PROJECT_DIR$/bnet" />
       <framework value="gotest" />
       <kind value="PACKAGE" />
-      <package value="github.com/azd1997/blockchain-consensus/utils/binary" />
+      <package value="github.com/azd1997/blockchain-consensus/bnet" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestReadAndWrite$" />
+      <pattern value="^TestPeerInfo$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestTCP in github.com/azd1997/blockchain-consensus/requires/default" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestPeerInfo in github.com/azd1997/blockchain-consensus/defines" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="blockchain-consensus" />
-      <working_directory value="$PROJECT_DIR$/requires/default" />
+      <working_directory value="$PROJECT_DIR$/defines" />
       <framework value="gotest" />
       <kind value="PACKAGE" />
-      <package value="github.com/azd1997/blockchain-consensus/requires/default" />
+      <package value="github.com/azd1997/blockchain-consensus/defines" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestPeerInfo$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestPeerInfoTable in github.com/azd1997/blockchain-consensus/bnet" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="blockchain-consensus" />
+      <working_directory value="$PROJECT_DIR$/bnet" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="github.com/azd1997/blockchain-consensus/bnet" />
+      <directory value="$PROJECT_DIR$/" />
+      <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestPeerInfoTable$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestTCP in github.com/azd1997/blockchain-consensus" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="blockchain-consensus" />
+      <working_directory value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="github.com/azd1997/blockchain-consensus" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
       <pattern value="^TestTCP$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestTCPDialer in github.com/azd1997/blockchain-consensus/requires/default" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
-      <module name="blockchain-consensus" />
-      <working_directory value="$PROJECT_DIR$/requires/default" />
-      <framework value="gotest" />
-      <kind value="PACKAGE" />
-      <package value="github.com/azd1997/blockchain-consensus/requires/default" />
-      <directory value="$PROJECT_DIR$/" />
-      <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestTCPDialer$" />
-      <method v="2" />
-    </configuration>
-    <configuration name="TestTCPListener in github.com/azd1997/blockchain-consensus/requires/default" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
-      <module name="blockchain-consensus" />
-      <working_directory value="$PROJECT_DIR$/requires/default" />
-      <framework value="gotest" />
-      <kind value="PACKAGE" />
-      <package value="github.com/azd1997/blockchain-consensus/requires/default" />
-      <directory value="$PROJECT_DIR$/" />
-      <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestTCPListener$" />
-      <method v="2" />
-    </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Test.TestTCP in github.com/azd1997/blockchain-consensus/requires/default" />
-        <item itemvalue="Go Test.TestTCPDialer in github.com/azd1997/blockchain-consensus/requires/default" />
-        <item itemvalue="Go Test.TestTCPListener in github.com/azd1997/blockchain-consensus/requires/default" />
-        <item itemvalue="Go Test.TestReadAndWrite in github.com/azd1997/blockchain-consensus/utils/binary" />
-        <item itemvalue="Go Test.TestParseTCP4 in github.com/azd1997/blockchain-consensus/utils/address" />
+        <item itemvalue="Go Test.TestPeerInfoTable in github.com/azd1997/blockchain-consensus/bnet" />
+        <item itemvalue="Go Test.TestPeerInfo in github.com/azd1997/blockchain-consensus/defines" />
+        <item itemvalue="Go Test.TestPeerInfo in github.com/azd1997/blockchain-consensus/bnet" />
+        <item itemvalue="Go Test.TestConn in github.com/azd1997/blockchain-consensus/bnet" />
+        <item itemvalue="Go Test.TestTCP in github.com/azd1997/blockchain-consensus" />
       </list>
     </recent_temporary>
   </component>

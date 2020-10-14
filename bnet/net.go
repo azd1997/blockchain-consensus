@@ -62,9 +62,9 @@ func NewNet(ln requires.Listener, d requires.Dialer) *Net {
 
 	// 加载pit
 	pit := &PeerInfoTable{}
-	err := pit.Load()
+	err := pit.Init()
 	if err != nil {
-		log.Printf("load PeerInfoTable failed: %s\n", err)
+		log.Printf("Init PeerInfoTable failed: %s\n", err)
 		return nil
 	}
 
@@ -90,9 +90,13 @@ func (n *Net) Network() string {
 }
 
 // Stop 停止Net模块
-func (n *Net) Stop() {
-	n.ln.Close()
+func (n *Net) Stop() error {
+	err := n.ln.Close()
+	if err != nil {
+		return err
+	}
 	close(n.done)
+	return nil
 }
 
 // ListenLoop 监听循环
@@ -151,9 +155,12 @@ func (n *Net) Connect(to string) (*Conn, error) {
 	}
 
 	// 连接不存在，创建连接
-	toAddr := n.pit.Get(to)
+	toPeerInfo, err := n.pit.Get(to)
+	if err != nil {
+		return nil, err
+	}
 	// 和to建立连接
-	c, err := n.d.Dial(toAddr, n.id)
+	c, err := n.d.Dial(toPeerInfo.Addr, n.id)
 	if err != nil {
 		return nil, err
 	}

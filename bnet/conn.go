@@ -113,6 +113,11 @@ func (c *Conn) Send(msg *defines.Message) error {
 // 可能不太安全。不容易预设一开始的缓冲区大小
 // 因此：
 // 这里采取限制消息最大尺寸的做法，这样容易实现，预设合理的缓冲区大小也有利于执行性能
+//
+// 关于RecvLoop退出：
+// c.Close()后主动关闭，而后c.RecvLoop()会因为“use of closed network connection”而退出
+// 对端的conn则会收到“EOF”而退出
+//
 func (c *Conn) RecvLoop() {
 	c.status = ConnStatus_Running
 	log.Printf("Conn(%s) running\n", c.Name())

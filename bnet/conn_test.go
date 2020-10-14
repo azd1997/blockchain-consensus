@@ -7,7 +7,7 @@
 package bnet
 
 import (
-	"github.com/azd1997/blockchain-consensus"
+	_default "github.com/azd1997/blockchain-consensus/requires/default"
 	"reflect"
 	"testing"
 
@@ -23,11 +23,11 @@ type peer struct {
 }
 
 func genPeer(id, addr string) (*peer, error) {
-	ln, err := bcc.DefaultListener(id, addr)
+	ln, err := _default.ListenTCP(id, addr)
 	if err != nil {
 		return nil, err
 	}
-	d, err := bcc.DefaultDialer(id, addr)
+	d, err := _default.NewDialer(id, addr, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -83,6 +83,8 @@ func TestConn(t *testing.T) {
 						if err = bconn.Send(msg); err != nil {
 							t.Errorf("%s: Conn(%s<->%s): Send Msg fail: %s\n", p.id, c.LocalID(), c.RemoteID(), err)
 						}
+						// 回发完消息后
+						close(doneA)
 					case <-doneA:	// 关闭A时也要将此处退出
 						t.Logf("%s: Conn(%s<->%s): Msg HandleLoop closed\n", p.id, c.LocalID(), c.RemoteID())
 						return
@@ -94,7 +96,6 @@ func TestConn(t *testing.T) {
 
 			n--
 		}
-		close(doneA)
 	}(peera)
 
 	// B是客户端
@@ -138,8 +139,8 @@ func TestConn(t *testing.T) {
 		////////////////////////////////
 	}(peerb)
 
-	<-doneA
 	<-doneB
+	<-doneA
 }
 
 var testMsg = &defines.Message{

@@ -7,6 +7,7 @@
 package pot
 
 import (
+	"github.com/azd1997/blockchain-consensus/bnet"
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/requires"
 	"sync/atomic"
@@ -26,7 +27,7 @@ type Node struct {
 
 	latest bool	// 本节点是否追上系统最新进度
 
-	peers map[string]*defines.Peer	// 共识节点表
+	peers *bnet.PeerInfoTable	// 共识节点表
 
 	state StateType		// 状态状态
 
@@ -157,7 +158,7 @@ func (n *Node) handleMsgWhenNotReady(msg *defines.Message) {
 
 		// 根据EntryType来处理
 		for _, ent := range msg.Entries {
-			switch ent.EntryType {
+			switch ent.Type {
 			case defines.EntryType_Block:
 				// 检查区块本身格式的正确性
 

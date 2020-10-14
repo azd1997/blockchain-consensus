@@ -7,9 +7,8 @@
 package bcc
 
 import (
+	"github.com/azd1997/blockchain-consensus/bnet"
 	"net"
-
-	"github.com/azd1997/blockchain-consensus/requires"
 )
 
 /*
@@ -44,7 +43,7 @@ type Node struct {
 	css Consensus
 
 	// 网络模块
-	net *Net
+	net *bnet.Net
 
 	// 与其他节点的连接
 	conns map[string]net.Conn
@@ -53,19 +52,18 @@ type Node struct {
 }
 
 // NewNode 构建Node
-func NewNode(id string, css Consensus, net *Net) *Node {
+func NewNode(id string, css Consensus, net *bnet.Net) *Node {
 	node := &Node{}
 
 	node.id = id
 	node.css = css
-	node.cb = cb
 
 	return node
 }
 
 // Ok 检查Node是否非空，以及内部一些成员是否准备好
 func (s *Node) Ok() bool {
-	return s != nil && s.css != nil && s.cb != nil
+	return s != nil && s.css != nil
 }
 
 // IsWorker 判断该Node是否是共识节点

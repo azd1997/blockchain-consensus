@@ -7,6 +7,7 @@
 package requires
 
 import (
+	"log"
 	"net"
 
 	"github.com/azd1997/blockchain-consensus/defines"
@@ -81,4 +82,49 @@ type Conn interface {
 
 //////////////////////////////////////////////////
 
+// Store KV存储接口
+// 实现时，不管到底是通过内存实现，还是数据库，对于bcc库而言，只按Store使用
+type Store interface {
+	Open() error	// 开启（其实是建立连接）
+	Close() error	// 关闭（其实是关闭连接）
+	Get(cf CF, key []byte) ([]byte, error)
+	Set(cf CF, key, value []byte) error
+	Del(cf CF, key []byte) error
+
+	// Store的上层使用者需要有各自的前缀，
+	// 注册Prefix时若报prefix已存在或不可用，则换个前缀使用
+	// 通常在Store的使用者启动时，通过该API检查
+	// prefix固定为2个字节
+	//
+	// CF ColumnFamily 列族，相当于“Database”的概念
+	// 实现时是通过key前缀实现的
+	// cf有长度限制，约定最大为6(6B表示的可能数足够多了)，长度不足将用" "补全
+	// cf必须是连续字符
+	RegisterCF(cf CF) error
+
+	// 遍历某个CF
+	RangeCF(cf CF, f func(key, value []byte) error) error
+}
+
+const CFLen = 6
+
+// CF 列族名
+type CF [CFLen]byte
+
+// String2CF 字符串转换为列族名
+// 由String2CF的空格补全知，自定义的CF名不能以' '结尾
+func String2CF(in string) CF {
+	n := len(in)
+	if n == 0 || n > CFLen || in[n-1] == ' ' {
+		log.Fatalln("incompatible cf string")
+	}
+	cf := CF{}
+	for i:=0; i<len(in); i++ {
+		cf[i] = in[i]
+	}
+	for i:=len(in); i<CFLen; i++ {
+		cf[i] = ' '
+	}
+	return cf
+}
 
