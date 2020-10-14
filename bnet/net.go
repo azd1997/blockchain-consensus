@@ -8,6 +8,7 @@ package bnet
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net"
 
@@ -29,6 +30,7 @@ import (
 
 
 // Net 网络模块
+// Net的定位是一个只负责数据的网络收发模块，其发送和接收都通过channel来与外界沟通
 type Net struct {
 	// 唯一标识
 	id string
@@ -43,29 +45,43 @@ type Net struct {
 	// 节点信息表
 	pit *PeerInfoTable
 
+	// 消息读入chan
+	msgin <-chan *defines.Message
+	// 消息传出chan
+	msgout chan<- *defines.Message
+
 	// 关闭信号
 	done chan struct{}
 }
 
 // NewNet
-func NewNet(ln requires.Listener, d requires.Dialer) *Net {
+func NewNet(ln requires.Listener, d requires.Dialer, kv requires.Store,
+	msgin <-chan *defines.Message, msgout chan<- *defines.Message) (*Net, error) {
+
 	if ln == nil || d == nil {
-		log.Printf("require non-nil Listener and Dialer\n")
-		return nil
+		return nil, errors.New("require non-nil Listener and Dialer")
 	}
 
 	// 检查ln和d是否协议匹配
 	if ln.Network() != d.Network() {
-		log.Printf("dismatch network: Listener(%s) and Dialer(%s)\n", ln.Network(), d.Network())
-		return nil
+		return nil, fmt.Errorf("dismatch network: Listener(%s) and Dialer(%s)", ln.Network(), d.Network())
+	}
+
+	// 检查Store
+	if kv == nil {
+		return nil, errors.New("require non-nil kv store")
+	}
+
+	// 检查msgin/msgout
+	if msgin == nil || msgout == nil {
+		return nil, errors.New("require non-nil msgin and msgout")
 	}
 
 	// 加载pit
-	pit := &PeerInfoTable{}
+	pit := NewPeerInfoTable(kv)
 	err := pit.Init()
 	if err != nil {
-		log.Printf("Init PeerInfoTable failed: %s\n", err)
-		return nil
+		return nil, fmt.Errorf("init PeerInfoTable failed: %s", err)
 	}
 
 	n := &Net{}
@@ -76,7 +92,31 @@ func NewNet(ln requires.Listener, d requires.Dialer) *Net {
 	n.conns = make(map[string]*Conn)
 	n.done = make(chan struct{})
 
-	return n
+	return n, nil
+}
+
+// Init 初始化
+// 根据pit的seeds和peers的情况：
+// 		不管有没有peers，都向seeds节点发送getNeighbors消息，保持自身有集群最多的节点
+func (n *Net) Init() error {
+	// 和所有seeds建立连接，发送getNeighbors消息
+	err := n.pit.RangeSeeds(func(seed *defines.PeerInfo) error {
+		// 建立连接
+
+		// 发送getNeighbors消息
+
+		return nil
+	})
+
+	// 如果peers非空，也建立连接
+	err = n.pit.RangePeers(func(peer *defines.PeerInfo) error {
+		// 建立连接
+
+		// 请求对方的进度，从而构建进度表
+
+
+	})
+
 }
 
 // Ok 判断Net是否准备好

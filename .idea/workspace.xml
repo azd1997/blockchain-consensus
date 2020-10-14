@@ -2,18 +2,17 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="a308decb-1282-4354-b05f-723fd7fa09eb" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/bnet/peer_info_table.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/bnet/peer_info_table_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/defines/peer_info_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/bnet/net_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test/store.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test/test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bnet/conn.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnet/conn.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bnet/conn_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnet/conn_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/bnet/net.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnet/net.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bnet/peer_info.go" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/peer.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/peer_info.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bnet/peer_info_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnet/peer_info_table.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bnet/peer_info_table_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/bnet/peer_info_table_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/consensus.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requires/requires.go" beforeDir="false" afterPath="$PROJECT_DIR$/requires/requires.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />

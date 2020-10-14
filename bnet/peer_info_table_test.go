@@ -9,89 +9,24 @@ package bnet
 import (
 	"bytes"
 	"errors"
-	"log"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/requires"
+	"github.com/azd1997/blockchain-consensus/test"
 )
 
-// 测试用的requires.Store实现
-type testStore struct {
-	cfs map[requires.CF]bool
-	kvs map[string]string
-}
-
-func (t *testStore) Open() error {
-	log.Printf("testStore open ...\n")
-	return nil
-}
-
-func (t *testStore) Close() error {
-	log.Printf("testStore close ...\n")
-	return nil
-}
-
-func (t *testStore) Get(cf requires.CF, key []byte) ([]byte, error) {
-	k := string(cf[:]) + string(key)
-	v := new(defines.PeerInfo)
-	v.Decode(bytes.NewReader([]byte(t.kvs[k])))
-	log.Printf("testStore Get: {key: %s, value: %s}\n", string(key), v.String())
-	//time.Sleep(50 * time.Millisecond)
-	return []byte(t.kvs[k]), nil
-}
-
-func (t *testStore) Set(cf requires.CF, key, value []byte) error {
-	k := string(cf[:]) + string(key)
-	t.kvs[k] = string(value)
-	v := new(defines.PeerInfo)
-	v.Decode(bytes.NewReader(value))
-	log.Printf("testStore Set: {key: %s, value: %s}\n", string(key), v.String())
-	//time.Sleep(300 * time.Millisecond)
-	return nil
-}
-
-func (t *testStore) Del(cf requires.CF, key []byte) error {
-	delete(t.kvs, string(cf[:]) + string(key))
-	log.Printf("testStore Del: {key: %s}\n", string(key))
-	//time.Sleep(300 * time.Millisecond)
-	return nil
-}
-
-func (t *testStore) RegisterCF(cf requires.CF) error {
-	t.cfs[cf] = true
-	return nil
-}
-
-func (t *testStore) RangeCF(cf requires.CF, f func(key, value []byte) error) error {
-	var firstErr, err error
-	for k, v := range t.kvs {
-		if strings.HasPrefix(k, string(cf[:])) {
-			err = f([]byte(k[requires.CFLen:]), []byte(v))
-			if err != nil {
-				if firstErr == nil {
-					firstErr = err
-				} else {
-					continue
-				}
-			}
-		}
-	}
-
-	return firstErr
-}
 
 //////////////////////////////////////////////
 
 // 测试节点信息表的创建、初始化、增删改查、持久化
 func TestPeerInfoTable(t *testing.T) {
 	// 创建
-	tkv := &testStore{
-		cfs: map[requires.CF]bool{},
-		kvs: map[string]string{},
+	tkv := &test.Store{
+		Cfs: map[requires.CF]bool{},
+		Kvs: map[string]string{},
 	}
 	pit := NewPeerInfoTable(tkv)
 
@@ -150,7 +85,7 @@ func TestPeerInfoTable(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 }
 
-func handleError(t *testing.T, err error, pit *PeerInfoTable, tkv *testStore) {
+func handleError(t *testing.T, err error, pit *PeerInfoTable, tkv *test.Store) {
 	if err != nil {
 		t.Error(err)
 	}
@@ -162,10 +97,10 @@ func handleError(t *testing.T, err error, pit *PeerInfoTable, tkv *testStore) {
 /////////////////////////// / ////////////////////////////
 
 // 检查pit.peers和kv两处的数据是否保持了一致
-func checkPitAndKv(pit *PeerInfoTable, kv *testStore) error {
+func checkPitAndKv(pit *PeerInfoTable, kv *test.Store) error {
 	pit.peersLock.RLock()
 	defer pit.peersLock.RUnlock()
-	if len(pit.peers) != len(kv.kvs) {	// 测试过程中只有1个cf
+	if len(pit.peers) != len(kv.Kvs) {	// 测试过程中只有1个cf
 		return errors.New("len(pit.peers) != len(kv.kvs)")
 	}
 	for id, pi := range pit.peers {

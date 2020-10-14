@@ -334,7 +334,7 @@ func (n *Node) broadcastBlock(b *defines.Block) {
 
 	entry := &defines.Entry{
 		Base:b.PrevHash,
-		BaseIndex:uint64(b.Index-1),
+		BaseIndex:b.Index-1,
 		Type:defines.EntryType_Block,
 		Data:blockBytes,
 	}

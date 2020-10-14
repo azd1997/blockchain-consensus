@@ -23,7 +23,11 @@ type Consensus interface {
 	// MsgChannel 对于Consensus的上层来说，需要调用该函数，
 	// 得到消息channel，根据该channel拿消息去发送到网络中
 	// TODO: 发送的结果是成功还是失败？状态机需不需要考虑？
-	MsgChannel() <-chan *defines.Message
+	OutMsgChan() <-chan *defines.Message
+
+	// 接收消息的channel，需要将该chan移交给网络模块去写消息
+	// Consensus模块在内部循环读该chan，处理Message
+	InMsgChan() chan <- *defines.Message
 }
 
 // 新建一个共识状态机

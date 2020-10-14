@@ -37,12 +37,19 @@ const (
 // 暂时只维护在内存中
 
 const (
-	PeerInfoKeyPrefix = "pi"
+	// 长度不能超过requires.CFLen (6)
+	// 将种子节点与普通节点分开存储
+	PeerInfoKeyPrefix = "peers-"
+	SeedInfoKeyPrefix = "seeds-"
 	DefaultMergeInterval = 5 * time.Minute
 )
 
 // PeerInfoTable 节点信息表
 type PeerInfoTable struct {
+	// seeds目前设定为固定的配置，运行期间不修改其数据
+	// 因此使用期间不加锁
+	seeds map[string]*defines.PeerInfo
+
 	peers map[string]*defines.PeerInfo
 	dirty map[string]*dirtyPeerInfo	// 被修改的/新增的/删除的
 	peersLock *sync.RWMutex
@@ -51,7 +58,8 @@ type PeerInfoTable struct {
 	// 存储引擎
 	kv requires.Store
 	// 存储前缀
-	cf requires.CF
+	peersCF requires.CF
+	seedsCF requires.CF
 
 	// 自动merge的间隔
 	mergeInterval time.Duration
@@ -62,12 +70,14 @@ type PeerInfoTable struct {
 // NewPeerInfoTable
 func NewPeerInfoTable(kv requires.Store) *PeerInfoTable {
 	return &PeerInfoTable{
+		seeds: make(map[string]*defines.PeerInfo),
 		peers: make(map[string]*defines.PeerInfo),
 		dirty:make(map[string]*dirtyPeerInfo),
 		peersLock:    new(sync.RWMutex),
 		dirtyLock:    new(sync.RWMutex),
 		kv:kv,
-		cf:requires.String2CF(PeerInfoKeyPrefix),
+		peersCF:requires.String2CF(PeerInfoKeyPrefix),
+		seedsCF:requires.String2CF(SeedInfoKeyPrefix),
 		mergeInterval:DefaultMergeInterval,
 		done:make(chan struct{}),
 	}
@@ -92,9 +102,9 @@ func (pit *PeerInfoTable) Init() error {
 }
 
 // load 加载
-// 启动时，从pit.kv中加载所有节点信息到pit.peers
+// 启动时，从pit.kv中加载所有节点(包括种子)信息到pit.peers
 func (pit *PeerInfoTable) load() error {
-	return pit.kv.RangeCF(pit.cf, func(key, value []byte) error {
+	f := func(key, value []byte) error {
 		pi := new(defines.PeerInfo)
 		err := pi.Decode(bytes.NewReader(value))
 		if err != nil {
@@ -102,7 +112,18 @@ func (pit *PeerInfoTable) load() error {
 		}
 		pit.peers[string(key)] = pi
 		return nil
-	})
+	}
+
+	err := pit.kv.RangeCF(pit.seedsCF, f)
+	if err != nil {
+		return err
+	}
+	err = pit.kv.RangeCF(pit.peersCF, f)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 //// store 存储/持久化
@@ -125,7 +146,7 @@ func (pit *PeerInfoTable) merge() error {
 		case OpDel:
 			if ok {
 				// 删除kv中该项
-				err := pit.kv.Del(pit.cf, []byte(id))
+				err := pit.kv.Del(pit.peersCF, []byte(id))
 				if err != nil {
 					return err
 				}
@@ -140,7 +161,7 @@ func (pit *PeerInfoTable) merge() error {
 			if err != nil {
 				return err
 			}
-			err = pit.kv.Set(pit.cf, []byte(id), infobytes)
+			err = pit.kv.Set(pit.peersCF, []byte(id), infobytes)
 			if err != nil {
 				return err
 			}
@@ -243,6 +264,88 @@ func (pit *PeerInfoTable) Del(id string) error {
 func (pit *PeerInfoTable) Close() error {
 	close(pit.done)
 	return pit.kv.Close()
+}
+
+// Peers 生成Peers的快照
+func (pit *PeerInfoTable) Peers() map[string]*defines.PeerInfo {
+
+	// 先生成peers和dirty的快照
+	peersSnapshot := map[string]*defines.PeerInfo{}
+	dirtySnapshot := map[string]*dirtyPeerInfo{}
+	pit.peersLock.RLock()
+	pit.dirtyLock.RLock()
+	for id := range pit.peers {
+		peersSnapshot[id] = pit.peers[id]
+	}
+	for id := range pit.dirty {
+		dirtySnapshot[id] = pit.dirty[id]
+	}
+	pit.dirtyLock.RUnlock()
+	pit.peersLock.RUnlock()
+
+	// 合并
+	// 这个地方的合并并不适合与pit.merge去复用代码
+	// 原因是merge还需要将修改持久化，耗时较久，而且可能会失败，因此比较适合异步地进行
+	// 而Peers是个同步的API，需要获取当前的所有节点信息，没必要去做数据持久化，只在内存中处理也更可控
+	for id, dinfo := range dirtySnapshot {
+		_, ok := peersSnapshot[id]
+		switch dinfo.op {
+		case OpNone:
+			// 不会出现这种情况，不管它
+		case OpDel:
+			if ok {
+				delete(peersSnapshot, id)
+			}
+		case OpSet:
+			peersSnapshot[id] = dinfo.info
+		}
+	}
+
+	return peersSnapshot
+}
+
+// Seeds 生成Seeds的快照
+func (pit *PeerInfoTable) Seeds() map[string]*defines.PeerInfo {
+	snapshot := map[string]*defines.PeerInfo{}
+	for id := range pit.seeds {
+		snapshot[id] = pit.seeds[id]
+	}
+	return snapshot
+}
+
+// RangePeers 对pit当前记录的所有peers执行某项操作
+func (pit *PeerInfoTable) RangePeers(f func(peer *defines.PeerInfo) error) error {
+	var firstErr, err error
+	peers := pit.Peers()
+	for _, peer := range peers {
+		peer := peer	// 复制一份
+		err = f(peer)
+		if err != nil {
+			if firstErr != nil {
+				continue
+			} else {
+				firstErr = err
+			}
+		}
+	}
+	return firstErr
+}
+
+// RangeSeeds 对pit.seeds执行某项操作
+func (pit *PeerInfoTable) RangeSeeds(f func(peer *defines.PeerInfo) error) error {
+	var firstErr, err error
+	for _, seed := range pit.seeds {
+		seed := seed	// 复制一份
+		err = f(seed)
+		if err != nil {
+			if firstErr != nil {
+				continue
+			} else {
+				firstErr = err
+			}
+		}
+	}
+	return firstErr
 }
 
 ///////////////////// 节点信息加载函数 //////////////////////
