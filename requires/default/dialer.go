@@ -8,6 +8,7 @@ package _default
 
 import (
 	"errors"
+	"log"
 	"net"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/azd1997/blockchain-consensus/utils/binary"
 )
 
-
 func NewDialer(id, addr string, timeout time.Duration) (*TCPDialer, error) {
 	localAddr, err := address.ParseTCP4(addr)
 	if err != nil {
@@ -24,7 +24,7 @@ func NewDialer(id, addr string, timeout time.Duration) (*TCPDialer, error) {
 	}
 
 	d := &net.Dialer{
-		Timeout:       timeout,
+		Timeout: timeout,
 	}
 
 	return &TCPDialer{
@@ -35,9 +35,9 @@ func NewDialer(id, addr string, timeout time.Duration) (*TCPDialer, error) {
 }
 
 type TCPDialer struct {
-	d *net.Dialer
+	d               *net.Dialer
 	localListenAddr *net.TCPAddr
-	localId string
+	localId         string
 }
 
 func (T *TCPDialer) ok() bool {
@@ -60,11 +60,11 @@ func (T *TCPDialer) Dial(addr, remoteId string) (requires.Conn, error) {
 	}
 
 	rc := &TCPConn{
-		conn:     conn.(*net.TCPConn),
-		localId:  T.localId,
-		remoteId: remoteId,
-		localListenAddr:T.localListenAddr,
-		remoteListenAddr:remoteAddr,
+		conn:             conn.(*net.TCPConn),
+		localId:          T.localId,
+		remoteId:         remoteId,
+		localListenAddr:  T.localListenAddr,
+		remoteListenAddr: remoteAddr,
 	}
 
 	// 握手
@@ -73,6 +73,7 @@ func (T *TCPDialer) Dial(addr, remoteId string) (requires.Conn, error) {
 		return nil, err
 	}
 
+	log.Printf("dialer dial {from: %s(%s), to: %s(%s)} succ\n", T.localId, T.localListenAddr, remoteId, remoteAddr)
 	return rc, nil
 }
 
@@ -100,4 +101,3 @@ func (T *TCPDialer) handshake(c *TCPConn) error {
 	}
 	return nil
 }
-

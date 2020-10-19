@@ -20,9 +20,9 @@ var testEntry = &Entry{
 }
 
 func TestEntry(t *testing.T) {
-	var tests = []struct{
+	var tests = []struct {
 		name string
-		ent *Entry
+		ent  *Entry
 	}{
 		{"normal_case", testEntry},
 	}

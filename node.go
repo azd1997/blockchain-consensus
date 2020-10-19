@@ -7,8 +7,10 @@
 package bcc
 
 import (
-	"github.com/azd1997/blockchain-consensus/bnet"
+	"github.com/azd1997/blockchain-consensus/modules/bnet"
+	"github.com/azd1997/blockchain-consensus/modules/peerinfo"
 	"github.com/azd1997/blockchain-consensus/requires"
+	"github.com/azd1997/blockchain-consensus/utils/log"
 )
 
 /*
@@ -39,28 +41,75 @@ type Node struct {
 	// 节点ID，与账户共用一个ID
 	id string
 
+	// kv 存储
+	kv requires.Store
+
 	// 共识状态机
 	css Consensus
 
 	// 网络模块
 	net *bnet.Net
 
-	//
+	// 日志输出目的地
+	LogDest log.LogDest
 }
 
 // NewNode 构建Node
 func NewNode(id string, consensusType string,
-	ln requires.Listener, dialer requires.Dialer) *Node {
-	node := &Node{id:id}
+		ln requires.Listener, dialer requires.Dialer, kv requires.Store,
+		logdest log.LogDest) (*Node, error) {
 
-	css := NewConsensus(consensusType)
+	node := &Node{
+		id: id,
+		kv: kv,
+	}
+
+	// 构建共识状态机
+	css, err := NewConsensus(consensusType)
+	if err != nil {
+		return nil, err
+	}
 	node.css = css
 	cssin, cssout := css.InMsgChan(), css.OutMsgChan()
 
-	netmod := bnet.NewNet(ln, dialer, cssin, cssout)
+	// 构建网络模块
+	opt := &bnet.Option{
+		Listener:            ln,
+		Dialer:              dialer,
+		MsgIn:               cssout,
+		MsgOut:              cssin,
+		LogDest:             logdest,
+	}
+	netmod, err := bnet.NewNet(opt)
+	if err != nil {
+		return nil, err
+	}
+	node.net = netmod
 
+	return node, nil
+}
 
-	return node
+// Init 初始化
+func (s *Node) Init() error {
+	// 准备好PeerInfoTable
+	err := peerinfo.Init(s.kv)
+	if err != nil {
+		return err
+	}
+
+	// 网络模块初始化
+	err = s.net.Init()
+	if err != nil {
+		return err
+	}
+
+	// 共识模块初始化
+	err = s.css.Init()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Ok 检查Node是否非空，以及内部一些成员是否准备好

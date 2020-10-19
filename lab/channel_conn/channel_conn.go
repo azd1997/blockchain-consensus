@@ -14,8 +14,8 @@ import (
 
 // ChannelConn 基于channel的Conn
 type ChannelConn struct {
-	local string
-	remote string
+	local   string
+	remote  string
 	reqChan chan defines.Message
 }
 
@@ -50,4 +50,3 @@ func (c ChannelConn) SetReadDeadline(t time.Time) error {
 func (c ChannelConn) SetWriteDeadline(t time.Time) error {
 	panic("implement me")
 }
-

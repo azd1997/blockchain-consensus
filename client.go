@@ -17,5 +17,4 @@ type Client struct {
 	// 如果ClientOnly，查数据需要向
 	//ClientOnly bool
 
-
 }

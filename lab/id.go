@@ -14,7 +14,6 @@ import (
 // 暂时先不把公私钥体系引入
 // 随便生成账号id
 
-
 var number int
 var lock sync.Mutex
 

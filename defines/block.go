@@ -10,19 +10,18 @@ package defines
 
 // Block 区块
 type Block struct {
-	Index uint64
+	Index    uint64
 	SelfHash []byte
 	PrevHash []byte
-	Merkle []byte
-	Txs [][]byte
-	Sig []byte
+	Merkle   []byte
+	Txs      [][]byte
+	Sig      []byte
 }
 
 func (b *Block) Encode() []byte {
-	return nil	// TODO
+	return nil // TODO
 }
 
 // Transaction 交易
 type Transaction struct {
-
 }

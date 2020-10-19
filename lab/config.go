@@ -20,16 +20,16 @@ import (
 )
 
 type config struct {
-	mu        sync.Mutex
-	t         *testing.T
+	mu sync.Mutex
+	t  *testing.T
 
 	// net其实可以看做是种子节点，因为种子节点总是最新的状态
-	net       *labrpc.Network
+	net *labrpc.Network
 
 	// 集群节点数量
-	n         int
+	n int
 	// 通知节点挂掉
-	done      int32
+	done int32
 	// 共识类型
 	consensusType string
 
@@ -39,13 +39,13 @@ type config struct {
 
 // 节点配置
 type nodeConfig struct {
-	id string
-	css bcc.Consensus
-	applyErr string
+	id        string
+	css       bcc.Consensus
+	applyErr  string
 	connected bool
-	saved *bcc.ConsensusLog
-	nodeLog string	// 日志文件名
-	endnames map[string]string	// 与节点相连的End列表. 代表着：id -> endname 的传输通道， v则表示用来表示二者传输的通道名/临时文件名
+	saved     *bcc.ConsensusLog
+	nodeLog   string            // 日志文件名
+	endnames  map[string]string // 与节点相连的End列表. 代表着：id -> endname 的传输通道， v则表示用来表示二者传输的通道名/临时文件名
 }
 
 var ncpu_once sync.Once
@@ -68,7 +68,7 @@ func make_config(t *testing.T, n int, unreliable bool, consensusType string) *co
 	cfg.nodes = make(map[string]*nodeConfig)
 
 	// 创建n个id，及其本地日志
-	for i:=0; i<n; i++ {
+	for i := 0; i < n; i++ {
 		id := GenUniqueId()
 		nc := new(nodeConfig)
 		nc.id = id
@@ -148,14 +148,13 @@ func (cfg *config) start1(nodeid string) {
 	if nc.endnames == nil {
 		nc.endnames = make(map[string]string)
 	}
-	for _, node := range cfg.nodes {	// 遍历所有节点，定义好自己去其他节点的连接名，方便之后根据该名称建立连接
+	for _, node := range cfg.nodes { // 遍历所有节点，定义好自己去其他节点的连接名，方便之后根据该名称建立连接
 		nc.endnames[node.id] = fmt.Sprintf("%s-%s", nc.id, node.id)
 	}
 
-
 	// a fresh set of ClientEnds.
 	// 建立一批ClientEnds与之（前面的名字）对应
-	ends := make(map[string]*labrpc.ClientEnd)	// ends是自己向所有节点建立的单向连接集合
+	ends := make(map[string]*labrpc.ClientEnd) // ends是自己向所有节点建立的单向连接集合
 	for _, node := range cfg.nodes {
 		ends[node.id] = cfg.net.MakeEnd(nc.endnames[node.id])
 		cfg.connect(nc.endnames[node.id])
@@ -240,7 +239,7 @@ func (cfg *config) connect(nodeid string) {
 
 	if _, ok := cfg.nodes[nodeid]; !ok {
 		log.Printf("node <%s> doesn't exist\n", nodeid)
-		return	// 节点不存在，直接返回
+		return // 节点不存在，直接返回
 	}
 
 	nc := cfg.nodes[nodeid]

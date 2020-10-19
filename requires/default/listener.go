@@ -9,6 +9,7 @@ package _default
 import (
 	"encoding/binary"
 	"errors"
+	"log"
 	"net"
 
 	"github.com/azd1997/blockchain-consensus/requires"
@@ -16,8 +17,8 @@ import (
 )
 
 type TCPListener struct {
-	ln *net.TCPListener
-	localId string
+	ln              *net.TCPListener
+	localId         string
 	localListenAddr *net.TCPAddr
 }
 
@@ -36,9 +37,9 @@ func ListenTCP(localid string, addr string) (*TCPListener, error) {
 	}
 
 	return &TCPListener{
-		ln:      ln,
-		localId: localid,
-		localListenAddr:tcpaddr,
+		ln:              ln,
+		localId:         localid,
+		localListenAddr: tcpaddr,
 	}, nil
 }
 
@@ -61,9 +62,9 @@ func (T *TCPListener) Accept() (requires.Conn, error) {
 	}
 
 	rc := &TCPConn{
-		conn:     c.(*net.TCPConn),
-		localId:T.localId,
-		localListenAddr:T.localListenAddr,
+		conn:            c.(*net.TCPConn),
+		localId:         T.localId,
+		localListenAddr: T.localListenAddr,
 	}
 
 	// 握手
@@ -72,6 +73,8 @@ func (T *TCPListener) Accept() (requires.Conn, error) {
 		return nil, err
 	}
 
+	log.Printf("listener accept {from: %s(%s), to: %s(%s)} succ\n",
+		rc.RemoteID(), rc.RemoteListenAddr(), T.localId, T.localListenAddr)
 	return rc, nil
 }
 

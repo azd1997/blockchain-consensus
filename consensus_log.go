@@ -28,4 +28,3 @@ func (cl *ConsensusLog) Copy() *ConsensusLog {
 
 	return ncl
 }
-

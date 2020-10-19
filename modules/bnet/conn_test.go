@@ -16,10 +16,10 @@ import (
 )
 
 type peer struct {
-	id string
+	id   string
 	addr string
-	ln requires.Listener
-	d requires.Dialer
+	ln   requires.Listener
+	d    requires.Dialer
 }
 
 func genPeer(id, addr string) (*peer, error) {
@@ -60,6 +60,9 @@ func TestConn(t *testing.T) {
 	// 先启动节点A，再启动节点B，节点B主动连接节点A
 	doneA, doneB := make(chan struct{}), make(chan struct{})
 
+	msgchanA := make(chan *defines.Message, 10)
+	msgchanB := make(chan *defines.Message, 10)
+
 	// A是服务端
 	go func(p *peer) {
 		n := 1
@@ -73,19 +76,19 @@ func TestConn(t *testing.T) {
 
 			////////////////////////////////
 			// 将requires.Conn封装成bnet.Conn
-			bconn := ToConn(c)
-			go bconn.RecvLoop()		// bconn循环接收Message
-			go func() {		// 启动协程处理接收到的Message(打日志并回写)
+			bconn := ToConn(c, msgchanA)
+			go bconn.RecvLoop() // bconn循环接收Message
+			go func() {         // 启动协程处理接收到的Message(打日志并回写)
 				for {
-					select{
-					case msg := <- bconn.MsgChan():
+					select {
+					case msg := <-msgchanA:
 						t.Logf("%s: Conn(%s<->%s): Recv Msg: %v\n", p.id, c.LocalID(), c.RemoteID(), msg)
 						if err = bconn.Send(msg); err != nil {
 							t.Errorf("%s: Conn(%s<->%s): Send Msg fail: %s\n", p.id, c.LocalID(), c.RemoteID(), err)
 						}
 						// 回发完消息后
 						close(doneA)
-					case <-doneA:	// 关闭A时也要将此处退出
+					case <-doneA: // 关闭A时也要将此处退出
 						t.Logf("%s: Conn(%s<->%s): Msg HandleLoop closed\n", p.id, c.LocalID(), c.RemoteID())
 						return
 					}
@@ -110,8 +113,8 @@ func TestConn(t *testing.T) {
 
 		////////////////////////////////
 		// 将requires.Conn封装成bnet.Conn
-		bconn := ToConn(c)
-		go bconn.RecvLoop()		// bconn循环接收Message
+		bconn := ToConn(c, msgchanB)
+		go bconn.RecvLoop() // bconn循环接收Message
 		err = bconn.Send(testMsg)
 		if err != nil {
 			t.Errorf("%s: %s\n", idb, err)
@@ -119,7 +122,7 @@ func TestConn(t *testing.T) {
 		}
 
 		// 发送消息后，要等待对方把消息原样送回
-		amsg := <-bconn.MsgChan()
+		amsg := <-msgchanB
 
 		if !reflect.DeepEqual(testMsg, amsg) {
 			t.Errorf("%s: testMsg != amsg(%v)\n", idb, amsg)
@@ -144,12 +147,12 @@ func TestConn(t *testing.T) {
 }
 
 var testMsg = &defines.Message{
-	Version:defines.CodeVersion,
-	Type:defines.MessageType_Data,
-	From:"id_peerb",
-	To:"id_peera",
-	Sig:[]byte("Signature"),
-	Entries:[]*defines.Entry{
+	Version: defines.CodeVersion,
+	Type:    defines.MessageType_Data,
+	From:    "id_peerb",
+	To:      "id_peera",
+	Sig:     []byte("Signature"),
+	Entries: []*defines.Entry{
 		&defines.Entry{
 			BaseIndex: 0,
 			Base:      []byte("Base"),

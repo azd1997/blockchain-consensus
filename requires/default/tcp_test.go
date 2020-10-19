@@ -14,10 +14,10 @@ import (
 )
 
 type peer struct {
-	id string
+	id   string
 	addr string
-	ln requires.Listener
-	d requires.Dialer
+	ln   requires.Listener
+	d    requires.Dialer
 }
 
 func genPeer(id, addr string) (*peer, error) {
@@ -71,15 +71,15 @@ func TestTCP(t *testing.T) {
 			done := make(chan struct{})
 
 			// 将读到的内容写到in中
-			go func(c requires.Conn){	// 回显，直到c被对端关闭，然后自己这边也关闭
-				io.Copy(c, c)	// 回显
-				c.Close()		// 关闭连接
+			go func(c requires.Conn) { // 回显，直到c被对端关闭，然后自己这边也关闭
+				io.Copy(c, c) // 回显
+				c.Close()     // 关闭连接
 				t.Logf("%s: Conn(%s<->%s) closed\n", p.id, c.LocalID(), c.RemoteID())
 
 				close(done)
 			}(c)
 
-			<- done
+			<-done
 			n--
 		}
 		close(doneA)

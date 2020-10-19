@@ -16,7 +16,7 @@ import (
 type RequestType uint8
 
 const (
-	RequestType_Blocks RequestType = 0
+	RequestType_Blocks    RequestType = 0
 	RequestType_Neighbors RequestType = 1
 )
 
@@ -45,7 +45,7 @@ func (req *Request) Len() int {
 		return length
 	} else {
 		hashlen := len(req.Hashes[0])
-		return length + 4 + hashnum * hashlen
+		return length + 4 + hashnum*hashlen
 	}
 }
 
@@ -98,7 +98,7 @@ func (req *Request) Encode() ([]byte, error) {
 		return nil, err
 	}
 	// Hashes
-	for i:=uint32(0); i<hashnum; i++ {
+	for i := uint32(0); i < hashnum; i++ {
 		err = binary.Write(buf, binary.BigEndian, req.Hashes[i])
 		if err != nil {
 			return nil, err
@@ -145,7 +145,7 @@ func (req *Request) Decode(r io.Reader) error {
 	}
 	// Hashes
 	req.Hashes = make([][]byte, hashnum)
-	for i:=uint32(0); i<hashnum; i++ {
+	for i := uint32(0); i < hashnum; i++ {
 		req.Hashes[i] = make([]byte, hashlen)
 		err = binary.Read(r, binary.BigEndian, req.Hashes[i])
 		if err != nil {

@@ -27,4 +27,3 @@ func DefaultDialer(id, addr string) (requires.Dialer, error) {
 func DefaultDialerTimeout(id, addr string, timeout time.Duration) (requires.Dialer, error) {
 	return _default.NewDialer(id, addr, timeout)
 }
-

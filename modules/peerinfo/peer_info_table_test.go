@@ -1,10 +1,10 @@
 /**********************************************************************
 * @Author: Eiger (201820114847@mail.scut.edu.cn)
 * @Date: 10/13/20 3:47 PM
-* @Description: The file is for
+* @Description: 节点信息表测试
 ***********************************************************************/
 
-package bnet
+package peerinfo
 
 import (
 	"bytes"
@@ -17,7 +17,6 @@ import (
 	"github.com/azd1997/blockchain-consensus/requires"
 	"github.com/azd1997/blockchain-consensus/test"
 )
-
 
 //////////////////////////////////////////////
 
@@ -100,11 +99,11 @@ func handleError(t *testing.T, err error, pit *PeerInfoTable, tkv *test.Store) {
 func checkPitAndKv(pit *PeerInfoTable, kv *test.Store) error {
 	pit.peersLock.RLock()
 	defer pit.peersLock.RUnlock()
-	if len(pit.peers) != len(kv.Kvs) {	// 测试过程中只有1个cf
+	if len(pit.peers) != len(kv.Kvs) { // 测试过程中只有1个cf
 		return errors.New("len(pit.peers) != len(kv.kvs)")
 	}
 	for id, pi := range pit.peers {
-		api, err := kv.Get(pit.cf, []byte(id))
+		api, err := kv.Get(pit.peersCF, []byte(id))
 		if err != nil {
 			return err
 		}

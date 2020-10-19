@@ -8,5 +8,4 @@ package test
 
 // Listener 测试用Listener
 type Listener struct {
-
 }

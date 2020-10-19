@@ -1,10 +1,10 @@
 /**********************************************************************
 * @Author: Eiger (201820114847@mail.scut.edu.cn)
 * @Date: 10/8/20 6:54 PM
-* @Description: 存储节点信息
+* @Description: 节点信息表
 ***********************************************************************/
 
-package bnet
+package peerinfo
 
 import (
 	"bytes"
@@ -20,7 +20,7 @@ import (
 
 // dirtyPeerInfo 脏的、与从存储引擎不一致的数据
 type dirtyPeerInfo struct {
-	op Op
+	op   Op
 	info *defines.PeerInfo
 }
 
@@ -28,9 +28,9 @@ type dirtyPeerInfo struct {
 type Op uint8
 
 const (
-	OpNone Op = 0	// 默认值，因此每次创建DirtyPeerInfo，都需要指定Op
-	OpDel Op = 1	// 删除
-	OpSet Op = 2	// 新增或修改
+	OpNone Op = 0 // 默认值，因此每次创建DirtyPeerInfo，都需要指定Op
+	OpDel  Op = 1 // 删除
+	OpSet  Op = 2 // 新增或修改
 )
 
 ////////////////////// PeerInfoTable //////////////////////////
@@ -39,19 +39,21 @@ const (
 const (
 	// 长度不能超过requires.CFLen (6)
 	// 将种子节点与普通节点分开存储
-	PeerInfoKeyPrefix = "peers-"
-	SeedInfoKeyPrefix = "seeds-"
+	PeerInfoKeyPrefix    = "peers-"
+	SeedInfoKeyPrefix    = "seeds-"
 	DefaultMergeInterval = 5 * time.Minute
 )
 
 // PeerInfoTable 节点信息表
+// 节点信息表实际在使用时，一般是不会删除数据的，只会新增
+// 但是后序会考虑到节点的断连、恶意等，需要删除操作
 type PeerInfoTable struct {
 	// seeds目前设定为固定的配置，运行期间不修改其数据
 	// 因此使用期间不加锁
 	seeds map[string]*defines.PeerInfo
 
-	peers map[string]*defines.PeerInfo
-	dirty map[string]*dirtyPeerInfo	// 被修改的/新增的/删除的
+	peers     map[string]*defines.PeerInfo
+	dirty     map[string]*dirtyPeerInfo // 被修改的/新增的/删除的
 	peersLock *sync.RWMutex
 	dirtyLock *sync.RWMutex
 
@@ -70,16 +72,16 @@ type PeerInfoTable struct {
 // NewPeerInfoTable
 func NewPeerInfoTable(kv requires.Store) *PeerInfoTable {
 	return &PeerInfoTable{
-		seeds: make(map[string]*defines.PeerInfo),
-		peers: make(map[string]*defines.PeerInfo),
-		dirty:make(map[string]*dirtyPeerInfo),
-		peersLock:    new(sync.RWMutex),
-		dirtyLock:    new(sync.RWMutex),
-		kv:kv,
-		peersCF:requires.String2CF(PeerInfoKeyPrefix),
-		seedsCF:requires.String2CF(SeedInfoKeyPrefix),
-		mergeInterval:DefaultMergeInterval,
-		done:make(chan struct{}),
+		seeds:         make(map[string]*defines.PeerInfo),
+		peers:         make(map[string]*defines.PeerInfo),
+		dirty:         make(map[string]*dirtyPeerInfo),
+		peersLock:     new(sync.RWMutex),
+		dirtyLock:     new(sync.RWMutex),
+		kv:            kv,
+		peersCF:       requires.String2CF(PeerInfoKeyPrefix),
+		seedsCF:       requires.String2CF(SeedInfoKeyPrefix),
+		mergeInterval: DefaultMergeInterval,
+		done:          make(chan struct{}),
 	}
 }
 
@@ -253,7 +255,7 @@ func (pit *PeerInfoTable) Del(id string) error {
 		return fmt.Errorf("no such id: %s", id)
 	}
 	pit.dirtyLock.Lock()
-	pit.dirty[id] = &dirtyPeerInfo{op:OpDel}
+	pit.dirty[id] = &dirtyPeerInfo{op: OpDel}
 	pit.dirtyLock.Unlock()
 
 	log.Printf("PeerInfoTable Det: {id:%s}\n", id)
@@ -318,7 +320,7 @@ func (pit *PeerInfoTable) RangePeers(f func(peer *defines.PeerInfo) error) error
 	var firstErr, err error
 	peers := pit.Peers()
 	for _, peer := range peers {
-		peer := peer	// 复制一份
+		peer := peer // 复制一份
 		err = f(peer)
 		if err != nil {
 			if firstErr != nil {
@@ -335,7 +337,7 @@ func (pit *PeerInfoTable) RangePeers(f func(peer *defines.PeerInfo) error) error
 func (pit *PeerInfoTable) RangeSeeds(f func(peer *defines.PeerInfo) error) error {
 	var firstErr, err error
 	for _, seed := range pit.seeds {
-		seed := seed	// 复制一份
+		seed := seed // 复制一份
 		err = f(seed)
 		if err != nil {
 			if firstErr != nil {

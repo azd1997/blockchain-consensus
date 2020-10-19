@@ -24,12 +24,10 @@ const (
 	StateType_CompeteOver = 3
 
 	// 竞赛胜者，需要出块
-	StateType_CompeteWinner = 4		// 广播完新区块后切换为ReadyCompete
+	StateType_CompeteWinner = 4 // 广播完新区块后切换为ReadyCompete
 
 	// 竞赛负者，需要等待新区块
-	StateType_CompeteLoser = 5		// 收到新区块无误后切换为ReadyCompete，否则切换为Competing，重新竞争
+	StateType_CompeteLoser = 5 // 收到新区块无误后切换为ReadyCompete，否则切换为Competing，重新竞争
 
 	//
 )
-
-

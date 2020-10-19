@@ -16,36 +16,39 @@ import (
 )
 
 const (
-	MaxMessageLen = 5 * 1024 * 1024	// 5MB
-	MessageMagicNumber uint16 = 0xbcef	// 消息魔数，快速确定消息起始位置，校验协议是否匹配
+	MaxMessageLen             = 5 * 1024 * 1024 // 5MB
+	MessageMagicNumber uint16 = 0xbcef          // 消息魔数，快速确定消息起始位置，校验协议是否匹配
 )
 
 type MessageType uint8
 
 const (
-	MessageType_None MessageType = 0		// 啥也不干的消息
+	MessageType_None MessageType = 0 // 啥也不干的消息
 
-	MessageType_Data MessageType = 1		// 一般的数据传输的消息
+	MessageType_Data MessageType = 1 // 一般的数据传输的消息
 
-	MessageType_Req MessageType = 2			// 请求类消息
+	MessageType_Req MessageType = 2 // 请求类消息
 )
 
 type Message struct {
 	Version Version
-	Type MessageType
-	From string
-	To string
+	Type    MessageType
+	From    string
+	To      string
 
-	Sig []byte	// 消息签名，以保证消息不被恶意篡改
+	Sig []byte // 消息签名，以保证消息不被恶意篡改
 
-	Entries []*Entry	// 待传送的条目
+	Entries []*Entry // 待传送的条目
 
 	Reqs []*Request
+
+	Desc string // 描述字段
 }
 
 // Len 获取Message序列化后的长度(包含魔数所占用的2B)
 func (msg *Message) Len() int {
-	length := 2 + 4 + 1 + 1 + 1 + (len(msg.From) + len(msg.To)) + 1 + 1 + 2 + len(msg.Sig)	// 还没加上Entries和Requests
+	length := 2 + 4 + 1 + 1 + 1 + (len(msg.From) + len(msg.To)) +
+		1 + 1 + 2 + len(msg.Desc) + 2 + len(msg.Sig) // 还没加上Entries和Requests
 	for _, ent := range msg.Entries {
 		length += (2 + ent.Len())
 	}
@@ -77,7 +80,7 @@ func (msg *Message) Encode() ([]byte, error) {
 	var err error
 
 	// 检查msg格式是否有效
-	if err = msg.Check(); err != nil  {
+	if err = msg.Check(); err != nil {
 		return nil, err
 	}
 
@@ -182,6 +185,18 @@ func (msg *Message) Encode() ([]byte, error) {
 		}
 	}
 
+	// 写入Desc长度 2B
+	desclen := uint16(len(msg.Desc))
+	err = binary.Write(buf, binary.BigEndian, desclen)
+	if err != nil {
+		return nil, err
+	}
+	// 写入Desc (desclen)B
+	err = binary.Write(buf, binary.BigEndian, []byte(msg.Desc))
+	if err != nil {
+		return nil, err
+	}
+
 	// 写入签名长度 2B
 	siglen := uint16(len(msg.Sig))
 	err = binary.Write(buf, binary.BigEndian, siglen)
@@ -220,7 +235,7 @@ func (msg *Message) Decode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	totallen -= (2 + 4)		// 减去魔数和自身
+	totallen -= (2 + 4) // 减去魔数和自身
 	if totallen <= 0 {
 		return errors.New("not enough totallen")
 	}
@@ -231,7 +246,7 @@ func (msg *Message) Decode(r io.Reader) error {
 		return err
 	}
 	//fmt.Printf("Decode Version: %d\n", msg.Version)
-	totallen -= 1		// 减去Version
+	totallen -= 1 // 减去Version
 	if totallen <= 0 {
 		return errors.New("not enough totallen")
 	}
@@ -242,7 +257,7 @@ func (msg *Message) Decode(r io.Reader) error {
 		return err
 	}
 	//fmt.Printf("Decode Type: %d\n", msg.Type)
-	totallen -= 1		// 减去Type
+	totallen -= 1 // 减去Type
 	if totallen <= 0 {
 		return errors.New("not enough totallen")
 	}
@@ -254,13 +269,13 @@ func (msg *Message) Decode(r io.Reader) error {
 		return err
 	}
 	//fmt.Printf("Decode idlen: %d\n", idlen)
-	totallen -= 1		// 减去idlen
+	totallen -= 1 // 减去idlen
 	if totallen <= 0 {
 		return errors.New("not enough totallen")
 	}
 
 	// 读取From/To
-	fromto := make([]byte, idlen * 2)
+	fromto := make([]byte, idlen*2)
 	err = binary.Read(r, binary.BigEndian, fromto)
 	if err != nil {
 		return err
@@ -269,7 +284,7 @@ func (msg *Message) Decode(r io.Reader) error {
 	msg.To = string(fromto[idlen:])
 	//fmt.Printf("Decode From: %s\n", msg.From)
 	//fmt.Printf("Decode To: %s\n", msg.To)
-	totallen -= uint32(idlen * 2)		// 减去idlen*2
+	totallen -= uint32(idlen * 2) // 减去idlen*2
 	if totallen <= 0 {
 		return errors.New("not enough totallen")
 	}
@@ -284,7 +299,7 @@ func (msg *Message) Decode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	totallen -= 2		// 减去2
+	totallen -= 2 // 减去2
 	if totallen < 0 {
 		return errors.New("not enough totallen")
 	}
@@ -293,7 +308,7 @@ func (msg *Message) Decode(r io.Reader) error {
 	if nEntry > 0 {
 		msg.Entries = make([]*Entry, nEntry)
 		entlen := uint16(0)
-		for i:=uint8(0); i<nEntry; i++ {
+		for i := uint8(0); i < nEntry; i++ {
 			// 读取entlen
 			err = binary.Read(r, binary.BigEndian, &entlen)
 			if err != nil {
@@ -307,7 +322,7 @@ func (msg *Message) Decode(r io.Reader) error {
 			}
 			msg.Entries[i] = ent
 
-			totallen -= uint32(2+entlen)
+			totallen -= uint32(2 + entlen)
 			if totallen < 0 {
 				return errors.New("not enough totallen")
 			}
@@ -318,7 +333,7 @@ func (msg *Message) Decode(r io.Reader) error {
 	if nReq > 0 {
 		msg.Reqs = make([]*Request, nReq)
 		reqlen := uint16(0)
-		for i:=uint8(0); i<nReq; i++ {
+		for i := uint8(0); i < nReq; i++ {
 			// 读取reqlen
 			err = binary.Read(r, binary.BigEndian, &reqlen)
 			if err != nil {
@@ -332,12 +347,34 @@ func (msg *Message) Decode(r io.Reader) error {
 			}
 			msg.Reqs[i] = req
 
-			totallen -= uint32(2+reqlen)
+			totallen -= uint32(2 + reqlen)
 			if totallen < 0 {
 				return errors.New("not enough totallen")
 			}
 		}
 	}
+
+	// 读取Desc长度
+	desclen := uint16(0)
+	err = binary.Read(r, binary.BigEndian, &desclen)
+	if err != nil {
+		return err
+	}
+	totallen -= 2
+	if totallen < 0 {
+		return errors.New("not enough totallen")
+	}
+	// 读取Desc
+	descbytes := make([]byte, desclen)
+	err = binary.Read(r, binary.BigEndian, descbytes)
+	if err != nil {
+		return err
+	}
+	totallen -= uint32(desclen)
+	if totallen < 0 {
+		return errors.New("not enough totallen")
+	}
+	msg.Desc = string(descbytes)
 
 	// 读取签名长度
 	siglen := uint16(0)
@@ -398,7 +435,9 @@ func (msg *Message) Decode(r io.Reader) error {
 	+--------------------------------------+
 	|  Requesti长度(2B)  |    Requesti      |
 	+--------------------------------------+
-	|   签名长度(2B)    |      发送方签名     |
+	|   len(Desc)(2B)   |       Desc       |	// 描述字段，用来传递额外信息
+	+--------------------------------------+
+	|    签名长度(2B)    |     发送方签名     |
 	+--------------------------------------+
 
 	记消息长度(除)的预计算公式为 f(T), 则
@@ -406,5 +445,3 @@ func (msg *Message) Decode(r io.Reader) error {
 			   =
 
 */
-
-

@@ -19,10 +19,8 @@ import (
 // 本地可直接处理的部分直接组合进Consensus接口
 // 网络通信部分需要借助Transport的则和Consensus并行，通过channel双向通信
 
-
 // BlockChain 区块链接口，包括内存存储及持久化相关的内容，逻辑上是一条哈希链式结构
 type BlockChain interface {
-
 }
 
 // TransactionPool 交易池接口，其内部实现必须提供UBTXP,TBTXP,UCTXP这三类交易池
@@ -38,7 +36,7 @@ type Validator interface {
 // ValidateResult 验证结果
 type ValidateResult struct {
 	validate bool
-	reason []byte	// 无效的原因
+	reason   []byte // 无效的原因
 }
 
 // Dialer 连接器
@@ -53,7 +51,7 @@ type Dialer interface {
 	// 其内包含自身的id、签名等信息
 	// 实际实现的Dialer必须提供localId，localListenAddr
 	Dial(address, remoteId string) (Conn, error)
-	Network() string	// 返回基于的网络协议
+	Network() string // 返回基于的网络协议
 	LocalID() string
 	LocalListenAddr() net.Addr
 }
@@ -73,11 +71,11 @@ type Listener interface {
 // bcc.Conn则是在requires.Conn上的进一步封装
 type Conn interface {
 	net.Conn
-	Network() string	// 网络协议
-	LocalID() string	// 获取自己的ID
-	RemoteID() string	// 获取对端的ID
-	LocalListenAddr() net.Addr	// 获取自己的监听地址
-	RemoteListenAddr() net.Addr   // 获取对方的监听地址
+	Network() string            // 网络协议
+	LocalID() string            // 获取自己的ID
+	RemoteID() string           // 获取对端的ID
+	LocalListenAddr() net.Addr  // 获取自己的监听地址
+	RemoteListenAddr() net.Addr // 获取对方的监听地址
 }
 
 //////////////////////////////////////////////////
@@ -85,8 +83,8 @@ type Conn interface {
 // Store KV存储接口
 // 实现时，不管到底是通过内存实现，还是数据库，对于bcc库而言，只按Store使用
 type Store interface {
-	Open() error	// 开启（其实是建立连接）
-	Close() error	// 关闭（其实是关闭连接）
+	Open() error  // 开启（其实是建立连接）
+	Close() error // 关闭（其实是关闭连接）
 	Get(cf CF, key []byte) ([]byte, error)
 	Set(cf CF, key, value []byte) error
 	Del(cf CF, key []byte) error
@@ -119,12 +117,11 @@ func String2CF(in string) CF {
 		log.Fatalln("incompatible cf string")
 	}
 	cf := CF{}
-	for i:=0; i<len(in); i++ {
+	for i := 0; i < len(in); i++ {
 		cf[i] = in[i]
 	}
-	for i:=len(in); i<CFLen; i++ {
+	for i := len(in); i < CFLen; i++ {
 		cf[i] = ' '
 	}
 	return cf
 }
-

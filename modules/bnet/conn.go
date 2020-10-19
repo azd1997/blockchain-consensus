@@ -23,15 +23,15 @@ const (
 type ConnStatus uint8
 
 const (
-	ConnStatus_Ready ConnStatus = 0
+	ConnStatus_Ready   ConnStatus = 0
 	ConnStatus_Running ConnStatus = 1
-	ConnStatus_Closed ConnStatus = 2
+	ConnStatus_Closed  ConnStatus = 2
 )
 
 var connStatusString = map[ConnStatus]string{
-	ConnStatus_Ready: "Ready",
+	ConnStatus_Ready:   "Ready",
 	ConnStatus_Running: "Running",
-	ConnStatus_Closed: "Closed",
+	ConnStatus_Closed:  "Closed",
 }
 
 func (cs ConnStatus) String() string {
@@ -47,24 +47,28 @@ func (cs ConnStatus) String() string {
 	4. 需要发送Message时调bconn.Send()
 	5. Message处理方需要读bconn.MsgChan()
 
- */
+*/
 type Conn struct {
 	conn requires.Conn
-	msgChan chan *defines.Message	// Message channel
-	status ConnStatus	// Conn当前状态
-	timeout time.Duration	// 超时
+
+	// msgChan为Net也就是多个Conn的管理结构所提供，在多个Conn间共享该msgChan
+	// Conn只负责写msgChan，Net会另起goroutine循环读msgChan
+	msgChan chan<- *defines.Message // Message channel
+
+	status  ConnStatus    // Conn当前状态
+	timeout time.Duration // 超时
 }
 
 // ToConn 将requires.Conn封装成bcc.Conn
-func ToConn(conn requires.Conn) *Conn {
+func ToConn(conn requires.Conn, recvmsg chan<- *defines.Message) *Conn {
 	if conn == nil {
 		return nil
 	}
 	c := &Conn{
-		conn:conn,
-		msgChan:make(chan *defines.Message, 10),
-		status:ConnStatus_Ready,
-		timeout:DefaultConnTimeout,
+		conn:    conn,
+		msgChan: recvmsg,
+		status:  ConnStatus_Ready,
+		timeout: DefaultConnTimeout,
 	}
 	return c
 }
@@ -76,7 +80,7 @@ func (c *Conn) Status() string {
 
 // Name Conn名称
 func (c *Conn) Name() string {
-	return fmt.Sprintf("[%s]->[%s]", c.conn.LocalID(), c.conn.RemoteID())
+	return fmt.Sprintf("[%s]<->[%s]", c.conn.LocalID(), c.conn.RemoteID())
 }
 
 // String 描述
@@ -127,16 +131,17 @@ func (c *Conn) RecvLoop() {
 		// 循环读取数据包，解析成Message
 		msg := new(defines.Message)
 		err = msg.Decode(c.conn)
-		if err != nil {		// 遇到错误就断开连接
+		if err != nil { // 遇到错误就断开连接
 			log.Printf("Conn(%s) met error: %s\n", c.Name(), err)
 			c.status = ConnStatus_Closed
 			return
 		}
+		// 塞到msgChan(来自Net.msgout)
 		c.msgChan <- msg
 	}
 }
 
 // MsgChan 对外提供只读的msgChan
-func (c *Conn) MsgChan() <-chan *defines.Message {
-	return c.msgChan
-}
+//func (c *Conn) MsgChan() <-chan *defines.Message {
+//	return c.msgChan
+//}

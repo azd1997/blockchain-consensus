@@ -16,16 +16,17 @@ var testMessage = &Message{
 	Version: CodeVersion,
 	Type:    MessageType_Data,
 	From:    "id_from",
-	To:      "id_toto",		// From和To长度要一致
+	To:      "id_toto", // From和To长度要一致
 	Sig:     []byte("Signature"),
 	Entries: []*Entry{testEntry},
 	Reqs:    []*Request{testRequest1, testRequest2},
+	Desc:    "description",
 }
 
 func TestMessage(t *testing.T) {
-	var tests = []struct{
+	var tests = []struct {
 		name string
-		msg *Message
+		msg  *Message
 	}{
 		{"normal_case", testMessage},
 	}
@@ -56,4 +57,3 @@ func TestMessage(t *testing.T) {
 		}
 	}
 }
-

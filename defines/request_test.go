@@ -16,7 +16,7 @@ var testRequest1 = &Request{
 	Type:       RequestType_Blocks,
 	IndexStart: 3,
 	IndexCount: 15,
-	Hashes:     [][]byte{
+	Hashes: [][]byte{
 		[]byte("Hash1"),
 		[]byte("Hash2"),
 	},
@@ -29,9 +29,9 @@ var testRequest2 = &Request{
 }
 
 func TestRequest(t *testing.T) {
-	var tests = []struct{
+	var tests = []struct {
 		name string
-		req *Request
+		req  *Request
 	}{
 		{"hashnum!=0", testRequest1},
 
@@ -63,4 +63,3 @@ func TestRequest(t *testing.T) {
 		}
 	}
 }
-

@@ -51,7 +51,7 @@ func (s *Store) Set(cf requires.CF, key, value []byte) error {
 }
 
 func (s *Store) Del(cf requires.CF, key []byte) error {
-	delete(s.Kvs, string(cf[:]) + string(key))
+	delete(s.Kvs, string(cf[:])+string(key))
 	log.Printf("testStore Del: {key: %s}\n", string(key))
 	//time.Sleep(300 * time.Millisecond)
 	return nil
@@ -79,5 +79,3 @@ func (s *Store) RangeCF(cf requires.CF, f func(key, value []byte) error) error {
 
 	return firstErr
 }
-
-

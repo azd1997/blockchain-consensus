@@ -15,8 +15,8 @@ import (
 // 建立连接时需要告知接受连接那一方自己的ID
 
 type TCPConn struct {
-	conn *net.TCPConn
-	localId, remoteId string
+	conn                              *net.TCPConn
+	localId, remoteId                 string
 	localListenAddr, remoteListenAddr *net.TCPAddr
 }
 
@@ -99,5 +99,3 @@ func (T *TCPConn) LocalListenAddr() net.Addr {
 func (T *TCPConn) RemoteListenAddr() net.Addr {
 	return T.remoteListenAddr
 }
-
-

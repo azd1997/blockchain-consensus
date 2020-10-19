@@ -14,8 +14,8 @@ import (
 
 func TestPeerInfo(t *testing.T) {
 	pi := &PeerInfo{
-		Id:"id",
-		Addr:"addr",
+		Id:   "id",
+		Addr: "addr",
 	}
 	b, err := pi.Encode()
 	if err != nil {

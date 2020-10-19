@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	BigEndian = binary.BigEndian
+	BigEndian    = binary.BigEndian
 	LittleEndian = binary.LittleEndian
 )
 

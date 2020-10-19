@@ -10,8 +10,8 @@ package pot
 type Proof struct {
 	//Base []byte	// 基于的区块的哈希
 	//BaseIndex uint64	// 基于的区块的序号
-	TxsNum uint64	// 收集的交易数量
-	TxsMerkle []byte	// 收集的所有交易组织成的merkle树的根
+	TxsNum    uint64 // 收集的交易数量
+	TxsMerkle []byte // 收集的所有交易组织成的merkle树的根
 }
 
 func (p *Proof) Encode() []byte {

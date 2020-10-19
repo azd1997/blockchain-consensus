@@ -7,13 +7,12 @@
 package pot
 
 import (
-	"github.com/azd1997/blockchain-consensus/bnet"
 	"github.com/azd1997/blockchain-consensus/defines"
+	"github.com/azd1997/blockchain-consensus/modules/peerinfo"
 	"github.com/azd1997/blockchain-consensus/requires"
 	"sync/atomic"
 	"time"
 )
-
 
 const (
 	// 逻辑时钟每个滴答就是500ms
@@ -22,25 +21,25 @@ const (
 
 // Node pot节点
 type Node struct {
+	id string // 账户、节点、客户端共用一个ID
 
-	id string	// 账户、节点、客户端共用一个ID
+	latest bool // 本节点是否追上系统最新进度
 
-	latest bool	// 本节点是否追上系统最新进度
+	peers *peerinfo.PeerInfoTable // 共识节点表
 
-	peers *bnet.PeerInfoTable	// 共识节点表
+	state StateType // 状态状态
 
-	state StateType		// 状态状态
+	msgChan chan *defines.Message // 对外提供的消息通道
 
-	msgChan chan *defines.Message	// 对外提供的消息通道
+	ticker time.Ticker // 滴答器，每次滴答时刻都需要根据当前的状态变量确定状态该如何变更
 
-	ticker time.Ticker	// 滴答器，每次滴答时刻都需要根据当前的状态变量确定状态该如何变更
+	// proofs表可能会因为某些节点出现恶意行为而将其删除
+	proofs          map[string]*Proof // 收集的其他共识节点的证明进度
+	winner          string
+	maybeNewBlock   *defines.Block
+	waitingNewBlock *defines.Block // 等待的新区块，没等到就一直是nil
 
-	proofs map[string]*Proof	// 收集的其他共识节点的证明进度
-	winner string
-	maybeNewBlock *defines.Block
-	waitingNewBlock *defines.Block	// 等待的新区块，没等到就一直是nil
-
-	blocksCache map[string]*defines.Block	// 同步到本机节点的区块，但尚未排好序的。也就是序列化没有接着本地最高区块后边的
+	blocksCache map[string]*defines.Block // 同步到本机节点的区块，但尚未排好序的。也就是序列化没有接着本地最高区块后边的
 
 	////////////////////////// 本地依赖 /////////////////////////
 
@@ -62,11 +61,10 @@ func (n *Node) stateMachineLoop() {
 		case <-n.ticker.C:
 			// 根据当前状态来处理此滴答消息
 
-			state := StateType(atomic.LoadUint32((*uint32)(&n.state)))		// state的读写使用atomic
+			state := StateType(atomic.LoadUint32((*uint32)(&n.state))) // state的读写使用atomic
 			switch state {
 			case StateType_NotReady:
 				// 没准备好，啥也不干，等区块链同步
-
 
 				// 如果追上进度了则切换状态为ReadyCompete
 				if n.latest {
@@ -90,11 +88,11 @@ func (n *Node) stateMachineLoop() {
 				// 状态切换
 				atomic.StoreUint32((*uint32)(&n.state), StateType_CompeteOver)
 				// 判断竞赛结果，状态切换
-				if n.winner == n.id {	// 自己胜出
+				if n.winner == n.id { // 自己胜出
 					atomic.StoreUint32((*uint32)(&n.state), StateType_CompeteWinner)
 					// 广播新区块
 					n.broadcastBlock(n.maybeNewBlock)
-				} else {	// 别人胜出
+				} else { // 别人胜出
 					atomic.StoreUint32((*uint32)(&n.state), StateType_CompeteLoser)
 					// 等待新区块(“逻辑上”的等待，代码中并不需要wait)
 				}
@@ -145,7 +143,6 @@ func (n *Node) MsgChannel() <-chan *defines.Message {
 	return n.msgChan
 }
 
-
 /////////////////////////// 处理消息 /////////////////////////
 
 // 目前的消息只有类：区块消息、证明消息、
@@ -164,16 +161,12 @@ func (n *Node) handleMsgWhenNotReady(msg *defines.Message) {
 
 				// 如果其序号 = 本地的index+1，那么检查其有效性
 
-
-
 				// 如果序号是不连续的，暂时先保留在blocksCache
 
-
-			default:	// 其他类型则忽略
+			default: // 其他类型则忽略
 
 			}
 		}
-
 
 	case defines.MessageType_Req:
 		// 该阶段不能处理Req消息
@@ -198,11 +191,9 @@ func (n *Node) handleMsgWhenReadyCompete(msg *defines.Message) {
 
 				// 如果检查请求的区块范围有效，回复区块
 
-
 			case defines.RequestType_Neighbors:
 
-
-			default:	// 其他类型则忽略
+			default: // 其他类型则忽略
 
 			}
 		}
@@ -239,10 +230,9 @@ func (n *Node) handleMsgWhenCompeting(msg *defines.Message) {
 				n.winner = msg.From
 			}
 
+		default: // 其他类型则忽略
 
-	default:	// 其他类型则忽略
-
-	}
+		}
 
 	case defines.MessageType_Req:
 
@@ -255,8 +245,7 @@ func (n *Node) handleMsgWhenCompeting(msg *defines.Message) {
 
 				// 如果检查请求的区块范围有效，回复区块
 
-
-			default:	// 其他类型则忽略
+			default: // 其他类型则忽略
 
 			}
 		}
@@ -299,28 +288,28 @@ func (n *Node) broadcastProof() {
 	proof := &Proof{
 		//Base:nb.PrevHash,
 		//BaseIndex:nb.Index-1,
-		TxsNum:uint64(len(nb.Txs)),
-		TxsMerkle:nb.Merkle,
+		TxsNum:    uint64(len(nb.Txs)),
+		TxsMerkle: nb.Merkle,
 	}
 
 	proofBytes := proof.Encode()
 
 	entry := &defines.Entry{
-		Base:nb.PrevHash,
-		BaseIndex:uint64(nb.Index-1),
-		Type:defines.EntryType_Proof,
-		Data:proofBytes,
+		Base:      nb.PrevHash,
+		BaseIndex: uint64(nb.Index - 1),
+		Type:      defines.EntryType_Proof,
+		Data:      proofBytes,
 	}
 
 	// 广播
 	for to := range n.peers {
 		msg := &defines.Message{
-			Version:defines.CodeVersion,
-			Type:defines.MessageType_Data,
-			From:n.id,
-			To:to,
-			Sig:nil,	// TODO
-			Entries:[]*defines.Entry{entry},
+			Version: defines.CodeVersion,
+			Type:    defines.MessageType_Data,
+			From:    n.id,
+			To:      to,
+			Sig:     nil, // TODO
+			Entries: []*defines.Entry{entry},
 		}
 		n.send(msg)
 	}
@@ -333,21 +322,21 @@ func (n *Node) broadcastBlock(b *defines.Block) {
 	blockBytes := b.Encode()
 
 	entry := &defines.Entry{
-		Base:b.PrevHash,
-		BaseIndex:b.Index-1,
-		Type:defines.EntryType_Block,
-		Data:blockBytes,
+		Base:      b.PrevHash,
+		BaseIndex: b.Index - 1,
+		Type:      defines.EntryType_Block,
+		Data:      blockBytes,
 	}
 
 	// 广播
 	for to := range n.peers {
 		msg := &defines.Message{
-			Version:defines.CodeVersion,
-			Type:defines.MessageType_Data,
-			From:n.id,
-			To:to,
-			Sig:nil,	// TODO
-			Entries:[]*defines.Entry{entry},
+			Version: defines.CodeVersion,
+			Type:    defines.MessageType_Data,
+			From:    n.id,
+			To:      to,
+			Sig:     nil, // TODO
+			Entries: []*defines.Entry{entry},
 		}
 		n.send(msg)
 	}
@@ -366,22 +355,22 @@ func (n *Node) responseBlocks(to string, blocks ...*defines.Block) {
 	}
 
 	entries := make([]*defines.Entry, l)
-	for i:=0; i<l; i++ {
+	for i := 0; i < l; i++ {
 		entries[i] = &defines.Entry{
-			BaseIndex: blocks[i].Index-1,
-			Base: blocks[i].PrevHash,
-			Type:defines.EntryType_Block,
-			Data:blocks[i].Encode(),
+			BaseIndex: blocks[i].Index - 1,
+			Base:      blocks[i].PrevHash,
+			Type:      defines.EntryType_Block,
+			Data:      blocks[i].Encode(),
 		}
 	}
 
 	msg := &defines.Message{
-		Version:defines.CodeVersion,
-		Type:defines.MessageType_Data,
-		From:n.id,
-		To:to,
-		Sig:nil,	// TODO
-		Entries:entries,
+		Version: defines.CodeVersion,
+		Type:    defines.MessageType_Data,
+		From:    n.id,
+		To:      to,
+		Sig:     nil, // TODO
+		Entries: entries,
 	}
 
 	n.send(msg)

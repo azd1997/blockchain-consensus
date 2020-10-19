@@ -10,7 +10,6 @@ package defines
 // 不同共识协议的节点版本号不能放在一起比较
 type Version uint8
 
-
 const (
 	CodeVersion Version = 0x0
 )
