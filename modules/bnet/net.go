@@ -51,6 +51,13 @@ type Option struct {
 	Dialer   requires.Dialer
 
 	/*
+		节点信息表
+		如果不设置的话，则直接使用peerinfo.pit这个全局单例
+		如果手动设置的话，传入的pit需要是已初始化好的
+	*/
+	Pit *peerinfo.PeerInfoTable
+
+	/*
 		MsgIn MsgOut 用于将Net独立运行，且仅负责网络传输，逻辑处理由其他模块使用MsgIn MsgOut
 	*/
 	MsgIn  chan *defines.Message
@@ -117,6 +124,9 @@ type Net struct {
 	// 消息传出chan
 	msgout chan *defines.Message
 
+	// 节点信息表
+	pit *peerinfo.PeerInfoTable
+
 	/*自定义的Net启动执行的任务*/
 	customInitFunc func(n *Net) error
 	/*自定义的消息处理函数*/
@@ -139,6 +149,17 @@ func NewNet(opt *Option) (*Net, error) {
 
 	// 日志器
 	n.Logger = log.NewLogger(opt.LogDest, Module_Net, opt.Id)
+
+	// 节点表
+	if opt.Pit == nil {
+		n.pit = peerinfo.Global()
+	} else {
+		if opt.Pit.Inited() {
+			n.pit = opt.Pit
+		} else {
+			return nil, errors.New("PeerInfoTable should be inited")
+		}
+	}
 
 	// 检查opt.Listener和opt.Dialer
 	if opt.Listener == nil && opt.Dialer == nil {
@@ -209,9 +230,9 @@ func (n *Net) Init() error {
 	}
 
 	// 和所有seeds建立连接，发送getNeighbors消息
-	peerinfo.RangeSeeds(f)
+	n.pit.RangeSeeds(f)
 	// 如果peers非空，也建立连接
-	peerinfo.RangePeers(f)
+	n.pit.RangePeers(f)
 
 	// 如果已经设置CustomInitFunc，那么执行
 	if n.customInitFunc != nil {
@@ -310,7 +331,7 @@ func (n *Net) connect(to string) (*Conn, error) {
 	}
 
 	// 连接不存在，创建连接
-	toPeerInfo, err := peerinfo.Get(to)
+	toPeerInfo, err := n.pit.Get(to)
 	if err != nil {
 		return nil, err
 	}

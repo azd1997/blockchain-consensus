@@ -2,51 +2,16 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="a308decb-1282-4354-b05f-723fd7fa09eb" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/modules/bnet/log.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/modules/peerinfo/apis.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/defines/process.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bnet/conn.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/conn.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bnet/conn_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/conn_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bnet/net.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/net.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bnet/net_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/net_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bnet/peer_info_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/bnet/peer_info_table_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/peerinfo/peer_info_table_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/consensus.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus_log.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus_log.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/default_listener_dialer.go" beforeDir="false" afterPath="$PROJECT_DIR$/default_listener_dialer.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/default_listener_dialer_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/default_listener_dialer_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/defines/block.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/block.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/defines/entry.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/entry.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/entry_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/entry_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/id.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/id.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/defines/msg.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/msg.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/msg_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/msg_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/peer_info.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/peer_info.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/peer_info_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/peer_info_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/request.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/request.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/request_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/request_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/version.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/version.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/proof.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/proof.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/state.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lab/channel_conn/channel_conn.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/channel_conn/channel_conn.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lab/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/config.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lab/id.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/id.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lab/labrpc/network.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/labrpc/network.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requires/default/conn.go" beforeDir="false" afterPath="$PROJECT_DIR$/requires/default/conn.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requires/default/dialer.go" beforeDir="false" afterPath="$PROJECT_DIR$/requires/default/dialer.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requires/default/listener.go" beforeDir="false" afterPath="$PROJECT_DIR$/requires/default/listener.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requires/default/tcp_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/requires/default/tcp_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requires/requires.go" beforeDir="false" afterPath="$PROJECT_DIR$/requires/requires.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/listener.go" beforeDir="false" afterPath="$PROJECT_DIR$/test/listener.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/store.go" beforeDir="false" afterPath="$PROJECT_DIR$/test/store.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/address/address_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/address/address_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/binary/binary.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/binary/binary.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/binary/binary_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/binary/binary_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/bufferpool/bytes.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/bufferpool/bytes.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/bnet/net.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/net.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -79,16 +44,16 @@
     <property name="settings.editor.selected.configurable" value="go.vgo" />
   </component>
   <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/bnet" />
-      <recent name="E:\GO\src\github.com\azd1997\blockchain-consensus\labrpc" />
-    </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/utils/log" />
       <recent name="$PROJECT_DIR$/modules/peerinfo" />
       <recent name="$PROJECT_DIR$/modules" />
       <recent name="$PROJECT_DIR$/defines" />
       <recent name="$PROJECT_DIR$" />
-      <recent name="E:\GO\src\github.com\azd1997\blockchain-consensus" />
+    </key>
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/bnet" />
+      <recent name="E:\GO\src\github.com\azd1997\blockchain-consensus\labrpc" />
     </key>
   </component>
   <component name="RunDashboard">

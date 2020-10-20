@@ -445,3 +445,15 @@ func (msg *Message) Decode(r io.Reader) error {
 			   =
 
 */
+
+// TODO
+
+// Sign 生成签名
+func (msg *Message) Sign() error {
+	return nil
+}
+
+// Verify 验证基础格式与签名
+func (msg *Message) Verify() error {
+	return nil
+}

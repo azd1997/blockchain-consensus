@@ -6,11 +6,20 @@
 
 package defines
 
+import (
+	"bytes"
+	"encoding/gob"
+
+	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
+)
+
 //
 
 // Block 区块
 type Block struct {
 	Index    uint64
+	Maker string
+	Timestamp uint64
 	SelfHash []byte
 	PrevHash []byte
 	Merkle   []byte
@@ -18,10 +27,35 @@ type Block struct {
 	Sig      []byte
 }
 
-func (b *Block) Encode() []byte {
-	return nil // TODO
+// Encode 编码
+func (b *Block) Encode() ([]byte, error) {
+	buf := bufferpool.Get()
+	defer bufferpool.Return(buf)
+	err := gob.NewEncoder(buf).Encode(b)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+// Decode 解码
+// b := new(Block)
+func (b *Block) Decode(data []byte) error {
+	r := bytes.NewReader(data)
+	return gob.NewDecoder(r).Decode(b)
+}
+
+// Sign 签名
+func (b *Block) Sign() error {
+	return nil
+}
+
+// 验证基础格式与签名
+func (b *Block) Verify() error {
+	return nil
 }
 
 // Transaction 交易
 type Transaction struct {
+
 }

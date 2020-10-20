@@ -66,6 +66,7 @@ type PeerInfoTable struct {
 	// 自动merge的间隔
 	mergeInterval time.Duration
 
+	inited bool	// 是否已初始化
 	done chan struct{}
 }
 
@@ -100,7 +101,13 @@ func (pit *PeerInfoTable) Init() error {
 
 	go pit.mergeLoop()
 
+	pit.inited = true
 	return nil
+}
+
+// Inited 是否已初始化
+func (pit *PeerInfoTable) Inited() bool {
+	return pit.inited
 }
 
 // load 加载
@@ -265,7 +272,12 @@ func (pit *PeerInfoTable) Del(id string) error {
 // Close 关闭PeerInfoTable：关闭其内与kv的连接，通知mergeLoop退出
 func (pit *PeerInfoTable) Close() error {
 	close(pit.done)
-	return pit.kv.Close()
+	err := pit.kv.Close()
+	if err != nil {
+		return err
+	}
+	pit.inited = false
+	return nil
 }
 
 // Peers 生成Peers的快照

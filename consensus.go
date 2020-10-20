@@ -14,14 +14,17 @@ type Consensus interface {
 	// Init 初始化(运行)。 New之后需要Init
 	Init() error
 
-	// Kill 杀死状态机服务，执行一些必要的清理工作
-	Kill()
+	// Close 关闭状态机服务，执行一些必要的清理工作
+	Close() error
 
 	// 共识节点必需有处理各类消息的能力
-	HandleMsg(msg *defines.Message)
+	handleMsg(msg *defines.Message) error
 
 	// 状态机循环，负责状态的切换
 	stateMachineLoop()
+
+	// 消息处理循环
+	msgHandleLoop()
 
 	// MsgChannel 对于Consensus的上层来说，需要调用该函数，
 	// 得到消息channel，根据该channel拿消息去发送到网络中

@@ -16,10 +16,13 @@ import (
 type EntryType = uint8
 
 const (
-	EntryType_Block EntryType = 0
-	EntryType_Proof EntryType = 1
+	EntryType_Blocks EntryType = 0		// 区块同步
+	EntryType_Proof EntryType = 1		// 证明
+	EntryType_NewBlock EntryType = 2	// 新区块
+	EntryType_Transaction EntryType = 3	// 交易
 )
 
+// Entry 条目
 type Entry struct {
 	BaseIndex uint64 // 当前区块编号（高度），相当于任期
 	Base      []byte // 当前消息构建时所基于的区块的Hash，当启用严格检查时，该项应被设置
