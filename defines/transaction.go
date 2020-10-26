@@ -1,7 +1,10 @@
 /**********************************************************************
 * @Author: Eiger (201820114847@mail.scut.edu.cn)
-* @Date: 2020/9/27 22:01
-* @Description: 总测试文件
+* @Date: 10/26/20 11:35 AM
+* @Description: The file is for
 ***********************************************************************/
 
-package lab
+package defines
+
+// Transaction 交易
+type Transaction []byte

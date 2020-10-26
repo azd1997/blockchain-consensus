@@ -7,10 +7,9 @@
 package defines
 
 import (
+	"bytes"
 	"encoding/gob"
 	"encoding/json"
-	"io"
-
 	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
 )
 
@@ -78,7 +77,7 @@ func (pi *PeerInfo) Encode() ([]byte, error) {
 
 // Decode 解码
 // pi := new(PeerInfo)
-func (pi *PeerInfo) Decode(r io.Reader) error {
-	dec := gob.NewDecoder(r)
+func (pi *PeerInfo) Decode(data []byte) error {
+	dec := gob.NewDecoder(bytes.NewReader(data))
 	return dec.Decode(pi)
 }

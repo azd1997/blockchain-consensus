@@ -18,9 +18,12 @@ type RequestType uint8
 const (
 	RequestType_Blocks    RequestType = 0
 	RequestType_Neighbors RequestType = 1
+	RequestType_Processes RequestType = 2
 )
 
 // Request 请求
+// Index用于请求区块，哈希可用于请求区块和交易
+// 请求区块时，若Index设为0，则按照哈希请求，否则index优先
 type Request struct {
 	Type RequestType
 

@@ -55,7 +55,4 @@ func (b *Block) Verify() error {
 	return nil
 }
 
-// Transaction 交易
-type Transaction struct {
 
-}

@@ -88,6 +88,11 @@ func NewPeerInfoTable(kv requires.Store) *PeerInfoTable {
 
 // Init NewPeerInfoTable之后需要调用Init来初始化，并启动mergeLoop
 func (pit *PeerInfoTable) Init() error {
+
+	if pit.Inited() {
+		return nil
+	}
+
 	// 开启kv(与之建立连接)
 	err := pit.kv.Open()
 	if err != nil {

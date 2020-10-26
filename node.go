@@ -44,6 +44,9 @@ type Node struct {
 	// kv 存储
 	kv requires.Store
 
+	// 节点信息表
+	pit *peerinfo.PeerInfoTable
+
 	// 共识状态机
 	css Consensus
 
@@ -64,6 +67,14 @@ func NewNode(id string, consensusType string,
 		kv: kv,
 	}
 
+	// 构建节点表
+	pit := peerinfo.NewPeerInfoTable(kv)
+	err := pit.Init()
+	if err != nil {
+		return nil, err
+	}
+	node.pit = pit
+
 	// 构建共识状态机
 	css, err := NewConsensus(consensusType)
 	if err != nil {
@@ -79,6 +90,7 @@ func NewNode(id string, consensusType string,
 		MsgIn:               cssout,
 		MsgOut:              cssin,
 		LogDest:             logdest,
+		Pit:pit,
 	}
 	netmod, err := bnet.NewNet(opt)
 	if err != nil {
@@ -92,7 +104,7 @@ func NewNode(id string, consensusType string,
 // Init 初始化
 func (s *Node) Init() error {
 	// 准备好PeerInfoTable
-	err := peerinfo.Init(s.kv)
+	err := s.pit.Init()
 	if err != nil {
 		return err
 	}

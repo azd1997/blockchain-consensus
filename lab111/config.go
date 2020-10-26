@@ -4,7 +4,7 @@
 * @Description: The file is for
 ***********************************************************************/
 
-package lab
+package lab111
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ import (
 	"time"
 
 	bcc "github.com/azd1997/blockchain-consensus"
-	"github.com/azd1997/blockchain-consensus/lab/labrpc"
+	"github.com/azd1997/blockchain-consensus/lab111/labrpc"
 )
 
 type config struct {

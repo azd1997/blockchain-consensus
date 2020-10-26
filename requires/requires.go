@@ -21,11 +21,20 @@ import (
 
 // BlockChain 区块链接口，包括内存存储及持久化相关的内容，逻辑上是一条哈希链式结构
 type BlockChain interface {
+	GetMaxIndex() uint64
+	GetBlocksByRange(start, count uint64) ([]*defines.Block, error)
+	GetBlockByHash(hash []byte) (*defines.Block, error)
+
+	// 添加区块，不成功返回错误，如果暂时
+	AddBlock(b *defines.Block) error
 }
 
 // TransactionPool 交易池接口，其内部实现必须提供UBTXP,TBTXP,UCTXP这三类交易池
 type TransactionPool interface {
 	GenBlock() *defines.Block
+	// AddTransaction 添加交易，如果交易校验不通过，返回错误
+	// 交易内容本身在bcc库层面不关心，由外部解释
+	AddTransaction(txbytes []byte) error
 }
 
 // Validator 本地验证器，负责验证账户/区块/交易/证明的有效性

@@ -453,3 +453,7 @@ func (n *Net) listenLoop() {
 		}
 	}
 }
+
+//func (n *Net) Send(req *defines.Request, rsp *Response) {
+//
+//}

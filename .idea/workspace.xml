@@ -2,16 +2,33 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="a308decb-1282-4354-b05f-723fd7fa09eb" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/defines/process.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/defines/transaction.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/implements/pot/pot_actions.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/implements/pot/pot_handle_entry.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/implements/pot/pot_handle_msg.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/implements/pot/pot_handle_req.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/implements/pot/pot_loops.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/implements/pot/pot_utils.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/implements/pot/process_table.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lab/lab.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/lab/network.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/defines/block.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/block.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/defines/entry.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/entry.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/msg.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/msg.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/defines/request.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/request.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/proof.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/proof.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/implements/pot/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/state.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lab/channel_conn/channel_conn.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab111/channel_conn/channel_conn.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lab/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab111/config.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lab/id.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab111/id.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lab/lab_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab111/lab_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lab/labrpc/labrpc.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab111/labrpc/labrpc.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lab/labrpc/network.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab111/labrpc/network.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lab/labrpc/test_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab111/labrpc/test_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/modules/bnet/net.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/net.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requires/requires.go" beforeDir="false" afterPath="$PROJECT_DIR$/requires/requires.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
