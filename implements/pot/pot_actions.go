@@ -6,7 +6,11 @@
 
 package pot
 
-import "github.com/azd1997/blockchain-consensus/defines"
+import (
+	"errors"
+
+	"github.com/azd1997/blockchain-consensus/defines"
+)
 
 // send指向网络中（或者说外部依赖的网络模块）发送消息。 注意本地消息不要通过该方法使用
 // 这个发送消息可以是单播也可以是多播，具体看
@@ -14,16 +18,42 @@ func (p *Pot) send(msg *defines.Message) {
 	p.msgout <- msg
 }
 
+func (p *Pot) signAndSendMsg(msg *defines.Message) error {
+	if msg == nil || (msg.Check() != nil) {
+		return errors.New("invalid msg")
+	}
+	err := msg.Sign()
+	if err != nil {
+		return err
+	}
+
+	p.send(msg)
+	return nil
+}
+
 //// broadcast
 //func (n *Node) broadcast(msg *defines.Message) {
 //
 //}
 
-// 广播getNeighbors请求
+// 向seeds广播getNeighbors请求
 func (p *Pot) broadcastRequestNeighbors() error {
-	nWait := 0
+	p.nWait = 0
+
+	// 查询自身节点信息
+	self, err := p.pit.Get(p.id)
+	if err != nil {
+		return err
+	}
+	selfb, err := self.Encode()
+	if err != nil {
+		return err
+	}
+
+	// 构造请求
 	req := &defines.Request{
 		Type:       defines.RequestType_Neighbors,
+		Data:selfb,
 	}
 	f := func(peer *defines.PeerInfo) error {
 		msg := &defines.Message{
@@ -33,41 +63,51 @@ func (p *Pot) broadcastRequestNeighbors() error {
 			To:      peer.Id,
 			Reqs:    []*defines.Request{req},
 		}
-		if err := msg.Sign(); err != nil {
-			return err
-		}
-		nWait++
-		p.send(msg)
-		return nil
+		p.nWait++
+		return p.signAndSendMsg(msg)
 	}
-	p.pit.RangePeers(f)
+	//p.pit.RangePeers(f)
 	p.pit.RangeSeeds(f)
 	return nil
 }
 
-// 广播证明
-func (p *Pot) broadcastProof() error {
+// 广播自己的证明
+func (p *Pot) broadcastSelfProof() error {
 	// 首先需要获取证明
 	nb := p.txPool.GenBlock()
 	p.maybeNewBlock = nb
-	proof := &Proof{
-		TxsNum:    uint64(len(nb.Txs)),
-		TxsMerkle: nb.Merkle,
+
+	process := p.processes.get(p.id)
+	if process == nil {
+		return errors.New("nil self process")
 	}
 
+	proof := &Proof{
+		Id:p.id,
+		TxsNum:    uint64(len(nb.Txs)),
+		TxsMerkle: nb.Merkle,
+		Base:process.Hash,
+		BaseIndex:process.Index,
+	}
+
+	return p.broadcastProof(proof, false)
+}
+
+// 广播证明
+// 目前的方案中，是seed节点用来广播winner的Proof的
+//
+func (p *Pot) broadcastProof(proof *Proof, onlypeers bool) error {
 	proofBytes, err := proof.Encode()
 	if err != nil {
 		return err
 	}
 	entry := &defines.Entry{
-		Base:      nb.PrevHash,
-		BaseIndex: nb.Index - 1,
 		Type:      defines.EntryType_Proof,
 		Data:      proofBytes,
 	}
 
 	// 广播
-	p.pit.RangePeers(func(peer *defines.PeerInfo) error {
+	f := func(peer *defines.PeerInfo) error {
 		if peer.Id != p.id {
 			msg := &defines.Message{
 				Version: defines.CodeVersion,
@@ -76,15 +116,15 @@ func (p *Pot) broadcastProof() error {
 				To:      peer.Id,
 				Entries: []*defines.Entry{entry},
 			}
-			err := msg.Sign()
-			if err != nil {
-				return err
-			}
-			p.send(msg)
+			return p.signAndSendMsg(msg)
 		}
-
 		return nil
-	})
+	}
+
+	if !onlypeers {
+		p.pit.RangeSeeds(f)
+	}
+	p.pit.RangePeers(f)
 
 	return nil
 }

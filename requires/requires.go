@@ -23,6 +23,7 @@ import (
 type BlockChain interface {
 	GetMaxIndex() uint64
 	GetBlocksByRange(start, count uint64) ([]*defines.Block, error)
+	GetBlocksByHashes(hashes [][]byte) ([]*defines.Block, error)
 	GetBlockByHash(hash []byte) (*defines.Block, error)
 
 	// 添加区块，不成功返回错误，如果暂时

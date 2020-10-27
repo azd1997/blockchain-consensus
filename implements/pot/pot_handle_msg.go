@@ -63,7 +63,7 @@ func (p *Pot) handleMsgWhenInitGetNeighbors(msg *defines.Message) error {
 			switch ent.Type {
 			case defines.EntryType_Neighbor:
 				count--
-				err := p.handleEntryNeighbor(ent)
+				err := p.handleEntryNeighbor(msg.From, ent)
 				if err != nil {
 					p.Errorf("%s handle EntryType_Neighbor fail: %s\n", p.getState().String(), err)
 				}
@@ -95,12 +95,12 @@ func (p *Pot) handleMsgWhenInitGetProcesses(msg *defines.Message) error {
 		for _, ent := range msg.Entries {
 			switch ent.Type {
 			case defines.EntryType_Neighbor:
-				err := p.handleEntryNeighbor(ent)
+				err := p.handleEntryNeighbor(msg.From, ent)
 				if err != nil {
 					p.Errorf("%s handle EntryType_Neighbor fail: %s\n", p.getState().String(), err)
 				}
 			case defines.EntryType_Process:
-				err := p.handleEntryProcess(ent)
+				err := p.handleEntryProcess(msg.From, ent)
 				if err != nil {
 					p.Errorf("%s handle EntryType_Progress fail: %s\n", p.getState().String(), err)
 				}
@@ -129,12 +129,12 @@ func (p *Pot) handleMsgWhenInitGetBlocks(msg *defines.Message) error {
 		for _, ent := range msg.Entries {
 			switch ent.Type {
 			case defines.EntryType_Neighbor:
-				err := p.handleEntryNeighbor(ent)
+				err := p.handleEntryNeighbor(msg.From, ent)
 				if err != nil {
 					p.Errorf("%s handle EntryType_Neighbor fail: %s\n", p.getState().String(), err)
 				}
 			case defines.EntryType_Process:
-				err := p.handleEntryProcess(ent)
+				err := p.handleEntryProcess(msg.From, ent)
 				if err != nil {
 					p.Errorf("%s handle EntryType_Progress fail: %s\n", p.getState().String(), err)
 				}
@@ -164,7 +164,7 @@ func (p *Pot) handleMsgWhenNotReady(msg *defines.Message) error {
 		for _, ent := range msg.Entries {
 			switch ent.Type {
 			case defines.EntryType_Block:
-				return p.handleEntryBlock(ent)
+				return p.handleEntryBlock(msg.From, ent)
 			default: // 其他类型则忽略
 			}
 		}
@@ -194,12 +194,12 @@ func (p *Pot) handleMsgWhenReadyCompete(msg *defines.Message) error {
 			ent := msg.Entries[i]
 			switch ent.Type {
 			case defines.EntryType_Block:
-				return p.handleEntryBlock(ent)
+				return p.handleEntryBlock(msg.From, ent)
 			case defines.EntryType_Proof:
 			case defines.EntryType_NewBlock:
-				return p.handleEntryNewBlock(ent)
+				return p.handleEntryNewBlock(msg.From, ent)
 			case defines.EntryType_Transaction:
-				return p.handleEntryTransaction(ent)
+				return p.handleEntryTransaction(msg.From, ent)
 			default:
 				return errors.New("unknown entry type")
 			}
@@ -213,11 +213,11 @@ func (p *Pot) handleMsgWhenReadyCompete(msg *defines.Message) error {
 			req := msg.Reqs[i]
 			switch req.Type {
 			case defines.RequestType_Blocks:
-				return p.handleRequestBlocks(msg.From, req)
+				p.handleRequestBlocks(msg.From, req)
 			case defines.RequestType_Neighbors:
-				return p.handleRequestNeighbors(msg.From, req)
+				p.handleRequestNeighbors(msg.From, req)
 			default: // 其他类型则忽略
-				return errors.New("unknown req type")
+				//return errors.New("unknown req type")
 			}
 		}
 	default:
@@ -248,7 +248,7 @@ func (p *Pot) handleMsgWhenCompeting(msg *defines.Message) error {
 		ent := msg.Entries[0]
 		switch ent.Type {
 		case defines.EntryType_Proof:
-			return p.handleEntryProof(ent, msg.From)
+			return p.handleEntryProof(msg.From, ent)
 		default: // 其他类型则忽略
 		}
 

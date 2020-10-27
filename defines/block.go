@@ -9,7 +9,6 @@ package defines
 import (
 	"bytes"
 	"encoding/gob"
-
 	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
 )
 
@@ -54,5 +53,3 @@ func (b *Block) Sign() error {
 func (b *Block) Verify() error {
 	return nil
 }
-
-

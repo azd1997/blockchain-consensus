@@ -20,6 +20,7 @@ var testRequest1 = &Request{
 		[]byte("Hash1"),
 		[]byte("Hash2"),
 	},
+	Data: []byte("data"),
 }
 
 var testRequest2 = &Request{

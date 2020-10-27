@@ -31,6 +31,7 @@ const (
 // Option 选项
 type Option struct {
 	Id string
+	Duty defines.PeerDuty
 	LogDest log.LogDest
 	Pit *peerinfo.PeerInfoTable
 }
@@ -38,6 +39,7 @@ type Option struct {
 // Pot pot节点
 type Pot struct {
 	id string // 账户、节点、客户端共用一个ID
+	duty defines.PeerDuty	// 普通结点/种子节点/工人节点
 
 	//latest bool // 本节点是否追上系统最新进度
 
@@ -47,11 +49,8 @@ type Pot struct {
 	//processesLock *sync.RWMutex
 	processes *processTable
 
-	// 用于节点启动时记录向多少个节点请求邻居信息
+	// 用于p.loopBeforeReady
 	nWait int
-	// 用于记录节点获得节点表之后暂时记录当前邻居数量
-	nNeighbor int
-
 	nWaitChan chan int
 
 
@@ -98,9 +97,13 @@ type Pot struct {
 func New(opt *Option) (*Pot, error) {
 	p := &Pot{
 		id:opt.Id,
+		duty:opt.Duty,
 		state:StateType_NotReady,	// 初始默认为NotReady
+		processes:newProcessTable(),
 		msgin:make(chan *defines.Message, DefaultMsgChanLen),
 		msgout: make(chan *defines.Message, DefaultMsgChanLen),
+		proofs: map[string]*Proof{},
+		proofsLock:new(sync.RWMutex),
 		done:make(chan struct{}),
 		Logger:log.NewLogger(opt.LogDest, Module_Css, opt.Id),
 	}
@@ -130,6 +133,9 @@ func (p *Pot) Init() error {
 
 	// 阻塞直到追上最新进度
 	p.loopBeforeReady()
+
+	// 启动定时器（世界时钟）
+	p.ticker = time.NewTicker()
 
 	// 启动状态切换循环
 	go p.stateMachineLoop()

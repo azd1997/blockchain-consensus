@@ -17,7 +17,7 @@ type EntryType = uint8
 
 const (
 	EntryType_Block EntryType = 0		// 区块同步 Base BaseIndex Type Data
-	EntryType_Proof EntryType = 1		// 证明 Base BaseIndex Type Data
+	EntryType_Proof EntryType = 1		// 证明 Type Data (proof本身包含了Base/BaseIndex信息)
 	EntryType_NewBlock EntryType = 2	// 新区块 Base BaseIndex Type Data
 	EntryType_Transaction EntryType = 3	// 交易	Type Data
 	EntryType_Neighbor EntryType = 4	// 邻居节点信息	Type Data

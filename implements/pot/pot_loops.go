@@ -8,91 +8,6 @@ package pot
 
 import "time"
 
-// 启动到Ready之间的工作循环
-func (p *Pot) loopBeforeReady() {
-	// 初始为GetNeighbors
-
-	// timeoutD用于两个阶段的超时
-	timeoutD := 4 * time.Second
-	timeout := time.NewTicker(timeoutD)
-
-	//ticker := time.Tick(10 * time.Millisecond)
-
-	p.Logf("loopBeforeReady: start collect neighbors\n")
-
-	// 1. 广播getNeighbors消息
-	p.broadcastRequestNeighbors()
-
-	// 2. 持续收集邻居节点，直至邻居们都有所回应，或等待超时
-	for {
-		select {
-		case <-p.done:
-			return
-		case <-p.nWaitChan:
-			p.nWait--
-			if p.nWait == 0 {
-				// 等待结束，发送消息以请求所有节点进度
-				goto GET_PROCESSES
-			}
-		case <-timeout.C:
-			p.nWait = 0		// 重置，接下来nWait会在broadcastRequestProcesses()中赋一个值
-			// 等待结束，发送消息以请求所有节点进度
-			goto GET_PROCESSES
-		}
-	}
-	// 等待结束，发送消息以请求所有节点进度
-
-GET_PROCESSES:
-
-	p.Logf("loopBeforeReady: start collect processes\n")
-
-	// 3. 广播getProcess消息
-	p.broadcastRequestProcesses()
-
-	// 4. 持续收集Process消息
-	for {
-		select {
-		case <-p.done:
-			return
-		case <-p.nWaitChan:
-			p.nWait--
-			// 等待结束，发送消息以请求所有节点进度
-			if p.nWait == 0 {
-				// 等待结束，发送消息以请求所有节点进度
-				goto GET_BLOCKS
-			}
-		case <-timeout.C:
-			goto GET_BLOCKS
-		}
-	}
-
-GET_BLOCKS:
-
-	p.Logf("loopBeforeReady: start collect blocks until catch up with the latest progress\n")
-
-	// 5. 广播请求区块消息
-	p.broadcastRequestProcesses()
-
-	// 6. 循环直至追上最新进度
-	for !p.latest() {
-		time.Sleep(5 * time.Millisecond)
-	}
-
-	// 切换状态
-	p.setState(StateType_ReadyCompete)
-}
-
-//// 等待邻居消息的循环
-//func (p *Pot) neighborsLoop() {
-//
-//}
-//
-//// NotReady状态等待区块消息的循环
-//func (p *Pot) waitBlocksLoop() {
-//
-//}
-
-
 // 状态切换循环
 // 这里要注意这个循环启动的前提是同步到了最新进度，拿到了世界时钟之后才进入状态切换循环
 func (p *Pot) stateMachineLoop() {
@@ -172,5 +87,100 @@ func (p *Pot) msgHandleLoop() {
 				p.Errorf("msgHandleLoop: handle msg(%v) fail: %s\n", msg, err)
 			}
 		}
+	}
+}
+
+// 启动到Ready之间的工作循环
+func (p *Pot) loopBeforeReady() {
+	// 初始为GetNeighbors
+	if p.getState() != StateType_Init_GetNeighbors {
+		p.Fatalf("error state(%s), should be %s\n",
+			p.getState().String(), StateType_Init_GetNeighbors.String())
+	}
+
+	p.Logf("loopBeforeReady: start collect neighbors\n")
+	p.loopCollectNeighbors()
+
+	if p.getState() != StateType_Init_GetProcesses {
+		p.Fatalf("error state(%s), should be %s\n",
+			p.getState().String(), StateType_Init_GetProcesses.String())
+	}
+
+	p.Logf("loopBeforeReady: start collect processes\n")
+	p.loopCollectProcesses()
+
+	if p.getState() != StateType_Init_GetBlocks {
+		p.Fatalf("error state(%s), should be %s\n",
+			p.getState().String(), StateType_Init_GetBlocks.String())
+	}
+
+	p.Logf("loopBeforeReady: start collect blocks until catch up with the latest progress\n")
+	p.loopCollectBlocks()
+
+	// 切换状态，准备进入状态切换循环
+	p.setState(StateType_ReadyCompete)
+}
+
+// 等待邻居消息的循环
+func (p *Pot) loopCollectNeighbors() {
+	timeoutD := 4 * time.Second
+	timeout := time.NewTicker(timeoutD)
+	if p.nWaitChan == nil {
+		p.nWaitChan = make(chan int)
+	}
+
+	// 1. 广播getNeighbors消息
+	p.broadcastRequestNeighbors()
+
+	// 2. 持续收集邻居节点，直至邻居们都有所回应，或等待超时
+	for {
+		select {
+		case <-p.done:
+			return
+		case <-p.nWaitChan:
+			p.nWait--
+			if p.nWait == 0 {
+				return
+			}
+		case <-timeout.C:
+			p.nWait = 0		// 重置，接下来nWait会在broadcastRequestProcesses()中赋一个值
+			return
+		}
+	}
+}
+
+// 等待进度消息的循环
+func (p *Pot) loopCollectProcesses() {
+	timeoutD := 4 * time.Second
+	timeout := time.NewTicker(timeoutD)
+
+	// 3. 广播getProcess消息
+	p.broadcastRequestProcesses()
+
+	// 4. 持续收集Process消息
+	for {
+		select {
+		case <-p.done:
+			return
+		case <-p.nWaitChan:
+			p.nWait--
+			// 等待结束，发送消息以请求所有节点进度
+			if p.nWait == 0 {
+				// 等待结束，发送消息以请求所有节点进度
+				return
+			}
+		case <-timeout.C:
+			return
+		}
+	}
+}
+
+func (p *Pot) loopCollectBlocks() {
+	// 5. 广播请求区块消息
+	p.broadcastRequestProcesses()
+
+	// 6. 循环直至追上最新进度
+	for !p.latest() {
+		time.Sleep(5 * time.Millisecond)
 	}
 }

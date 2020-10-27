@@ -7,7 +7,6 @@
 package defines
 
 import (
-	"bytes"
 	"reflect"
 	"testing"
 )
@@ -23,7 +22,7 @@ func TestPeerInfo(t *testing.T) {
 	}
 
 	api := new(PeerInfo)
-	err = api.Decode(bytes.NewReader(b))
+	err = api.Decode(b)
 	if err != nil {
 		t.Error(err)
 	}

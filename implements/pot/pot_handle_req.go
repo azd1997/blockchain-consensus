@@ -14,107 +14,36 @@ import (
 
 // 将请求的区块返回回去
 func (p *Pot) handleRequestBlocks(from string, req *defines.Request) error {
-	var block *defines.Block
-	var err error
 
-	entries := make([]*defines.Entry, 0)
+	var err error
+	var blocks []*defines.Block
 
 	if req.IndexStart >= 0 && req.IndexCount == 0 && len(req.Hashes) == 0 {		// 特殊情况：响应方应该将IndexStart之后所有区块返回
 		maxIndex := p.bc.GetMaxIndex()
 		if maxIndex < req.IndexStart {
 			return errors.New("maxIndex < req.IndexStart")
 		}
-
-		var blocks []*defines.Block
-		blocks, err = p.bc.GetBlocksByRange(req.IndexStart, req.IndexCount)
-		if err != nil {
-			p.Errorf("handleRequestBlocks: get block(%d-%d) fail: %s\n",
-				req.IndexStart, req.IndexStart+req.IndexCount-1, err)
-			return err
-		}
-		for _, block := range blocks {
-			b, err := block.Encode()
-			if err != nil {
-				p.Errorf("handleRequestBlocks: encode block(%x) fail: %s\n", block.SelfHash, err)
-				continue
-			}
-			entries = append(entries, &defines.Entry{
-				BaseIndex: block.Index-1,
-				Base:      block.PrevHash,
-				Type:      defines.EntryType_Block,
-				Data:      b,
-			})
-		}
+		blocks, err = p.bc.GetBlocksByRange(req.IndexStart, maxIndex)
 	} else if req.IndexCount > 0 {		// 按Index请求
-
-		var blocks []*defines.Block
 		blocks, err = p.bc.GetBlocksByRange(req.IndexStart, req.IndexCount)
-		if err != nil {
-			p.Errorf("handleRequestBlocks: get block(%d-%d) fail: %s\n",
-				req.IndexStart, req.IndexStart+req.IndexCount-1, err)
-			return err
-		}
-		for _, block := range blocks {
-			b, err := block.Encode()
-			if err != nil {
-				p.Errorf("handleRequestBlocks: encode block(%x) fail: %s\n", block.SelfHash, err)
-				continue
-			}
-			entries = append(entries, &defines.Entry{
-				BaseIndex: block.Index-1,
-				Base:      block.PrevHash,
-				Type:      defines.EntryType_Block,
-				Data:      b,
-			})
-		}
-
 	} else {	// 按Hash请求
-
-		for _, h := range req.Hashes {
-			block, err = p.bc.GetBlockByHash(h)
-			if err != nil {
-				p.Errorf("handleRequestBlocks: get block(%x) fail: %s\n", h, err)
-				continue
-			}
-			b, err := block.Encode()
-			if err != nil {
-				p.Errorf("handleRequestBlocks: encode block(%x) fail: %s\n", h, err)
-				continue
-			}
-			entries = append(entries, &defines.Entry{
-				BaseIndex: block.Index-1,
-				Base:      block.PrevHash,
-				Type:      defines.EntryType_Block,
-				Data:      b,
-			})
-		}
+		blocks, err = p.bc.GetBlocksByHashes(req.Hashes)
 	}
 
-	msg := &defines.Message{
-		Version: defines.CodeVersion,
-		Type:    defines.MessageType_Data,
-		From:    p.id,
-		To:      from,
-		Sig:     nil,
-		Entries: entries,
-	}
-
-	// 签名
-	if err := msg.Sign(); err != nil {
+	if err != nil {
+		p.Errorf("handleRequestBlocks: get blocks from blockchain(p.bc) fail: %s\n", err)
 		return err
 	}
-
-	// 发送
-	p.send(msg)
-
-	return nil
+	return p.responseBlocks(from, blocks...)
 }
 
 // 将自身的邻居表整理回发
-//
+// 只有seed节点才处理该消息
 func (p *Pot) handleRequestNeighbors(from string, req *defines.Request) error {
 
-	// TODO: seed考虑From的广播
+	 if p.duty != defines.PeerDuty_Seed {
+	 	return nil
+	 }
 
 	// 回发节点表
 	entries := make([]*defines.Entry, 0)
@@ -139,17 +68,63 @@ func (p *Pot) handleRequestNeighbors(from string, req *defines.Request) error {
 		Entries: entries,
 	}
 
-	// 签名
-	if err := msg.Sign(); err != nil {
+	err := p.signAndSendMsg(msg)
+	if err != nil {
 		return err
 	}
 
-	// 发送
-	p.send(msg)
+	// 将该节点信息广播给所有peer节点
+	// TODO: 假设seed节点看作1个特殊的、诚实的、可靠的节点
+	if _, err := p.pit.Get(from); err == nil {	// 如果已经有该节点的地址信息，则直接返回，无须继续广播
+		return nil
+	}
+	bEntry := &defines.Entry{
+		Type:      defines.EntryType_Neighbor,
+		Data:      req.Data,	// 请求方的节点信息
+	}
+	p.pit.RangePeers(func(peer *defines.PeerInfo) error {
+		msg := &defines.Message{
+			Version: defines.CodeVersion,
+			Type:    defines.MessageType_Data,
+			From:    p.id,
+			To:      peer.Id,
+			Entries: []*defines.Entry{bEntry},
+		}
+		return p.signAndSendMsg(msg)
+	})
 
 	return nil
 }
 
+
+// 将自身的
+func (p *Pot) handleRequestProcesses(from string, req *defines.Request) error {
+
+	// 回发节点表
+	entries := make([]*defines.Entry, 0)
+	p.pit.RangePeers(func(peer *defines.PeerInfo) error {
+		b, err := peer.Encode()
+		if err != nil {
+			p.Errorf("handleRequestNeighbors: encode peerinfo(%v) fail: %s\n", *peer, err)
+			return err
+		}
+		entries = append(entries, &defines.Entry{
+			Type:      defines.EntryType_Neighbor,
+			Data:      b,
+		})
+		return nil
+	})
+
+	msg := &defines.Message{
+		Version: defines.CodeVersion,
+		Type:    defines.MessageType_Data,
+		From:    p.id,
+		To:      from,
+		Entries: entries,
+	}
+
+	return p.signAndSendMsg(msg)
+}
 
 /////////////////////////////////////////////////
 
@@ -187,14 +162,7 @@ func (p *Pot) responseBlocks(to string, blocks ...*defines.Block) error {
 		To:      to,
 		Entries: entries,
 	}
-	err := msg.Sign()
-	if err != nil {
-		// p.Errorf("response blocks fail: %s\n", err)
-		return err
-	}
-
-	p.send(msg)
-	return nil
+	return p.signAndSendMsg(msg)
 }
 
 

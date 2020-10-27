@@ -17,7 +17,7 @@ type RequestType uint8
 
 const (
 	RequestType_Blocks    RequestType = 0
-	RequestType_Neighbors RequestType = 1
+	RequestType_Neighbors RequestType = 1	// Data需要携带自身的节点信息
 	RequestType_Processes RequestType = 2
 )
 
@@ -33,6 +33,9 @@ type Request struct {
 
 	// 根据哈希请求
 	Hashes [][]byte
+
+	// 请求时需要携带的其他数据
+	Data []byte
 }
 
 // Check 检查格式
@@ -42,13 +45,15 @@ func (req *Request) Check() error {
 
 // Len 获取序列化后长度
 func (req *Request) Len() int {
-	length := 1 + 8 + 8 + 4
+	length := 1 + 8 + 8 +
+		4 + 4 +
+		4 + len(req.Data)
 	hashnum := len(req.Hashes)
 	if hashnum == 0 {
 		return length
 	} else {
 		hashlen := len(req.Hashes[0])
-		return length + 4 + hashnum*hashlen
+		return length + hashnum*hashlen
 	}
 }
 
@@ -91,11 +96,11 @@ func (req *Request) Encode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if hashnum == 0 {
-		return buf.Bytes(), nil
-	}
 	// hashlen
-	hashlen := uint32(len(req.Hashes[0]))
+	hashlen := uint32(0)
+	if hashnum != 0 {
+		hashlen = uint32(len(req.Hashes[0]))
+	}
 	err = binary.Write(buf, binary.BigEndian, hashlen)
 	if err != nil {
 		return nil, err
@@ -106,6 +111,18 @@ func (req *Request) Encode() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// datalen
+	datalen := uint32(len(req.Data))
+	err = binary.Write(buf, binary.BigEndian, datalen)
+	if err != nil {
+		return nil, err
+	}
+	// Data
+	err = binary.Write(buf, binary.BigEndian, req.Data)
+	if err != nil {
+		return nil, err
 	}
 
 	return buf.Bytes(), nil
@@ -156,6 +173,19 @@ func (req *Request) Decode(r io.Reader) error {
 		}
 	}
 
+	// datalen
+	datalen := uint32(0)
+	err = binary.Read(r, binary.BigEndian, &datalen)
+	if err != nil {
+		return err
+	}
+	// Data
+	req.Data = make([]byte, datalen)
+	err = binary.Read(r, binary.BigEndian, req.Data)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -170,7 +200,9 @@ func (req *Request) Decode(r io.Reader) error {
 	+--------------------------------------+
 	|              Hashi(hashlenB)         |	// Hashes
 	+--------------------------------------+
+	|   datalen(4B)   |  Data(datalenB)    |
+	+--------------------------------------+
 
 	长度计算公式：
-	f(Request) = 1 + 8 + 8 + 4 + 4 + hashlen * hashnum
+	f(Request) = 1 + 8 + 8 + 4 + 4 + hashlen * hashnum + 4 + datalen
 */
