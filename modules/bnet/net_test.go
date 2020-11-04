@@ -33,7 +33,7 @@ func runPeer(t *testing.T, id string, addr string,
 		MsgOut:              make(chan *defines.Message, 10),
 		CustomInitFunc:      initF,
 		CustomMsgHandleFunc: msgHandleF,
-		LogDest:log.LogDest_Stderr,
+		LogDest:             log.LogDest_Stderr,
 	}
 
 	peer, err := NewNet(opt)
@@ -87,8 +87,8 @@ func TestNet(t *testing.T) {
 				Type:    defines.MessageType_Data,
 				From:    "peerB",
 				To:      "peerA",
-				Sig:[]byte("signature"),
-				Desc:	 "test message",
+				Sig:     []byte("signature"),
+				Desc:    "test message",
 			}
 			fmt.Printf("111111111111111\n")
 			return nil
@@ -100,8 +100,8 @@ func TestNet(t *testing.T) {
 				Type:    defines.MessageType_Data,
 				From:    "peerA",
 				To:      "peerB",
-				Sig:[]byte("signature"),
-				Desc:	 "test message",
+				Sig:     []byte("signature"),
+				Desc:    "test message",
 			}) {
 				t.Error("error!!!!")
 			}

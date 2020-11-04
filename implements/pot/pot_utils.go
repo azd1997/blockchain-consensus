@@ -49,6 +49,7 @@ func (p *Pot) setProof(id string, proof Proof) {
 	p.proofs[id] = &proof
 	p.proofsLock.Unlock()
 }
+
 //
 //// 获取某个区块缓存
 //func (p *Pot) getBlock(hash []byte) *defines.Block {
@@ -73,4 +74,14 @@ func (p *Pot) setProof(id string, proof Proof) {
 // 检查是否追上最新进度
 func (p *Pot) latest() bool {
 	return p.processes.isLatest(p.id)
+}
+
+// Epoch 查看当前处于哪一个纪元
+func (p *Pot) Epoch() uint64 {
+	return p.epoch
+}
+
+// NextEpoch 新纪元开启
+func (p *Pot) NextEpoch() {
+	p.epoch++
 }

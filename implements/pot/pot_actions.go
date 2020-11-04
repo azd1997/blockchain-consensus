@@ -8,7 +8,6 @@ package pot
 
 import (
 	"errors"
-
 	"github.com/azd1997/blockchain-consensus/defines"
 )
 
@@ -19,8 +18,8 @@ func (p *Pot) send(msg *defines.Message) {
 }
 
 func (p *Pot) signAndSendMsg(msg *defines.Message) error {
-	if msg == nil || (msg.Check() != nil) {
-		return errors.New("invalid msg")
+	if msg == nil {
+		return errors.New("nil msg")
 	}
 	err := msg.Sign()
 	if err != nil {
@@ -36,8 +35,9 @@ func (p *Pot) signAndSendMsg(msg *defines.Message) error {
 //
 //}
 
-// 向seeds广播getNeighbors请求
-func (p *Pot) broadcastRequestNeighbors() error {
+// 广播getNeighbors请求
+// toseeds true则向种子节点广播；否则向所有节点广播
+func (p *Pot) broadcastRequestNeighbors(toseeds bool) error {
 	p.nWait = 0
 
 	// 查询自身节点信息
@@ -52,10 +52,14 @@ func (p *Pot) broadcastRequestNeighbors() error {
 
 	// 构造请求
 	req := &defines.Request{
-		Type:       defines.RequestType_Neighbors,
-		Data:selfb,
+		Type: defines.RequestType_Neighbors,
+		Data: selfb,
 	}
 	f := func(peer *defines.PeerInfo) error {
+		if peer.Id == p.id {
+			return nil
+		}
+
 		msg := &defines.Message{
 			Version: defines.CodeVersion,
 			Type:    defines.MessageType_Req,
@@ -63,11 +67,21 @@ func (p *Pot) broadcastRequestNeighbors() error {
 			To:      peer.Id,
 			Reqs:    []*defines.Request{req},
 		}
-		p.nWait++
-		return p.signAndSendMsg(msg)
+		err = p.signAndSendMsg(msg)
+		if err != nil {
+			p.Errorf("broadcastRequestNeighbors: to %s fail: %v\n", peer.Id, err)
+		} else {
+			p.Logf("broadcastRequestNeighbors: to %s\n", peer.Id)
+			p.nWait++
+		}
+
+		return nil
 	}
-	//p.pit.RangePeers(f)
+
 	p.pit.RangeSeeds(f)
+	if !toseeds {
+		p.pit.RangePeers(f)
+	}
 	return nil
 }
 
@@ -83,11 +97,11 @@ func (p *Pot) broadcastSelfProof() error {
 	}
 
 	proof := &Proof{
-		Id:p.id,
+		Id:        p.id,
 		TxsNum:    uint64(len(nb.Txs)),
 		TxsMerkle: nb.Merkle,
-		Base:process.Hash,
-		BaseIndex:process.Index,
+		Base:      process.Hash,
+		BaseIndex: process.Index,
 	}
 
 	return p.broadcastProof(proof, false)
@@ -102,8 +116,8 @@ func (p *Pot) broadcastProof(proof *Proof, onlypeers bool) error {
 		return err
 	}
 	entry := &defines.Entry{
-		Type:      defines.EntryType_Proof,
-		Data:      proofBytes,
+		Type: defines.EntryType_Proof,
+		Data: proofBytes,
 	}
 
 	// 广播
@@ -167,61 +181,84 @@ func (p *Pot) broadcastNewBlock(nb *defines.Block) error {
 }
 
 // 广播请求所有节点最新进度
-func (p *Pot) broadcastRequestProcesses() error {
+// toseeds true表示向seeds请求所有共识节点进度
+// false 表示seeds/peers都问
+func (p *Pot) broadcastRequestProcesses(toseeds bool) error {
+	p.nWait = 0	// 重置
 	req := &defines.Request{
-		Type:       defines.RequestType_Processes,
+		Type: defines.RequestType_Processes,
 	}
-	p.pit.RangePeers(func(peer *defines.PeerInfo) error {
+	f := func(peer *defines.PeerInfo) error {
+		if peer.Id == p.id {return nil}
+
 		msg := &defines.Message{
 			Version: defines.CodeVersion,
 			Type:    defines.MessageType_Req,
 			From:    p.id,
 			To:      peer.Id,
-			Sig:     nil,
 			Reqs:    []*defines.Request{req},
 		}
-
-		err := msg.Sign()
+		err := p.signAndSendMsg(msg)
 		if err != nil {
-			return err
+			p.Errorf("broadcastRequestProcesses: to %s fail: %v\n", peer.Id, err)
+		} else {
+			p.Logf("broadcastRequestProcesses: to %s\n", peer.Id)
+			p.nWait++
 		}
 
-		p.send(msg)
 		return nil
-	})
+	}
+	p.pit.RangeSeeds(f)
+	if !toseeds {
+		p.pit.RangePeers(f)
+	}
+
 	return nil
 }
 
 // 广播请求区块，追上最新进度
-func (p *Pot) broadcastRequestBlocks() error {
+// random3 true则指向最新进度的3个节点发送请求区块消息（这里需要注意的是响应端会将所有确定的区块返回）
+// false 则向全部最新进度节点发送请求区块消息
+func (p *Pot) broadcastRequestBlocks(random3 bool) error {
+
+	p.nWait = 0		// 重置
+
+	process := p.processes.get(p.id)
 	req := &defines.Request{
 		Type:       defines.RequestType_Blocks,
-		IndexStart: 0,
-		IndexCount: 0,
-		Hashes:     nil,
+		IndexStart: process.Index+1,	// 自己的进度+1
+		IndexCount: 0,	// 0表示响应端要回复所有
 	}
-	p.pit.RangePeers(func(peer *defines.PeerInfo) error {
+
+	// 收集要广播的节点：seeds + 若干peer
+	var peers []string
+	seeds := p.pit.Seeds()
+	for id := range seeds {
+		peers = append(peers, id)
+	}
+
+	if random3 {
+		peers = append(peers, p.processes.nLatestPeers(3)...)
+	} else {
+		peers = append(peers, p.processes.nLatestPeers(0)...)
+	}
+
+	for _, peer := range peers {
+		if peer == p.id {continue}
 		msg := &defines.Message{
 			Version: defines.CodeVersion,
 			Type:    defines.MessageType_Req,
 			From:    p.id,
-			To:      peer.Id,
-			Sig:     nil,
+			To:      peer,
 			Reqs:    []*defines.Request{req},
 		}
-
-		err := msg.Sign()
-		if err != nil {
-			return err
+		if err := p.signAndSendMsg(msg); err != nil {
+			p.Errorf("broadcastRequestBlocks: to %s fail: %s\n", peer, err)
+		} else {
+			p.Logf("broadcastRequestBlocks: to %s\n", peer)
+			p.nWait++
 		}
+	}
 
-		p.send(msg)
-		return nil
-	})
 	return nil
-}
-
-// 暂时是直接向一个节点发送区块请求，但最好后面改成随机选举三个去请求
-func (p *Pot) requestBlocks() {
-	// TODO
 }

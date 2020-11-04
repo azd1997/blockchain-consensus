@@ -6,7 +6,10 @@
 
 package pot
 
-import "time"
+import (
+	"github.com/azd1997/blockchain-consensus/defines"
+	"time"
+)
 
 // 状态切换循环
 // 这里要注意这个循环启动的前提是同步到了最新进度，拿到了世界时钟之后才进入状态切换循环
@@ -16,7 +19,7 @@ func (p *Pot) stateMachineLoop() {
 		case <-p.done:
 			p.Logf("stateMachineLoop: return ...\n")
 			return
-		case <-p.ticker.C:
+		case <-p.clock.C:
 			// 根据当前状态来处理此滴答消息
 
 			state := p.getState()
@@ -29,7 +32,7 @@ func (p *Pot) stateMachineLoop() {
 					p.setState(StateType_ReadyCompete)
 				} else {
 					// 否则请求快照数据
-					p.requestBlocks()
+					p.broadcastRequestBlocks(true)
 				}
 
 			case StateType_ReadyCompete:
@@ -38,7 +41,7 @@ func (p *Pot) stateMachineLoop() {
 				// 状态切换
 				p.setState(StateType_Competing)
 				// 发起竞争（广播证明消息）
-				p.broadcastProof()
+				p.broadcastSelfProof()
 
 			case StateType_Competing:
 				// 当前是Competing，则状态切换为CompetingEnd，并判断竞赛结果，将状态迅速切换为Winner或Loser
@@ -68,7 +71,7 @@ func (p *Pot) stateMachineLoop() {
 
 				p.setState(StateType_ReadyCompete)
 				// 发起竞争（广播证明消息）
-				p.broadcastProof()
+				p.broadcastSelfProof()
 			}
 		}
 	}
@@ -80,8 +83,9 @@ func (p *Pot) msgHandleLoop() {
 	for {
 		select {
 		case <-p.done:
+			p.Logf("msgHandleLoop: return ...\n")
 			return
-		case msg := <- p.msgin:
+		case msg := <-p.msgin:
 			err = p.handleMsg(msg)
 			if err != nil {
 				p.Errorf("msgHandleLoop: handle msg(%v) fail: %s\n", msg, err)
@@ -91,94 +95,213 @@ func (p *Pot) msgHandleLoop() {
 }
 
 // 启动到Ready之间的工作循环
+//
+// 理解这里的的Ready很重要。
+// 由于每个时间新区块产生之后的时间被划分为：
+// 			a.t(n) -> b.pot竞争开始 -> c.pot竞争结束 -> d.出块/等待出块 -> e. t(n+1)或者仍是t(n)，pot竞争又开始
+// 在a-c的过程中，可以相信在网络正常情况下，所有正常节点都拿到了相同进度的最新区块。那么对于最新启动的节点，
+// ****** 在loopBeforeReady()环节的结束条件就是在c时刻之前取得第n个区块 ******
+// 另一种情况是：如果响应都到达新启动节点，新启动节点整理完毕发现自身当前处于c-e阶段，那么仍是NotReady的，需要再接收
+// 但是前面两种情况，都可以归到一起讨论：
+// 既然seed被设定为诚实可靠的节点，请求区块的话，直接从seed获取
+// 每获得一次完整的区块响应之后，检查最新区块的创建时间，判断当前时刻处于a-e哪一个阶段
+// 并且相应地切换到对应的状态去处理
+// 这里还隐含了一个问题：
+//		TODO
+//
 func (p *Pot) loopBeforeReady() {
-	// 初始为GetNeighbors
-	if p.getState() != StateType_Init_GetNeighbors {
-		p.Fatalf("error state(%s), should be %s\n",
-			p.getState().String(), StateType_Init_GetNeighbors.String())
-	}
+	//// 初始为GetNeighbors
+	//if p.getState() != StateType_Init_GetNeighbors {
+	//	p.Fatalf("error state(%s), should be %s\n",
+	//		p.getState().String(), StateType_Init_GetNeighbors.String())
+	//}
 
+	// 向种子节点请求节点表信息
+	p.setState(StateType_Init_GetNeighbors)
 	p.Logf("loopBeforeReady: start collect neighbors\n")
-	p.loopCollectNeighbors()
+	err := p.loopCollectNeighbors(p.duty != defines.PeerDuty_Seed, 0)
+	// 种子节点则退出而后进入正常的消息处理循环即可，这里无需额外的逻辑
+	if err == ErrCannotConnectToSeedsWhenInit {
+		if p.duty == defines.PeerDuty_Seed {	// 种子节点
+			// 创建0号区块，初始化世界时钟
+			// TODO
 
-	if p.getState() != StateType_Init_GetProcesses {
-		p.Fatalf("error state(%s), should be %s\n",
-			p.getState().String(), StateType_Init_GetProcesses.String())
+			return
+		} else {	// 非种子节点
+			p.Fatal("cannot find any seed or peer to conn, exit...")
+		}
 	}
 
+
+	//if p.getState() != StateType_Init_GetProcesses {
+	//	p.Fatalf("error state(%s), should be %s\n",
+	//		p.getState().String(), StateType_Init_GetProcesses.String())
+	//}
+
+	// 向种子节点请求所有共识节点的进度信息
+	p.setState(StateType_Init_GetProcesses)
 	p.Logf("loopBeforeReady: start collect processes\n")
-	p.loopCollectProcesses()
+	p.loopCollectProcesses(p.duty != defines.PeerDuty_Seed, 0)
 
-	if p.getState() != StateType_Init_GetBlocks {
-		p.Fatalf("error state(%s), should be %s\n",
-			p.getState().String(), StateType_Init_GetBlocks.String())
-	}
+	//if p.getState() != StateType_Init_GetBlocks {
+	//	p.Fatalf("error state(%s), should be %s\n",
+	//		p.getState().String(), StateType_Init_GetBlocks.String())
+	//}
 
+	// 向种子节点(或者共识节点的某一些)请求区块数据，直至追赶上最新进度
+	p.setState(StateType_Init_GetBlocks)
 	p.Logf("loopBeforeReady: start collect blocks until catch up with the latest progress\n")
 	p.loopCollectBlocks()
 
-	// 切换状态，准备进入状态切换循环
-	p.setState(StateType_ReadyCompete)
 }
 
 // 等待邻居消息的循环
-func (p *Pot) loopCollectNeighbors() {
+// toseeds true则只向seeds请求；否则向seeds和peers请求
+//
+// 本机节点若为seed，则向所有已在线的seed和peer请求信息（涵盖了第一个seed启动的情况），toseeds=true
+// 若为peer，则只向在线的seed请求信息。，toseeds=false
+//
+// try 为已尝试次数， 从0开始，若try>=2则直接退出
+//
+// 调用：p.loopCollectNeighbors(p.duty != defines.PeerDuty_Seed, 0)
+func (p *Pot) loopCollectNeighbors(toseeds bool, try int) error {
+	if try >= 2 {
+		p.Error("loopCollectNeighbors: disconnect and retry over 2 times")
+
+		// 由于getNeighbors是节点启动后的第一次进行网络交互，所以可以通过此处来判断当前节点是否存在网络问题
+		// 重试两次，都得不到响应，可能的原因有：
+		// 1. 节点表种子节点都没在线（或者说对于本机节点来说，连不上相当于掉线）
+		// 2. 自己网络有问题
+		// 以一个最简单的例子：三节点网络 seed1, peer1-3
+		// 启动顺序： seed1 -> peer1-3
+		// 对于seed1，
+		// 		进入消息处理循环。
+		//		发现网络中没有其他节点，seeds其他seed不存在或未能连通，则构建0号区块，初始化世界时钟
+		// 		当peer1接入时，seed1给它0号区块
+		// 对于随后启动的peer1,
+		// 		通过seed1得到节点表/进度/获取区块
+		//		收到初始区块和世界纪元，根据初始区块和当前纪元，计算相对时间，确定当前处于何种阶段
+		// 其他节点与peer1类似
+
+		return ErrCannotConnectToSeedsWhenInit
+	}
+
 	timeoutD := 4 * time.Second
-	timeout := time.NewTicker(timeoutD)
+	timeout := time.NewTimer(timeoutD)
 	if p.nWaitChan == nil {
 		p.nWaitChan = make(chan int)
 	}
 
 	// 1. 广播getNeighbors消息
-	p.broadcastRequestNeighbors()
+	if err := p.broadcastRequestNeighbors(toseeds); err != nil {
+		p.Errorf("loopCollectNeighbors: broadcast request fail: %s\n", err)
+		return err
+	} else {
+		p.Logf("loopCollectNeighbors: broadcast request succ, nWait: %d\n", p.nWait)
+	}
+
 
 	// 2. 持续收集邻居节点，直至邻居们都有所回应，或等待超时
+	cnt := 0
 	for {
 		select {
 		case <-p.done:
-			return
+			p.Logf("loopCollectNeighbors: done and return\n")
+			return nil
 		case <-p.nWaitChan:
 			p.nWait--
+			cnt++
+			p.Logf("loopCollectNeighbors: nWait--\n")
 			if p.nWait == 0 {
-				return
+				p.Logf("loopCollectNeighbors: wait finish and return\n")
+				return nil
 			}
 		case <-timeout.C:
-			p.nWait = 0		// 重置，接下来nWait会在broadcastRequestProcesses()中赋一个值
-			return
+			// 超时需要判断两种情况：
+			if cnt == 0 {	// 一个回复都没收到
+				p.Logf("loopCollectNeighbors: wait timeout, no response received, retry %d\n", try+1)
+				return p.loopCollectNeighbors(false, try + 1)
+			} else {
+				//p.nWait = 0 // 重置，接下来nWait会在broadcastRequestProcesses()中赋一个值
+				p.Logf("loopCollectNeighbors: wait timeout, %d responses received, return\n", cnt)
+				return nil
+			}
 		}
 	}
 }
 
 // 等待进度消息的循环
-func (p *Pot) loopCollectProcesses() {
+// toseeds true则只向seeds请求；否则向seeds和peers请求
+//
+// 本机节点若为seed，则向所有已在线的seed和peer请求信息（涵盖了第一个seed启动的情况），toseeds=true
+// 若为peer，则只向在线的seed请求信息。，toseeds=false
+//
+// try 为已尝试次数， 从0开始，若try>=2则直接退出
+//
+// 调用：p.loopCollectProcesses(p.duty != defines.PeerDuty_Seed, 0)
+func (p *Pot) loopCollectProcesses(toseeds bool, try int) {
+
+	if try >= 2 {
+		p.Error("loopCollectProcesses: disconnect and retry over 2 times")
+		return
+	}
+
 	timeoutD := 4 * time.Second
-	timeout := time.NewTicker(timeoutD)
+	timeout := time.NewTimer(timeoutD)
+	if p.nWaitChan == nil {
+		p.nWaitChan = make(chan int)
+	}
 
 	// 3. 广播getProcess消息
-	p.broadcastRequestProcesses()
+	if err := p.broadcastRequestProcesses(toseeds); err != nil {
+		p.Errorf("loopCollectProcesses: broadcast request fail: %s\n", err)
+		return
+	} else {
+		p.Logf("loopCollectProcesses: broadcast request succ, nWait: %d\n", p.nWait)
+	}
+
 
 	// 4. 持续收集Process消息
+	cnt := 0
 	for {
 		select {
 		case <-p.done:
+			p.Logf("loopCollectProcesses: done and return\n")
 			return
 		case <-p.nWaitChan:
 			p.nWait--
-			// 等待结束，发送消息以请求所有节点进度
+			cnt++
+			p.Logf("loopCollectProcesses: nWait--\n")
+			// 等待结束
 			if p.nWait == 0 {
-				// 等待结束，发送消息以请求所有节点进度
+				p.Logf("loopCollectProcesses: wait finish and return\n")
 				return
 			}
 		case <-timeout.C:
-			return
+			// 超时需要判断两种情况：
+			if cnt == 0 {	// 一个回复都没收到
+				p.Logf("loopCollectProcesses: wait timeout, no response received, retry %d\n", try+1)
+				p.loopCollectProcesses(false, try + 1)
+				return
+			} else {
+				p.Logf("loopCollectProcesses: wait timeout, %d responses received, return\n", cnt)
+				return
+			}
 		}
 	}
 }
 
+// 循环收集区块，判断自身
 func (p *Pot) loopCollectBlocks() {
 	// 5. 广播请求区块消息
-	p.broadcastRequestProcesses()
 
+
+	if err := p.broadcastRequestBlocks(true); err != nil {
+		p.Errorf("loopCollectProcesses: broadcast request fail: %s\n", err)
+		return
+	} else {
+		p.Logf("loopCollectProcesses: broadcast request succ, nWait: %d\n", p.nWait)
+	}
 	// 6. 循环直至追上最新进度
 	for !p.latest() {
 		time.Sleep(5 * time.Millisecond)

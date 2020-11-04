@@ -59,8 +59,8 @@ type Node struct {
 
 // NewNode 构建Node
 func NewNode(id string, consensusType string,
-		ln requires.Listener, dialer requires.Dialer, kv requires.Store,
-		logdest log.LogDest) (*Node, error) {
+	ln requires.Listener, dialer requires.Dialer, kv requires.Store,
+	logdest log.LogDest) (*Node, error) {
 
 	node := &Node{
 		id: id,
@@ -85,12 +85,12 @@ func NewNode(id string, consensusType string,
 
 	// 构建网络模块
 	opt := &bnet.Option{
-		Listener:            ln,
-		Dialer:              dialer,
-		MsgIn:               cssout,
-		MsgOut:              cssin,
-		LogDest:             logdest,
-		Pit:pit,
+		Listener: ln,
+		Dialer:   dialer,
+		MsgIn:    cssout,
+		MsgOut:   cssin,
+		LogDest:  logdest,
+		Pit:      pit,
 	}
 	netmod, err := bnet.NewNet(opt)
 	if err != nil {

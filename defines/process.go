@@ -15,10 +15,11 @@ import (
 
 // Process 进度
 type Process struct {
-	Index uint64
-	Hash []byte
+	Index       uint64
+	Hash        []byte
 	LatestMaker string
-	Id string		// 哪个节点的Process
+	Id          string // 哪个节点的Process
+	NoHole bool	// 是否存在空洞？若存在，则只能接受最新区块，并不能直接参与共识。
 }
 
 func (p *Process) Encode() ([]byte, error) {

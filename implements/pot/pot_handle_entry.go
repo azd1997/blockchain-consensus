@@ -22,7 +22,7 @@ func (p *Pot) handleEntryBlock(from string, ent *defines.Entry) error {
 		return nil
 	}
 	if ent.BaseIndex == process.Index && !bytes.Equal(ent.Base, process.Hash) {
-		return errors.New("mismatched ent.BaseIndex or ent.Base")
+		return errors.New("mismatched ent.Base")
 	}
 	// 解码
 	block := new(defines.Block)
@@ -36,7 +36,7 @@ func (p *Pot) handleEntryBlock(from string, ent *defines.Entry) error {
 		return err
 	}
 	// 检查block与ent中携带的Base/BaseIndex信息是否一致
-	if !bytes.Equal(block.PrevHash, ent.Base) || block.Index != ent.BaseIndex + 1 {
+	if !bytes.Equal(block.PrevHash, ent.Base) || block.Index != ent.BaseIndex+1 {
 		return errors.New("mismatched block.PreHash or block.Index")
 	}
 	//// 如果其序号 = 本地的index+1，那么检查其有效性
@@ -71,20 +71,20 @@ func (p *Pot) handleEntryProof(from string, ent *defines.Entry) error {
 		return errors.New("mismatched ent.Base or ent.BaseIndex")
 	}
 	// 如果证明信息有效，用以更新本地winner
-	if proof.Id == from {	// 情况1
-		p.setProof(from,  *proof)
+	if proof.Id == from { // 情况1
+		p.setProof(from, *proof)
 		if proof.GreaterThan(p.proofs[p.winner]) {
 			p.winner = from
 		}
-	} else {	// 情况2
-		if p.winner == proof.Id {	// 自己判断的winner和seed（默认是诚实可靠的）判断一致
+	} else { // 情况2
+		if p.winner == proof.Id { // 自己判断的winner和seed（默认是诚实可靠的）判断一致
 
-		} else {	// 自己与seed产生分歧
+		} else { // 自己与seed产生分歧
 			pWinnerProof := p.getProof(p.winner)
-			if proof.GreaterThan(&pWinnerProof) {	// seed判断的winner比自己判断的更大
+			if proof.GreaterThan(&pWinnerProof) { // seed判断的winner比自己判断的更大
 				p.winner = proof.Id
 				p.setProof(proof.Id, *proof)
-			} else {	// 由于seed是诚实的，所以seed判断的winner >= 自己判断的winner，如果<的话，那么按自己的来
+			} else { // 由于seed是诚实的，所以seed判断的winner >= 自己判断的winner，如果<的话，那么按自己的来
 				// nothing
 			}
 		}
@@ -131,6 +131,7 @@ func (p *Pot) handleEntryTransaction(from string, ent *defines.Entry) error {
 // 处理邻居节点信息
 // TODO: 考虑节点恶意
 // 目前直接相信这个节点信息，添加到本地节点信息表
+// 暂定：节点信息只会从seed(可信)到peer
 func (p *Pot) handleEntryNeighbor(from string, ent *defines.Entry) error {
 	pi := new(defines.PeerInfo)
 	err := pi.Decode(ent.Data)
@@ -147,9 +148,6 @@ func (p *Pot) handleEntryProcess(from string, ent *defines.Entry) error {
 	if err := process.Decode(ent.Data); err != nil {
 		return err
 	}
-
 	p.processes.set(process.Id, process)
-
 	return nil
 }
-

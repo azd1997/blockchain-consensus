@@ -22,7 +22,6 @@ const (
 	// 当追赶进度至最新后，开始切换为ReadyCompete状态
 	StateType_Init_GetBlocks
 
-
 	// 进度区块链进度没有和邻居节点们保持一致（达到最新），称为“NotReady”
 	// NotReady时不能参与竞争，只能等待新区块
 	StateType_NotReady
@@ -37,10 +36,10 @@ const (
 	StateType_CompeteOver
 
 	// 竞赛胜者，需要出块
-	StateType_CompeteWinner  // 广播完新区块后切换为ReadyCompete
+	StateType_CompeteWinner // 广播完新区块后切换为ReadyCompete
 
 	// 竞赛负者，需要等待新区块
-	StateType_CompeteLoser  // 收到新区块无误后切换为ReadyCompete，否则切换为Competing，重新竞争
+	StateType_CompeteLoser // 收到新区块无误后切换为ReadyCompete，否则切换为Competing，重新竞争
 
 	//
 )
@@ -48,13 +47,13 @@ const (
 var stateMap = map[StateType]string{
 	StateType_Init_GetNeighbors: "[State_Init_GetNeighbors]",
 	StateType_Init_GetProcesses: "[StateType_Init_GetProcesses]",
-	StateType_Init_GetBlocks: "[StateType_Init_GetBlocks]",
-	StateType_NotReady:"[State_NotReady]",
-	StateType_ReadyCompete:"[State_ReadyCompete]",
-	StateType_Competing:"[State_Competing]",
-	StateType_CompeteOver:"[State_CompeteOver]",
-	StateType_CompeteWinner:"[State_CompeteWinner]",
-	StateType_CompeteLoser:"[State_CompeteLoser]",
+	StateType_Init_GetBlocks:    "[StateType_Init_GetBlocks]",
+	StateType_NotReady:          "[State_NotReady]",
+	StateType_ReadyCompete:      "[State_ReadyCompete]",
+	StateType_Competing:         "[State_Competing]",
+	StateType_CompeteOver:       "[State_CompeteOver]",
+	StateType_CompeteWinner:     "[State_CompeteWinner]",
+	StateType_CompeteLoser:      "[State_CompeteLoser]",
 }
 
 func (st StateType) String() string {

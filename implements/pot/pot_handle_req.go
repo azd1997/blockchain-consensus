@@ -18,22 +18,23 @@ func (p *Pot) handleRequestBlocks(from string, req *defines.Request) error {
 	var err error
 	var blocks []*defines.Block
 
-	if req.IndexStart >= 0 && req.IndexCount == 0 && len(req.Hashes) == 0 {		// 特殊情况：响应方应该将IndexStart之后所有区块返回
+	if req.IndexStart >= 0 && req.IndexCount == 0 && len(req.Hashes) == 0 { // 特殊情况：响应方应该将IndexStart之后所有区块返回
 		maxIndex := p.bc.GetMaxIndex()
 		if maxIndex < req.IndexStart {
 			return errors.New("maxIndex < req.IndexStart")
 		}
 		blocks, err = p.bc.GetBlocksByRange(req.IndexStart, maxIndex)
-	} else if req.IndexCount > 0 {		// 按Index请求
-		blocks, err = p.bc.GetBlocksByRange(req.IndexStart, req.IndexCount)
-	} else {	// 按Hash请求
+	} else if req.IndexCount > 0 { // 按Index请求
+		blocks, err = p.bc.GetBlocksByRange(req.IndexStart, uint64(req.IndexCount))	//TODO
+	} else { // 按Hash请求
 		blocks, err = p.bc.GetBlocksByHashes(req.Hashes)
 	}
 
 	if err != nil {
-		p.Errorf("handleRequestBlocks: get blocks from blockchain(p.bc) fail: %s\n", err)
+		p.Errorf("handleRequestBlocks: get blocks from blockchain(p.bc) for %s fail: %s\n", from, err)
 		return err
 	}
+	p.Errorf("handleRequestBlocks: get blocks from blockchain(p.bc) for %s \n", from)
 	return p.responseBlocks(from, blocks...)
 }
 
@@ -41,9 +42,9 @@ func (p *Pot) handleRequestBlocks(from string, req *defines.Request) error {
 // 只有seed节点才处理该消息
 func (p *Pot) handleRequestNeighbors(from string, req *defines.Request) error {
 
-	 if p.duty != defines.PeerDuty_Seed {
-	 	return nil
-	 }
+	if p.duty != defines.PeerDuty_Seed {
+		return nil
+	}
 
 	// 回发节点表
 	entries := make([]*defines.Entry, 0)
@@ -54,8 +55,8 @@ func (p *Pot) handleRequestNeighbors(from string, req *defines.Request) error {
 			return err
 		}
 		entries = append(entries, &defines.Entry{
-			Type:      defines.EntryType_Neighbor,
-			Data:      b,
+			Type: defines.EntryType_Neighbor,
+			Data: b,
 		})
 		return nil
 	})
@@ -73,14 +74,13 @@ func (p *Pot) handleRequestNeighbors(from string, req *defines.Request) error {
 		return err
 	}
 
-	// 将该节点信息广播给所有peer节点
-	// TODO: 假设seed节点看作1个特殊的、诚实的、可靠的节点
-	if _, err := p.pit.Get(from); err == nil {	// 如果已经有该节点的地址信息，则直接返回，无须继续广播
+	// seed节点将该节点信息广播给所有peer节点
+	if _, err := p.pit.Get(from); err == nil { // 如果已经有该节点的地址信息，则直接返回，无须继续广播
 		return nil
 	}
 	bEntry := &defines.Entry{
-		Type:      defines.EntryType_Neighbor,
-		Data:      req.Data,	// 请求方的节点信息
+		Type: defines.EntryType_Neighbor,
+		Data: req.Data, // 请求方的节点信息
 	}
 	p.pit.RangePeers(func(peer *defines.PeerInfo) error {
 		msg := &defines.Message{
@@ -96,7 +96,6 @@ func (p *Pot) handleRequestNeighbors(from string, req *defines.Request) error {
 	return nil
 }
 
-
 // 将自身的
 func (p *Pot) handleRequestProcesses(from string, req *defines.Request) error {
 
@@ -109,8 +108,8 @@ func (p *Pot) handleRequestProcesses(from string, req *defines.Request) error {
 			return err
 		}
 		entries = append(entries, &defines.Entry{
-			Type:      defines.EntryType_Neighbor,
-			Data:      b,
+			Type: defines.EntryType_Neighbor,
+			Data: b,
 		})
 		return nil
 	})
@@ -136,7 +135,7 @@ func (p *Pot) responseBlocks(to string, blocks ...*defines.Block) error {
 	}
 
 	blockBytes := make([][]byte, l)
-	for i:=0; i<l; i++ {
+	for i := 0; i < l; i++ {
 		b, err := blocks[i].Encode()
 		if err != nil {
 			//p.Errorf("response blocks fail: %s\n", err)
@@ -164,5 +163,3 @@ func (p *Pot) responseBlocks(to string, blocks ...*defines.Block) error {
 	}
 	return p.signAndSendMsg(msg)
 }
-
-

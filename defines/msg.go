@@ -7,7 +7,9 @@
 package defines
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -33,21 +35,26 @@ const (
 type Message struct {
 	Version Version
 	Type    MessageType
-	From    string
-	To      string
 
-	Sig []byte // 消息签名，以保证消息不被恶意篡改
+	Epoch uint64 // 纪元，指当前是基于哪一个区块的创建时间基准 从数量上等同于最新区块index
+
+	From string
+	To   string
 
 	Entries []*Entry // 待传送的条目
 
 	Reqs []*Request
 
-	Desc string // 描述字段
+	Desc string // 描述字段，必须是json序列化后的字符串，按照key:value的形式
+
+	Sig []byte // 消息签名，以保证消息不被恶意篡改
 }
 
 // Len 获取Message序列化后的长度(包含魔数所占用的2B)
 func (msg *Message) Len() int {
-	length := 2 + 4 + 1 + 1 + 1 + (len(msg.From) + len(msg.To)) +
+	length := 2 + 4 +
+		1 + 1 + 8 +
+		1 + (len(msg.From) + len(msg.To)) +
 		1 + 1 + 2 + len(msg.Desc) + 2 + len(msg.Sig) // 还没加上Entries和Requests
 	for _, ent := range msg.Entries {
 		length += (2 + ent.Len())
@@ -111,6 +118,12 @@ func (msg *Message) Encode() ([]byte, error) {
 
 	// 写入消息类型 1B
 	err = binary.Write(buf, binary.BigEndian, msg.Type)
+	if err != nil {
+		return nil, err
+	}
+
+	// 写入Epoch 8B
+	err = binary.Write(buf, binary.BigEndian, msg.Epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -191,6 +204,7 @@ func (msg *Message) Encode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("encode: desclen=%d\n", desclen)
 	// 写入Desc (desclen)B
 	err = binary.Write(buf, binary.BigEndian, []byte(msg.Desc))
 	if err != nil {
@@ -199,6 +213,7 @@ func (msg *Message) Encode() ([]byte, error) {
 
 	// 写入签名长度 2B
 	siglen := uint16(len(msg.Sig))
+	fmt.Printf("encode: siglen=%d\n", siglen)
 	err = binary.Write(buf, binary.BigEndian, siglen)
 	if err != nil {
 		return nil, err
@@ -262,6 +277,16 @@ func (msg *Message) Decode(r io.Reader) error {
 		return errors.New("not enough totallen")
 	}
 
+	// 读取Epoch
+	err = binary.Read(r, binary.BigEndian, &msg.Epoch)
+	if err != nil {
+		return err
+	}
+	totallen -= 8 // 减去Epoch
+	if totallen <= 0 {
+		return errors.New("not enough totallen")
+	}
+
 	// 读取ID长度
 	idlen := uint8(0)
 	err = binary.Read(r, binary.BigEndian, &idlen)
@@ -303,6 +328,7 @@ func (msg *Message) Decode(r io.Reader) error {
 	if totallen < 0 {
 		return errors.New("not enough totallen")
 	}
+	//fmt.Printf("nEntry=%d, nReq=%d\n", nEntry, nReq)
 
 	// 读取Entry
 	if nEntry > 0 {
@@ -360,10 +386,12 @@ func (msg *Message) Decode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	//fmt.Printf("desclen=%d\n", desclen)
 	totallen -= 2
 	if totallen < 0 {
 		return errors.New("not enough totallen")
 	}
+	//fmt.Printf("totallen=%d\n", totallen)
 	// 读取Desc
 	descbytes := make([]byte, desclen)
 	err = binary.Read(r, binary.BigEndian, descbytes)
@@ -415,7 +443,7 @@ func (msg *Message) Decode(r io.Reader) error {
 	所以还是得用binary编码
 
 	+--------------------------------------+
-	|       版本(1B)    | 消息类型(1B)       |
+	| 版本(1B)  |  消息类型(1B)  | Epoch(8B) |
 	+--------------------------------------+
 	|  ID长度(1B)  |  发送方ID  |  发送方ID   |
 	+--------------------------------------+
@@ -423,7 +451,7 @@ func (msg *Message) Decode(r io.Reader) error {
 	+--------------------------------------+
 	|   Entry1长度(2B)   |     Entry1       |
 	+--------------------------------------+
-	|        ...        |       ...        |	// Entry列表
+	|        ...        |       ...        |	// Entry列表		// TODO: Entry 2B长度(65536B)似乎不够用
 	+--------------------------------------+
 	|   Entryi长度(2B)   |     Entryi       |
 	+--------------------------------------+
@@ -441,7 +469,7 @@ func (msg *Message) Decode(r io.Reader) error {
 	+--------------------------------------+
 
 	记消息长度(除)的预计算公式为 f(T), 则
-	f(Message) = 4 + 1 + 1 + 1 + 2*idlen + 1 + 1 + nEntry * (2 + f(Entry)) + nRequest * (2 + f(Request)) + 2 + siglen
+	f(Message) = 2 + 4 + 1 + 1 + 8 + 1 + 2*idlen + 1 + 1 + nEntry * (2 + f(Entry)) + nRequest * (2 + f(Request)) + 2 + siglen
 			   =
 
 */
@@ -450,10 +478,23 @@ func (msg *Message) Decode(r io.Reader) error {
 
 // Sign 生成签名
 func (msg *Message) Sign() error {
+	msg.Sig = []byte("signature")
 	return nil
 }
 
 // Verify 验证基础格式与签名
 func (msg *Message) Verify() error {
-	return nil
+	if bytes.Equal(msg.Sig, []byte("signature")) {
+		return nil
+	}
+	return errors.New("verify sig fail")
+}
+
+// String 字符串表示
+func (msg *Message) String() string {
+	b, err := json.Marshal(msg)
+	if err != nil {
+		return err.Error()
+	}
+	return string(b)
 }

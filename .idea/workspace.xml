@@ -2,20 +2,35 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="a308decb-1282-4354-b05f-723fd7fa09eb" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/implements/pot/errors.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/implements/pot/pot_loops_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/implements/pot/process_table_test.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/utils/log/log_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/defines/block.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/block.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/defines/entry.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/entry.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/peer_info_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/peer_info_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/defines/msg.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/msg.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/defines/msg_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/msg_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/defines/process.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/process.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/defines/request.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/request.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/request_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/request_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_actions.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_actions.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_handle_entry.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_handle_entry.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_handle_msg.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_handle_msg.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_handle_req.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_handle_req.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_loops.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_loops.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/implements/pot/pot_utils.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_utils.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/process_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/process_table.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/proof.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/proof.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requires/requires.go" beforeDir="false" afterPath="$PROJECT_DIR$/requires/requires.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/implements/pot/seeds.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/seeds.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/implements/pot/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/state.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lab/network.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/network.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/bnet/net.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/net.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/bnet/net_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/net_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/store.go" beforeDir="false" afterPath="$PROJECT_DIR$/test/store.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/log/log.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/log/log.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -72,66 +87,69 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Go Test.TestRequest in github.com/azd1997/blockchain-consensus/defines">
-    <configuration name="TestNet in github.com/azd1997/blockchain-consensus/modules/bnet" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Go Test.TestPot_loopCollectProcesses in github.com/azd1997/blockchain-consensus/implements/pot">
+    <configuration name="TestPot_loopCollectNeighbors in github.com/azd1997/blockchain-consensus/implements/pot" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="blockchain-consensus" />
-      <working_directory value="$PROJECT_DIR$/modules/bnet" />
+      <working_directory value="$PROJECT_DIR$/implements/pot" />
       <framework value="gotest" />
       <kind value="PACKAGE" />
-      <package value="github.com/azd1997/blockchain-consensus/modules/bnet" />
+      <package value="github.com/azd1997/blockchain-consensus/implements/pot" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestNet$" />
+      <pattern value="^TestPot_loopCollectNeighbors$" />
       <method v="2" />
     </configuration>
-    <configuration name="TestRequest in github.com/azd1997/blockchain-consensus/defines" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestPot_loopCollectNeighbors_FristSeed in github.com/azd1997/blockchain-consensus/implements/pot" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="blockchain-consensus" />
-      <working_directory value="$PROJECT_DIR$/defines" />
+      <working_directory value="$PROJECT_DIR$/implements/pot" />
       <framework value="gotest" />
       <kind value="PACKAGE" />
-      <package value="github.com/azd1997/blockchain-consensus/defines" />
+      <package value="github.com/azd1997/blockchain-consensus/implements/pot" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^TestRequest$" />
+      <pattern value="^TestPot_loopCollectNeighbors_FristSeed$" />
       <method v="2" />
     </configuration>
-    <configuration name="go test github.com/azd1997/blockchain-consensus/defines" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestPot_loopCollectNeighbors_Peer in github.com/azd1997/blockchain-consensus/implements/pot" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="blockchain-consensus" />
-      <working_directory value="$PROJECT_DIR$/defines" />
+      <working_directory value="$PROJECT_DIR$/implements/pot" />
       <framework value="gotest" />
       <kind value="PACKAGE" />
-      <package value="github.com/azd1997/blockchain-consensus/defines" />
+      <package value="github.com/azd1997/blockchain-consensus/implements/pot" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestPot_loopCollectNeighbors_Peer$" />
       <method v="2" />
     </configuration>
-    <configuration name="go test github.com/azd1997/blockchain-consensus/modules/bnet" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestPot_loopCollectNeighbors_Seed in github.com/azd1997/blockchain-consensus/implements/pot" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="blockchain-consensus" />
-      <working_directory value="$PROJECT_DIR$/modules/bnet" />
+      <working_directory value="$PROJECT_DIR$/implements/pot" />
       <framework value="gotest" />
       <kind value="PACKAGE" />
-      <package value="github.com/azd1997/blockchain-consensus/modules/bnet" />
+      <package value="github.com/azd1997/blockchain-consensus/implements/pot" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestPot_loopCollectNeighbors_Seed$" />
       <method v="2" />
     </configuration>
-    <configuration name="go test github.com/azd1997/blockchain-consensus/modules/peerinfo" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestPot_loopCollectProcesses in github.com/azd1997/blockchain-consensus/implements/pot" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="blockchain-consensus" />
-      <working_directory value="$PROJECT_DIR$/modules/peerinfo" />
+      <working_directory value="$PROJECT_DIR$/implements/pot" />
       <framework value="gotest" />
       <kind value="PACKAGE" />
-      <package value="github.com/azd1997/blockchain-consensus/modules/peerinfo" />
+      <package value="github.com/azd1997/blockchain-consensus/implements/pot" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
+      <pattern value="^TestPot_loopCollectProcesses$" />
       <method v="2" />
     </configuration>
     <recent_temporary>
       <list>
-        <item itemvalue="Go Test.TestRequest in github.com/azd1997/blockchain-consensus/defines" />
-        <item itemvalue="Go Test.TestNet in github.com/azd1997/blockchain-consensus/modules/bnet" />
-        <item itemvalue="Go Test.go test github.com/azd1997/blockchain-consensus/defines" />
-        <item itemvalue="Go Test.go test github.com/azd1997/blockchain-consensus/modules/bnet" />
-        <item itemvalue="Go Test.go test github.com/azd1997/blockchain-consensus/modules/peerinfo" />
+        <item itemvalue="Go Test.TestPot_loopCollectProcesses in github.com/azd1997/blockchain-consensus/implements/pot" />
+        <item itemvalue="Go Test.TestPot_loopCollectNeighbors_Peer in github.com/azd1997/blockchain-consensus/implements/pot" />
+        <item itemvalue="Go Test.TestPot_loopCollectNeighbors_Seed in github.com/azd1997/blockchain-consensus/implements/pot" />
+        <item itemvalue="Go Test.TestPot_loopCollectNeighbors_FristSeed in github.com/azd1997/blockchain-consensus/implements/pot" />
+        <item itemvalue="Go Test.TestPot_loopCollectNeighbors in github.com/azd1997/blockchain-consensus/implements/pot" />
       </list>
     </recent_temporary>
   </component>

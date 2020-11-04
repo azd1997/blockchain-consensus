@@ -7,7 +7,6 @@
 package peerinfo
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -66,8 +65,8 @@ type PeerInfoTable struct {
 	// 自动merge的间隔
 	mergeInterval time.Duration
 
-	inited bool	// 是否已初始化
-	done chan struct{}
+	inited bool // 是否已初始化
+	done   chan struct{}
 }
 
 // NewPeerInfoTable
@@ -99,6 +98,14 @@ func (pit *PeerInfoTable) Init() error {
 		return err
 	}
 
+	// 注册列族，若已存在则do nothing
+	if err := pit.kv.RegisterCF(pit.peersCF); err != nil {
+		return nil
+	}
+	if err := pit.kv.RegisterCF(pit.seedsCF); err != nil {
+		return nil
+	}
+
 	err = pit.load()
 	if err != nil {
 		return err
@@ -118,21 +125,28 @@ func (pit *PeerInfoTable) Inited() bool {
 // load 加载
 // 启动时，从pit.kv中加载所有节点(包括种子)信息到pit.peers
 func (pit *PeerInfoTable) load() error {
-	f := func(key, value []byte) error {
+
+	err := pit.kv.RangeCF(pit.seedsCF, func(key, value []byte) error {
 		pi := new(defines.PeerInfo)
-		err := pi.Decode(bytes.NewReader(value))
+		err := pi.Decode(value)
+		if err != nil {
+			return err
+		}
+		pit.seeds[string(key)] = pi
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	err = pit.kv.RangeCF(pit.peersCF, func(key, value []byte) error {
+		pi := new(defines.PeerInfo)
+		err := pi.Decode(value)
 		if err != nil {
 			return err
 		}
 		pit.peers[string(key)] = pi
 		return nil
-	}
-
-	err := pit.kv.RangeCF(pit.seedsCF, f)
-	if err != nil {
-		return err
-	}
-	err = pit.kv.RangeCF(pit.peersCF, f)
+	})
 	if err != nil {
 		return err
 	}
@@ -149,6 +163,34 @@ func (pit *PeerInfoTable) load() error {
 // merge 将dirty刷合并到peers去，并且先更新到kv中
 // peers代表的是与kv存储引擎中一致的数据
 func (pit *PeerInfoTable) merge() error {
+
+	// 1. 将seeds合并
+	// 由于seeds数量少，直接全量覆盖
+	err := pit.kv.RangeCF(pit.seedsCF, func(key, value []byte) error {
+		pi := new(defines.PeerInfo)
+		err := pi.Decode(value)
+		if err != nil {
+			return err
+		}
+		pit.seeds[string(key)] = pi
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	for id := range pit.seeds {
+		b, err := pit.seeds[id].Encode()
+		if err != nil {
+			return err
+		}
+		err = pit.kv.Set(pit.seedsCF, []byte(id), b)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 2. 将peers合并
+
 	// 将dirty合并到peers
 	pit.dirtyLock.RLock()
 	pit.peersLock.Lock()
@@ -217,6 +259,12 @@ func (pit *PeerInfoTable) mergeLoop() {
 
 // Get 按id查询
 func (pit *PeerInfoTable) Get(id string) (*defines.PeerInfo, error) {
+	// 首先看是否是seed
+	if v, ok := pit.seeds[id]; ok {
+		return v, nil
+	}
+
+	// 从从普通节点里找
 	pit.peersLock.RLock()
 	pi, ok1 := pit.peers[id]
 	pit.peersLock.RUnlock()
@@ -240,6 +288,14 @@ func (pit *PeerInfoTable) Get(id string) (*defines.PeerInfo, error) {
 // Set 添加或修改
 // 只写到dirty中
 func (pit *PeerInfoTable) Set(info *defines.PeerInfo) error {
+	// 如果是seed
+	if info.Duty == defines.PeerDuty_Seed {
+		pit.seeds[info.Id] = info
+		return nil
+	}
+
+	// 如果是普通节点
+
 	id := info.Id
 	// 不论dirty中对应键值对是否存在，都直接写dirty
 	pit.dirtyLock.Lock()
@@ -365,6 +421,12 @@ func (pit *PeerInfoTable) RangeSeeds(f func(peer *defines.PeerInfo) error) error
 		}
 	}
 	return firstErr
+}
+
+// IsSeed 判断id是否是seed节点
+func (pit *PeerInfoTable) IsSeed(id string) bool {
+	_, ok := pit.seeds[id]
+	return ok
 }
 
 ///////////////////// 节点信息加载函数 //////////////////////

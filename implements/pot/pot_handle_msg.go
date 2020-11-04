@@ -8,7 +8,6 @@ package pot
 
 import (
 	"errors"
-
 	"github.com/azd1997/blockchain-consensus/defines"
 )
 
@@ -65,14 +64,16 @@ func (p *Pot) handleMsgWhenInitGetNeighbors(msg *defines.Message) error {
 				count--
 				err := p.handleEntryNeighbor(msg.From, ent)
 				if err != nil {
-					p.Errorf("%s handle EntryType_Neighbor fail: %s\n", p.getState().String(), err)
+					p.Errorf("%s handle EntryType_Neighbor from (%s) fail: %s\n", p.getState().String(), msg.From, err)
+				} else {
+					p.Logf("%s handle EntryType_Neighbor from (%s) succ\n", p.getState().String(), msg.From)
 				}
 			default: // 其他类型则忽略
 				p.Errorf("%s can only handle EntryType_Neighbor\n", p.getState().String())
 			}
 		}
-		if count == 0 {		// 说明全是Neighbors
-			p.nWaitChan <- 1	// 通知收到一个节点回传了节点信息表
+		if count == 0 { // 说明全是Neighbors
+			p.nWaitChan <- 1 // 通知收到一个节点回传了节点信息表
 		}
 	case defines.MessageType_Req:
 		// 该阶段不能处理Req消息
@@ -92,21 +93,30 @@ func (p *Pot) handleMsgWhenInitGetProcesses(msg *defines.Message) error {
 
 	switch msg.Type {
 	case defines.MessageType_Data:
+		count := len(msg.Entries)
 		for _, ent := range msg.Entries {
 			switch ent.Type {
 			case defines.EntryType_Neighbor:
 				err := p.handleEntryNeighbor(msg.From, ent)
 				if err != nil {
-					p.Errorf("%s handle EntryType_Neighbor fail: %s\n", p.getState().String(), err)
+					p.Errorf("%s handle EntryType_Neighbor from (%s) fail: %s\n", p.getState().String(), msg.From, err)
+				} else {
+					p.Logf("%s handle EntryType_Neighbor from (%s) succ\n", p.getState().String(), msg.From)
 				}
 			case defines.EntryType_Process:
+				count--
 				err := p.handleEntryProcess(msg.From, ent)
 				if err != nil {
-					p.Errorf("%s handle EntryType_Progress fail: %s\n", p.getState().String(), err)
+					p.Errorf("%s handle EntryType_Process from (%s) fail: %s\n", p.getState().String(), msg.From, err)
+				} else {
+					p.Logf("%s handle EntryType_Process from (%s) succ\n", p.getState().String(), msg.From)
 				}
 			default: // 其他类型则忽略
 				p.Errorf("%s can only handle EntryType_Neighbor or EntryType_Process\n", p.getState().String())
 			}
+		}
+		if count == 0 {
+			p.nWaitChan <- 1
 		}
 	case defines.MessageType_Req:
 		// 该阶段不能处理Req消息
@@ -190,7 +200,7 @@ func (p *Pot) handleMsgWhenReadyCompete(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_Data:
 		// ReadyCompete状态下不允许接收区块和证明
-		for i:=0; i<len(msg.Entries); i++ {
+		for i := 0; i < len(msg.Entries); i++ {
 			ent := msg.Entries[i]
 			switch ent.Type {
 			case defines.EntryType_Block:
@@ -209,7 +219,7 @@ func (p *Pot) handleMsgWhenReadyCompete(msg *defines.Message) error {
 		if len(msg.Entries) > 0 || len(msg.Reqs) == 0 {
 			return errors.New("not a req msg")
 		}
-		for i:=0; i<len(msg.Reqs); i++ {
+		for i := 0; i < len(msg.Reqs); i++ {
 			req := msg.Reqs[i]
 			switch req.Type {
 			case defines.RequestType_Blocks:
@@ -286,7 +296,7 @@ func (p *Pot) handleMsgWhenCompeteOver(msg *defines.Message) error {
 	case defines.MessageType_None:
 		// 啥也不干
 	case defines.MessageType_Data:
-		for i:=0; i<len(msg.Entries); i++ {
+		for i := 0; i < len(msg.Entries); i++ {
 			ent := msg.Entries[i]
 			switch ent.Type {
 			case defines.EntryType_Block:
@@ -298,7 +308,7 @@ func (p *Pot) handleMsgWhenCompeteOver(msg *defines.Message) error {
 			}
 		}
 	case defines.MessageType_Req:
-		for i:=0; i<len(msg.Reqs); i++ {
+		for i := 0; i < len(msg.Reqs); i++ {
 			req := msg.Reqs[i]
 			switch req.Type {
 			case defines.RequestType_Blocks:
@@ -323,7 +333,7 @@ func (p *Pot) handleMsgWhenCompeteWinner(msg *defines.Message) error {
 	case defines.MessageType_None:
 		// 啥也不干
 	case defines.MessageType_Data:
-		for i:=0; i<len(msg.Entries); i++ {
+		for i := 0; i < len(msg.Entries); i++ {
 			ent := msg.Entries[i]
 			switch ent.Type {
 			case defines.EntryType_Block:
@@ -335,7 +345,7 @@ func (p *Pot) handleMsgWhenCompeteWinner(msg *defines.Message) error {
 			}
 		}
 	case defines.MessageType_Req:
-		for i:=0; i<len(msg.Reqs); i++ {
+		for i := 0; i < len(msg.Reqs); i++ {
 			req := msg.Reqs[i]
 			switch req.Type {
 			case defines.RequestType_Blocks:
@@ -361,7 +371,7 @@ func (p *Pot) handleMsgWhenCompeteLoser(msg *defines.Message) error {
 	case defines.MessageType_None:
 	case defines.MessageType_Data:
 		// 处理所有Entry
-		for i:=0; i<len(msg.Entries); i++ {
+		for i := 0; i < len(msg.Entries); i++ {
 			ent := msg.Entries[i]
 			switch ent.Type {
 			case defines.EntryType_NewBlock:
@@ -376,7 +386,7 @@ func (p *Pot) handleMsgWhenCompeteLoser(msg *defines.Message) error {
 			}
 		}
 	case defines.MessageType_Req:
-		for i:=0; i<len(msg.Reqs); i++ {
+		for i := 0; i < len(msg.Reqs); i++ {
 			req := msg.Reqs[i]
 			switch req.Type {
 			case defines.RequestType_Blocks:

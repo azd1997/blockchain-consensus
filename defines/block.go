@@ -16,14 +16,14 @@ import (
 
 // Block 区块
 type Block struct {
-	Index    uint64
-	Maker string
+	Index     uint64
+	Maker     string
 	Timestamp uint64
-	SelfHash []byte
-	PrevHash []byte
-	Merkle   []byte
-	Txs      [][]byte
-	Sig      []byte
+	SelfHash  []byte
+	PrevHash  []byte
+	Merkle    []byte
+	Txs       [][]byte
+	Sig       []byte
 }
 
 // Encode 编码

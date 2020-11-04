@@ -15,11 +15,11 @@ import (
 
 // Proof 证明
 type Proof struct {
-	Id string
+	Id        string
 	TxsNum    uint64 // 收集的交易数量
 	TxsMerkle []byte // 收集的所有交易组织成的merkle树的根
-	Base []byte	// 基于的区块的哈希
-	BaseIndex uint64	// 基于的区块的序号
+	Base      []byte // 基于的区块的哈希
+	BaseIndex uint64 // 基于的区块的序号
 }
 
 // Encode 编码
@@ -49,6 +49,6 @@ func (p *Proof) Match(block *defines.Block) bool {
 	return p.Id == block.Maker &&
 		p.TxsNum == uint64(len(block.Txs)) &&
 		bytes.Equal(p.TxsMerkle, block.Merkle) &&
-		p.BaseIndex == block.Index - 1 &&
+		p.BaseIndex == block.Index-1 &&
 		bytes.Equal(p.Base, block.PrevHash)
 }

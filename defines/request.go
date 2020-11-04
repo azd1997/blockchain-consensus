@@ -17,7 +17,7 @@ type RequestType uint8
 
 const (
 	RequestType_Blocks    RequestType = 0
-	RequestType_Neighbors RequestType = 1	// Data需要携带自身的节点信息
+	RequestType_Neighbors RequestType = 1 // Data需要携带自身的节点信息
 	RequestType_Processes RequestType = 2
 )
 
@@ -29,7 +29,7 @@ type Request struct {
 
 	// 根据index区间请求
 	IndexStart uint64
-	IndexCount uint64
+	IndexCount int64	// 正数代表正向获取，负数代表反方向获取
 
 	// 根据哈希请求
 	Hashes [][]byte
@@ -154,9 +154,6 @@ func (req *Request) Decode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if hashnum == 0 {
-		return nil
-	}
 	// hashlen
 	hashlen := uint32(0)
 	err = binary.Read(r, binary.BigEndian, &hashlen)
@@ -164,12 +161,14 @@ func (req *Request) Decode(r io.Reader) error {
 		return err
 	}
 	// Hashes
-	req.Hashes = make([][]byte, hashnum)
-	for i := uint32(0); i < hashnum; i++ {
-		req.Hashes[i] = make([]byte, hashlen)
-		err = binary.Read(r, binary.BigEndian, req.Hashes[i])
-		if err != nil {
-			return err
+	if hashnum > 0 && hashlen > 0 {
+		req.Hashes = make([][]byte, hashnum)
+		for i := uint32(0); i < hashnum; i++ {
+			req.Hashes[i] = make([]byte, hashlen)
+			err = binary.Read(r, binary.BigEndian, req.Hashes[i])
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -180,10 +179,12 @@ func (req *Request) Decode(r io.Reader) error {
 		return err
 	}
 	// Data
-	req.Data = make([]byte, datalen)
-	err = binary.Read(r, binary.BigEndian, req.Data)
-	if err != nil {
-		return err
+	if datalen > 0 {
+		req.Data = make([]byte, datalen)
+		err = binary.Read(r, binary.BigEndian, req.Data)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

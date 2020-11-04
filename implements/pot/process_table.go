@@ -22,6 +22,7 @@ import (
 // 2. proof结束，出区块/等区块
 // 3.
 
+//
 type pnode struct {
 
 }
@@ -38,22 +39,34 @@ type pnode struct {
 //	ids   ids    ids    ids
 
 type processTable struct {
+
+	id string
+
+	//counts map[uint64]map[string]map[string]*defines.Process	// <index, <hex_hash, <id, process> > >
+	maxIndex uint64		// 收到的最大的区块的索引，借助maxIndex和maxIndex-1可以得到latest/oldlatest
+
+	// processes 存的就是最新进度。process和proof会合并起来在
 	processes map[string]*defines.Process
-	latest map[string]bool
-	oldlatest map[string]bool
-	lock *sync.RWMutex
+	//latest    map[string]bool
+	//oldlatest map[string]bool
+	lock      *sync.RWMutex
 
-	total int	// 统计的总节点数
-	totalAlive int	// 进度在n或n-1的节点认为是在不断同步，其他可能是挂掉或刚起来，不算在alive内
+	//total      int // 统计的总节点数
+	//totalAlive int // 进度在n或n-1的节点认为是在不断同步，其他可能是挂掉或刚起来，不算在alive内
 
+	// 自己的进度是否存在空洞？空洞情况
+	// “不重叠区间” 按left升序
+	holes [][2]uint64	// 空洞，还欠缺的区块区间 [2]uint64{left, right}，[left, right]这个区间的区块还没有同步到
 }
 
 func newProcessTable() *processTable {
 	return &processTable{
+		//counts: map[uint64]map[string]map[string]*defines.Process{},
 		processes: make(map[string]*defines.Process),
-		latest:    make(map[string]bool),
-		oldlatest: make(map[string]bool),
+		//latest:    make(map[string]bool),
+		//oldlatest: make(map[string]bool),
 		lock:      new(sync.RWMutex),
+		holes: [][2]uint64{},
 	}
 }
 
@@ -62,30 +75,104 @@ func (pt *processTable) set(id string, process *defines.Process) {
 	pt.lock.Lock()
 	// 更新process
 	if pt.processes == nil || pt.processes[id] == nil ||
-			process == nil || pt.processes[id].Index >= process.Index {
+		process == nil || pt.processes[id].Index >= process.Index {
 		return
 	}
 	pt.processes[id] = process
-	// 是否要更新latest
 	pt.lock.Unlock()
 }
 
 // 查询某个节点的进度
 func (pt *processTable) get(id string) *defines.Process {
-
+	pt.lock.RLock()
+	defer pt.lock.RUnlock()
+	// 更新process
+	if pt.processes == nil || pt.processes[id] == nil {
+		return &defines.Process{}
+	} else {
+		return pt.processes[id]
+	}
 }
 
 // 随机返回n个最新进度的节点的id
 // 如果输入的n=0，则返回所有最新进度的节点id
 // 如果输入的n比总的最新进度的节点数大，那么返回所有
 func (pt *processTable) nLatestPeers(n int) []string {
-	var res []string
-
-	return res
+	pt.lock.RLock()
+	defer pt.lock.RUnlock()
+	c := len(pt.processes)
+	l := c	// 返回的数量
+	if n > 0 && n < c {
+		l = n
+	}
+	all := make([]string, 0, c)
+	for id := range pt.processes {
+		all = append(all, id)
+	}
+	return all[:l]
 }
 
 // 检查某个节点是否是最新进度
+// 注意：NoHole这项，通常不被使用到，因为非Ready状态的节点不能广播proof及process
 func (pt *processTable) isLatest(id string) bool {
+	pt.lock.RLock()
+	defer pt.lock.RUnlock()
+	p, ok := pt.processes[id]
+	if !ok {
+		return false
+	}
+	return p.Index == pt.maxIndex && p.NoHole	// < 则不是最新； 不可能大于
+}
 
-	return false
+// 判断自己是否准备好（所有区块都得到，并且紧跟最新进度）
+func (pt *processTable) isSelfReady() bool {
+	return pt.isLatest(pt.id) && len(pt.holes) == 0
+}
+
+// totalAlive 所有状况正常的节点数
+func (pt *processTable) totalAlive() int {
+	pt.lock.RLock()
+	defer pt.lock.RUnlock()
+	return len(pt.processes)
+}
+
+// 本机节点获得中间的区块，用以填补空缺 （fill hole）
+func (pt *processTable) fill(bIndex uint64) {
+	// 首先通过二分查找定位到bIndex **可能** 属于哪一个hole（“区间”）
+	mayIdx := binarySearch(pt.holes, bIndex)
+	if mayIdx >= 0 {	// 起码说明有意义
+		hole := pt.holes[mayIdx]
+		// [l, r]	bIndex可能在区间内或右
+		if hole[0] == hole[1] && bIndex <= hole[1] {	// 区间长度为1
+			pt.holes = append(pt.holes[:mayIdx], pt.holes[mayIdx+1:]...)
+			return
+		}
+		if bIndex == hole[0] {
+			pt.holes[mayIdx] = [2]uint64{hole[0]+1, hole[1]}
+		} else if bIndex == hole[1] {
+			pt.holes[mayIdx] = [2]uint64{hole[0], hole[1]-1}
+		} else if bIndex > hole[0] && bIndex < hole[1] {
+			pt.holes[mayIdx] = [2]uint64{hole[0], bIndex-1}
+			var holes [][2]uint64
+			holes = append(holes, pt.holes[:mayIdx+1]...)
+			holes = append(holes, [2]uint64{bIndex+1, hole[1]})
+			holes = append(holes, pt.holes[mayIdx+1:]...)
+			pt.holes = holes
+		}
+	}
+}
+
+// 找出所属区间的下标
+func binarySearch(holes [][2]uint64, target uint64) int {
+	l, r := 0, len(holes)-1
+	for l <= r {
+		mid := (l + r) / 2
+		if holes[mid][0] > target {		// l  t  mid   r
+			r = mid-1
+		} else {	// <= 		// l  mid t r
+			l = mid+1
+		}
+	}
+
+	return r
 }

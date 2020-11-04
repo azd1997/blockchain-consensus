@@ -55,6 +55,3 @@ func (tn *Network) SetMalicious(node string, yes bool) {
 func (tn *Network) SetRandomGenTx(node string, yes bool) {
 
 }
-
-
-

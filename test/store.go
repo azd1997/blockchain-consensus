@@ -7,13 +7,18 @@
 package test
 
 import (
-	"bytes"
 	"log"
 	"strings"
 
-	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/requires"
 )
+
+func NewStore() *Store {
+	return &Store{
+		Cfs: map[requires.CF]bool{},
+		Kvs: map[string]string{},
+	}
+}
 
 // 测试用的requires.Store实现
 type Store struct {
@@ -33,9 +38,8 @@ func (s *Store) Close() error {
 
 func (s *Store) Get(cf requires.CF, key []byte) ([]byte, error) {
 	k := string(cf[:]) + string(key)
-	v := new(defines.PeerInfo)
-	v.Decode(bytes.NewReader([]byte(s.Kvs[k])))
-	log.Printf("testStore Get: {key: %s, value: %s}\n", string(key), v.String())
+	v := s.Kvs[k]
+	log.Printf("testStore Get: {key: %s, value: %s}\n", string(key), v)
 	//time.Sleep(50 * time.Millisecond)
 	return []byte(s.Kvs[k]), nil
 }
@@ -43,9 +47,7 @@ func (s *Store) Get(cf requires.CF, key []byte) ([]byte, error) {
 func (s *Store) Set(cf requires.CF, key, value []byte) error {
 	k := string(cf[:]) + string(key)
 	s.Kvs[k] = string(value)
-	v := new(defines.PeerInfo)
-	v.Decode(bytes.NewReader(value))
-	log.Printf("testStore Set: {key: %s, value: %s}\n", string(key), v.String())
+	log.Printf("testStore Set: {key: %s, value: %s}\n", string(key), string(value))
 	//time.Sleep(300 * time.Millisecond)
 	return nil
 }
