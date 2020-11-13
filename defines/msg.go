@@ -17,6 +17,14 @@ import (
 	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
 )
 
+
+type MessageWithError struct {
+	Msg *Message
+	Err chan error
+}
+
+///////////////////////////////////////////////////////
+
 const (
 	MaxMessageLen             = 5 * 1024 * 1024 // 5MB
 	MessageMagicNumber uint16 = 0xbcef          // 消息魔数，快速确定消息起始位置，校验协议是否匹配

@@ -8,13 +8,11 @@ package pot
 
 import (
 	"errors"
-	"sync"
-	"time"
-
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/modules/peerinfo"
 	"github.com/azd1997/blockchain-consensus/requires"
 	"github.com/azd1997/blockchain-consensus/utils/log"
+	"sync"
 )
 
 const (
@@ -62,10 +60,9 @@ type Pot struct {
 	msgin  chan *defines.Message
 	msgout chan *defines.Message
 
-	clock *time.Timer // 滴答器，每次滴答时刻都需要根据当前的状态变量确定状态该如何变更
+	clock *Clock // 滴答器，每次滴答时刻都需要根据当前的状态变量确定状态该如何变更
 
-	// 节点信息表，传入的需要是已初始化好的
-	pit *peerinfo.PeerInfoTable
+
 
 	// proofs表可能会因为某些节点出现恶意行为而将其删除
 	proofs          map[string]*Proof // 收集的其他共识节点的证明进度
@@ -80,6 +77,8 @@ type Pot struct {
 
 	////////////////////////// 本地依赖 /////////////////////////
 
+	// 都是已经加载好的结构
+
 	// 交易池
 	// 1. 添加交易。交易的检验由交易池负责
 	// 2. 生成新区块
@@ -89,6 +88,9 @@ type Pot struct {
 	// 1. 添加区块，区块的校验由区块链负责
 	// 2. 查询区块
 	bc requires.BlockChain
+
+	// 节点信息表，传入的需要是已初始化好的
+	pit *peerinfo.PeerInfoTable
 
 	////////////////////////// 本地依赖 /////////////////////////
 
@@ -125,39 +127,6 @@ func New(opt *Option) (*Pot, error) {
 }
 
 //////////////////////////// 实现接口 ///////////////////////////
-
-// Init 初始化
-// 启动流程：
-//		1. 启动消息处理循环
-//		2. 先后请求Neighbors/Processes/Blocks，直至自身节点进入Ready状态
-// 		3. 在取到“最新区块”的时候，按照自身时间戳与最新区块的构建时间/索引，以及响应侧epoch，判断当前处于何种阶段，启动定时器
-//		4. 启动状态切换循环
-//
-// 种子节点启动和非种子节点启动有所不同:
-// 		1. 种子节点启动时需要向其他种子节点与所有一直在线的非种子节点获取信息
-//		2. 非种子节点启动时可以只通过种子节点来获取信息直至到达最新状态
-//
-// ** 整个网络启动时一定是先启动种子节点而后启动非种子节点；种子节点允许中间重启
-//
-func (p *Pot) Init() error {
-
-	// 启动消息处理循环
-	go p.msgHandleLoop()
-
-	// 阻塞直到追上最新进度
-	p.loopBeforeReady()
-
-	// 切换状态，准备进入状态切换循环
-	p.setState(StateType_ReadyCompete)
-
-	// 启动世界时钟
-	p.clock = time.NewTimer(time.Second)
-
-	// 启动状态切换循环
-	go p.stateMachineLoop()
-
-	return nil
-}
 
 // Close 关闭
 func (p *Pot) Close() error {

@@ -28,6 +28,9 @@ type BlockChain interface {
 
 	// 添加区块，不成功返回错误，如果暂时
 	AddBlock(b *defines.Block) error
+
+	// 创世界(创建区块链，构建0号区块)
+	CreateTheWorld() (genesis *defines.Block, err error)
 }
 
 // TransactionPool 交易池接口，其内部实现必须提供UBTXP,TBTXP,UCTXP这三类交易池

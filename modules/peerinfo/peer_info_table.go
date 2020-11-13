@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/azd1997/blockchain-consensus/defines"
@@ -50,7 +51,9 @@ type PeerInfoTable struct {
 	// seeds目前设定为固定的配置，运行期间不修改其数据
 	// 因此使用期间不加锁
 	seeds map[string]*defines.PeerInfo
+	nSeed uint32	// 必须使用atomic包的方法加载和变更
 
+	nPeer uint32	// 必须使用atomic包的方法加载和变更
 	peers     map[string]*defines.PeerInfo
 	dirty     map[string]*dirtyPeerInfo // 被修改的/新增的/删除的
 	peersLock *sync.RWMutex
@@ -133,6 +136,7 @@ func (pit *PeerInfoTable) load() error {
 			return err
 		}
 		pit.seeds[string(key)] = pi
+		pit.nSeedIncr()	// 计数加1
 		return nil
 	})
 	if err != nil {
@@ -145,6 +149,7 @@ func (pit *PeerInfoTable) load() error {
 			return err
 		}
 		pit.peers[string(key)] = pi
+		pit.nPeerIncr()	// 计数加1
 		return nil
 	})
 	if err != nil {
@@ -290,6 +295,7 @@ func (pit *PeerInfoTable) Get(id string) (*defines.PeerInfo, error) {
 func (pit *PeerInfoTable) Set(info *defines.PeerInfo) error {
 	// 如果是seed
 	if info.Duty == defines.PeerDuty_Seed {
+		pit.nSeedIncr()	// 计数加1
 		pit.seeds[info.Id] = info
 		return nil
 	}
@@ -297,6 +303,12 @@ func (pit *PeerInfoTable) Set(info *defines.PeerInfo) error {
 	// 如果是普通节点
 
 	id := info.Id
+
+	// 先查看id是否存在
+	if _, err := pit.Get(id); err == nil {
+		pit.nPeerIncr()		// 计数加1
+	}
+
 	// 不论dirty中对应键值对是否存在，都直接写dirty
 	pit.dirtyLock.Lock()
 	pit.dirty[id] = &dirtyPeerInfo{
@@ -325,6 +337,7 @@ func (pit *PeerInfoTable) Del(id string) error {
 	pit.dirtyLock.Lock()
 	pit.dirty[id] = &dirtyPeerInfo{op: OpDel}
 	pit.dirtyLock.Unlock()
+	pit.nPeerDecr()		// 计数减1
 
 	log.Printf("PeerInfoTable Det: {id:%s}\n", id)
 	return nil
@@ -427,6 +440,30 @@ func (pit *PeerInfoTable) RangeSeeds(f func(peer *defines.PeerInfo) error) error
 func (pit *PeerInfoTable) IsSeed(id string) bool {
 	_, ok := pit.seeds[id]
 	return ok
+}
+
+func (pit *PeerInfoTable) NSeed() int {
+	return int(atomic.LoadUint32(&pit.nSeed))
+}
+
+func (pit *PeerInfoTable) NPeer() int {
+	return int(atomic.LoadUint32(&pit.nPeer))
+}
+
+func (pit *PeerInfoTable) nPeerIncr() {
+	atomic.AddUint32(&pit.nPeer, 1)
+}
+
+func (pit *PeerInfoTable) nPeerDecr() {
+	atomic.AddUint32(&pit.nPeer, ^uint32(0))
+}
+
+func (pit *PeerInfoTable) nSeedIncr() {
+	atomic.AddUint32(&pit.nSeed, 1)
+}
+
+func (pit *PeerInfoTable) nSeedDecr() {
+	atomic.AddUint32(&pit.nSeed, ^uint32(0))
 }
 
 ///////////////////// 节点信息加载函数 //////////////////////

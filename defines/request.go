@@ -28,7 +28,7 @@ type Request struct {
 	Type RequestType
 
 	// 根据index区间请求
-	IndexStart uint64
+	IndexStart int64
 	IndexCount int64	// 正数代表正向获取，负数代表反方向获取
 
 	// 根据哈希请求

@@ -25,7 +25,7 @@ func (p *Pot) handleMsg(msg *defines.Message) error {
 		return p.handleMsgWhenInitGetNeighbors(msg)
 	case StateType_Init_GetProcesses:
 		return p.handleMsgWhenInitGetProcesses(msg)
-	case StateType_Init_GetBlocks:
+	case StateType_Init_GetLatestBlock:
 		return p.handleMsgWhenInitGetBlocks(msg)
 	case StateType_NotReady:
 		return p.handleMsgWhenNotReady(msg)

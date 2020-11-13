@@ -7,8 +7,9 @@
 package pot
 
 import (
-	"github.com/azd1997/blockchain-consensus/defines"
 	"time"
+
+	"github.com/azd1997/blockchain-consensus/defines"
 )
 
 // 状态切换循环
@@ -19,7 +20,7 @@ func (p *Pot) stateMachineLoop() {
 		case <-p.done:
 			p.Logf("stateMachineLoop: return ...\n")
 			return
-		case <-p.clock.C:
+		case <-p.clock.Tick:
 			// 根据当前状态来处理此滴答消息
 
 			state := p.getState()
@@ -126,6 +127,13 @@ func (p *Pot) loopBeforeReady() {
 			// 创建0号区块，初始化世界时钟
 			// TODO
 
+			//genesis, err := p.bc.CreateTheWorld()
+			//if err != nil {
+			//	p.Fatalf("create the world fail: %s\n", err)
+			//}
+			//// 构建时钟
+			//if p.
+
 			return
 		} else {	// 非种子节点
 			p.Fatal("cannot find any seed or peer to conn, exit...")
@@ -139,9 +147,9 @@ func (p *Pot) loopBeforeReady() {
 	//}
 
 	// 向种子节点请求所有共识节点的进度信息
-	p.setState(StateType_Init_GetProcesses)
-	p.Logf("loopBeforeReady: start collect processes\n")
-	p.loopCollectProcesses(p.duty != defines.PeerDuty_Seed, 0)
+	//p.setState(StateType_Init_GetProcesses)
+	//p.Logf("loopBeforeReady: start collect processes\n")
+	//p.loopCollectProcesses(p.duty != defines.PeerDuty_Seed, 0)
 
 	//if p.getState() != StateType_Init_GetBlocks {
 	//	p.Fatalf("error state(%s), should be %s\n",
@@ -149,9 +157,10 @@ func (p *Pot) loopBeforeReady() {
 	//}
 
 	// 向种子节点(或者共识节点的某一些)请求区块数据，直至追赶上最新进度
-	p.setState(StateType_Init_GetBlocks)
+	p.setState(StateType_Init_GetLatestBlock)
 	p.Logf("loopBeforeReady: start collect blocks until catch up with the latest progress\n")
-	p.loopCollectBlocks()
+	p.loopCollectLatestBlock()
+
 
 }
 
@@ -230,6 +239,7 @@ func (p *Pot) loopCollectNeighbors(toseeds bool, try int) error {
 	}
 }
 
+// TODO: 不需要了
 // 等待进度消息的循环
 // toseeds true则只向seeds请求；否则向seeds和peers请求
 //
@@ -291,19 +301,96 @@ func (p *Pot) loopCollectProcesses(toseeds bool, try int) {
 	}
 }
 
-// 循环收集区块，判断自身
-func (p *Pot) loopCollectBlocks() {
-	// 5. 广播请求区块消息
+//// 循环收集区块，判断自身
+//func (p *Pot) loopCollectBlocks() {
+//	// 5. 广播请求区块消息
+//
+//
+//	if err := p.broadcastRequestBlocks(true); err != nil {
+//		p.Errorf("loopCollectProcesses: broadcast request fail: %s\n", err)
+//		return
+//	} else {
+//		p.Logf("loopCollectProcesses: broadcast request succ, nWait: %d\n", p.nWait)
+//	}
+//	// 6. 循环直至追上最新进度
+//	for !p.latest() {
+//		time.Sleep(5 * time.Millisecond)
+//	}
+//}
 
-
-	if err := p.broadcastRequestBlocks(true); err != nil {
-		p.Errorf("loopCollectProcesses: broadcast request fail: %s\n", err)
+// 请求最新区块
+func (p *Pot) loopCollectLatestBlock() {
+	// 广播请求
+	if err := p.broadcastRequestLatestBlock(); err != nil {
+		p.Errorf("broadcastRequestLatestBlock: broadcast request fail: %s\n", err)
 		return
 	} else {
-		p.Logf("loopCollectProcesses: broadcast request succ, nWait: %d\n", p.nWait)
+		p.Logf("broadcastRequestLatestBlock: broadcast request succ, nWait: %d\n", p.nWait)
 	}
 	// 6. 循环直至追上最新进度
 	for !p.latest() {
 		time.Sleep(5 * time.Millisecond)
 	}
+}
+
+// 节点启动动作：收集邻居信息、收集最新区块信息。 不需要收集process
+
+
+
+
+///////////////////////////////////////////////////////////
+
+// TODO: 假设种子节点只有1台，后续再考虑种子节点的集群容灾
+
+// 种子节点的启动
+// 包括初始化启动与重启动两种
+// 1. 初始化启动： 启动、创造0号区块
+func (p *Pot) loopBeforeReady_Seed() {
+
+
+	// 向种子节点请求节点表信息
+	p.setState(StateType_Init_GetNeighbors)
+	p.Logf("loopBeforeReady: start collect neighbors\n")
+	err := p.loopCollectNeighbors(p.duty != defines.PeerDuty_Seed, 0)
+	// 种子节点则退出而后进入正常的消息处理循环即可，这里无需额外的逻辑
+	if err == ErrCannotConnectToSeedsWhenInit {
+		if p.duty == defines.PeerDuty_Seed {	// 种子节点
+			// 创建0号区块，初始化世界时钟
+			// TODO
+
+			//genesis, err := p.bc.CreateTheWorld()
+			//if err != nil {
+			//	p.Fatalf("create the world fail: %s\n", err)
+			//}
+			//// 构建时钟
+			//if p.
+
+			return
+		} else {	// 非种子节点
+			p.Fatal("cannot find any seed or peer to conn, exit...")
+		}
+	}
+
+
+	//if p.getState() != StateType_Init_GetProcesses {
+	//	p.Fatalf("error state(%s), should be %s\n",
+	//		p.getState().String(), StateType_Init_GetProcesses.String())
+	//}
+
+	// 向种子节点请求所有共识节点的进度信息
+	//p.setState(StateType_Init_GetProcesses)
+	//p.Logf("loopBeforeReady: start collect processes\n")
+	//p.loopCollectProcesses(p.duty != defines.PeerDuty_Seed, 0)
+
+	//if p.getState() != StateType_Init_GetBlocks {
+	//	p.Fatalf("error state(%s), should be %s\n",
+	//		p.getState().String(), StateType_Init_GetBlocks.String())
+	//}
+
+	// 向种子节点(或者共识节点的某一些)请求区块数据，直至追赶上最新进度
+	p.setState(StateType_Init_GetLatestBlock)
+	p.Logf("loopBeforeReady: start collect blocks until catch up with the latest progress\n")
+	p.loopCollectLatestBlock()
+
+
 }

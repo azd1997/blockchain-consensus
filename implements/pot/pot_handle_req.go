@@ -20,12 +20,12 @@ func (p *Pot) handleRequestBlocks(from string, req *defines.Request) error {
 
 	if req.IndexStart >= 0 && req.IndexCount == 0 && len(req.Hashes) == 0 { // 特殊情况：响应方应该将IndexStart之后所有区块返回
 		maxIndex := p.bc.GetMaxIndex()
-		if maxIndex < req.IndexStart {
+		if maxIndex < uint64(req.IndexStart) {
 			return errors.New("maxIndex < req.IndexStart")
 		}
-		blocks, err = p.bc.GetBlocksByRange(req.IndexStart, maxIndex)
+		blocks, err = p.bc.GetBlocksByRange(uint64(req.IndexStart), maxIndex)
 	} else if req.IndexCount > 0 { // 按Index请求
-		blocks, err = p.bc.GetBlocksByRange(req.IndexStart, uint64(req.IndexCount))	//TODO
+		blocks, err = p.bc.GetBlocksByRange(uint64(req.IndexStart), uint64(req.IndexCount)) //TODO
 	} else { // 按Hash请求
 		blocks, err = p.bc.GetBlocksByHashes(req.Hashes)
 	}

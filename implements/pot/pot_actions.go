@@ -226,7 +226,7 @@ func (p *Pot) broadcastRequestBlocks(random3 bool) error {
 	process := p.processes.get(p.id)
 	req := &defines.Request{
 		Type:       defines.RequestType_Blocks,
-		IndexStart: process.Index+1,	// 自己的进度+1
+		IndexStart: int64(process.Index+1),	// 自己的进度+1
 		IndexCount: 0,	// 0表示响应端要回复所有
 	}
 
@@ -259,6 +259,38 @@ func (p *Pot) broadcastRequestBlocks(random3 bool) error {
 			p.nWait++
 		}
 	}
+
+	return nil
+}
+
+// 向种子节点广播获取最新区块
+func (p *Pot) broadcastRequestLatestBlock() error {
+
+	p.nWait = 0		// 重置
+
+	req := &defines.Request{
+		Type:       defines.RequestType_Blocks,
+		IndexStart: -1,	// 请求对方的最新区块
+		IndexCount: 1,	// 最新的那个区块
+	}
+
+	p.pit.RangeSeeds(func(peer *defines.PeerInfo) error {
+		if peer.Id == p.id {return nil}
+		msg := &defines.Message{
+			Version: defines.CodeVersion,
+			Type:    defines.MessageType_Req,
+			From:    p.id,
+			To:      peer.Id,
+			Reqs:    []*defines.Request{req},
+		}
+		if err := p.signAndSendMsg(msg); err != nil {
+			p.Errorf("broadcastRequestBlocks: to %s fail: %s\n", peer.Id, err)
+		} else {
+			p.Logf("broadcastRequestBlocks: to %s\n", peer.Id)
+			p.nWait++
+		}
+		return nil
+	})
 
 	return nil
 }
