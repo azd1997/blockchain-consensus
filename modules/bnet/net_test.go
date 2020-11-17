@@ -29,7 +29,7 @@ func runPeer(t *testing.T, id string, addr string,
 		Addr:                addr,
 		Listener:            nil,
 		Dialer:              nil,
-		MsgIn:               make(chan *defines.Message, 10),
+		MsgIn:               make(chan *defines.MessageWithError, 10),
 		MsgOut:              make(chan *defines.Message, 10),
 		CustomInitFunc:      initF,
 		CustomMsgHandleFunc: msgHandleF,
@@ -70,7 +70,12 @@ func TestNet(t *testing.T) {
 			// peerA单纯地将msg回显
 			fmt.Printf("22222222222222222\n")
 			msg.From, msg.To = msg.To, msg.From
-			n.msgin <- msg
+			merr := &defines.MessageWithError{
+				Msg: msg,
+				Err: make(chan error),
+			}
+			n.msgin <- merr
+			fmt.Printf("merr: %v\n", <-merr.Err)
 
 			//n.Close()
 			return nil
@@ -82,14 +87,19 @@ func TestNet(t *testing.T) {
 	peerB := runPeer(t, "peerB", "127.0.0.1:8092",
 		func(n *Net) error { // 节点B作为主动的一方，需要主动与peerA发送消息
 			fmt.Printf("0000111100001111\n")
-			n.msgin <- &defines.Message{
-				Version: defines.CodeVersion,
-				Type:    defines.MessageType_Data,
-				From:    "peerB",
-				To:      "peerA",
-				Sig:     []byte("signature"),
-				Desc:    "test message",
+			merr := &defines.MessageWithError{
+				Msg: &defines.Message{
+					Version: defines.CodeVersion,
+					Type:    defines.MessageType_Data,
+					From:    "peerB",
+					To:      "peerA",
+					Sig:     []byte("signature"),
+					Desc:    "test message",
+				},
+				Err: make(chan error),
 			}
+			n.msgin <- merr
+			fmt.Printf("merr: %v\n", <-merr.Err)
 			fmt.Printf("111111111111111\n")
 			return nil
 		},

@@ -58,7 +58,7 @@ type Pot struct {
 	// 对外提供的消息通道
 	// 本机节点生成新交易时，也是构造成交易消息从msgin传入
 	msgin  chan *defines.Message
-	msgout chan *defines.Message
+	msgout chan *defines.MessageWithError
 
 	clock *Clock // 滴答器，每次滴答时刻都需要根据当前的状态变量确定状态该如何变更
 
@@ -106,7 +106,7 @@ func New(opt *Option) (*Pot, error) {
 		state:      StateType_Init_GetNeighbors, // 初始状态
 		processes:  newProcessTable(),
 		msgin:      make(chan *defines.Message, DefaultMsgChanLen),
-		msgout:     make(chan *defines.Message, DefaultMsgChanLen),
+		msgout:     make(chan *defines.MessageWithError, DefaultMsgChanLen),
 		proofs:     map[string]*Proof{},
 		proofsLock: new(sync.RWMutex),
 		done:       make(chan struct{}),
@@ -135,7 +135,7 @@ func (p *Pot) Close() error {
 }
 
 // OutMsgChan 对外提供消息通道，用于数据向外传输
-func (p *Pot) OutMsgChan() chan *defines.Message {
+func (p *Pot) OutMsgChan() chan *defines.MessageWithError {
 	return p.msgout
 }
 

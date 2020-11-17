@@ -402,38 +402,31 @@ func (pit *PeerInfoTable) Seeds() map[string]*defines.PeerInfo {
 }
 
 // RangePeers 对pit当前记录的所有peers执行某项操作
-func (pit *PeerInfoTable) RangePeers(f func(peer *defines.PeerInfo) error) error {
-	var firstErr, err error
+func (pit *PeerInfoTable) RangePeers(f func(peer *defines.PeerInfo) error) (
+								total int, errs map[string]error) {
+	errs = make(map[string]error)
 	peers := pit.Peers()
+	total = len(peers)
 	for _, peer := range peers {
 		peer := peer // 复制一份
-		err = f(peer)
-		if err != nil {
-			if firstErr != nil {
-				continue
-			} else {
-				firstErr = err
-			}
+		if err := f(peer); err != nil {
+			errs[peer.Id] = err
 		}
 	}
-	return firstErr
+	return total, errs
 }
 
 // RangeSeeds 对pit.seeds执行某项操作
-func (pit *PeerInfoTable) RangeSeeds(f func(peer *defines.PeerInfo) error) error {
-	var firstErr, err error
+func (pit *PeerInfoTable) RangeSeeds(f func(peer *defines.PeerInfo) error) (
+									total int, errs map[string]error) {
+	errs = make(map[string]error)
 	for _, seed := range pit.seeds {
 		seed := seed // 复制一份
-		err = f(seed)
-		if err != nil {
-			if firstErr != nil {
-				continue
-			} else {
-				firstErr = err
-			}
+		if err := f(seed); err != nil {
+			errs[seed.Id] = err
 		}
 	}
-	return firstErr
+	return pit.NSeed(), errs
 }
 
 // IsSeed 判断id是否是seed节点

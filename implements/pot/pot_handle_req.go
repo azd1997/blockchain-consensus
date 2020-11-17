@@ -24,6 +24,13 @@ func (p *Pot) handleRequestBlocks(from string, req *defines.Request) error {
 			return errors.New("maxIndex < req.IndexStart")
 		}
 		blocks, err = p.bc.GetBlocksByRange(uint64(req.IndexStart), maxIndex)
+	} else if req.IndexStart == -1 {	// start为-1，代表反向获取区块，例如start=-1,count=1表示把最新区块返回
+		maxIndex := p.bc.GetMaxIndex()
+		start := uint64(0)
+		if maxIndex + 1 > uint64(req.IndexCount) {
+			start = maxIndex - uint64(req.IndexCount) + 1
+		}
+		blocks, err = p.bc.GetBlocksByRange(start, maxIndex)
 	} else if req.IndexCount > 0 { // 按Index请求
 		blocks, err = p.bc.GetBlocksByRange(uint64(req.IndexStart), uint64(req.IndexCount)) //TODO
 	} else { // 按Hash请求

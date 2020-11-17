@@ -60,7 +60,7 @@ type Option struct {
 	/*
 		MsgIn MsgOut 用于将Net独立运行，且仅负责网络传输，逻辑处理由其他模块使用MsgIn MsgOut
 	*/
-	MsgIn  chan *defines.Message
+	MsgIn  chan *defines.MessageWithError
 	MsgOut chan *defines.Message
 
 	/*
@@ -120,7 +120,7 @@ type Net struct {
 	*/
 
 	// 消息读入chan
-	msgin chan *defines.Message
+	msgin chan *defines.MessageWithError
 	// 消息传出chan
 	msgout chan *defines.Message
 
@@ -410,20 +410,26 @@ func (n *Net) msgHandleLoop() {
 // msgSendLoop 发送循环
 // 不断读msgin的消息，然后发送出去
 func (n *Net) msgSendLoop() {
-	var err error
-
 	for {
 		select {
 		case <-n.done:
 			n.Logf("msgSendLoop: returned...\n")
 			return
 		case msg := <-n.msgin:
-			n.Logf("msgSendLoop: recv msg(%v) from local\n", msg)
-			err = n.send(msg.To, msg)
-			if err != nil {
+			// 检查
+			if err := msg.Check(); err != nil {
+				n.Errorf("msgSendLoop: recv invalid msg(%v): %s\n", msg, err)
+				continue
+			} else {
+				n.Logf("msgSendLoop: recv msg(%v) from local\n", msg)
+			}
+			// 发送
+			if err := n.send(msg.Msg.To, msg.Msg); err != nil {
 				n.Errorf("msgSendLoop: send msg(%v) fail: %s\n", msg, err)
+				msg.Err <- err	// 回传发送时错误信息
 			} else {
 				n.Logf("msgSendLoop: send msg(%v) succ\n", msg)
+				msg.Err <- nil
 			}
 		}
 	}

@@ -23,6 +23,19 @@ type MessageWithError struct {
 	Err chan error
 }
 
+func (msg *MessageWithError) Check() error {
+	if msg == nil {
+		return errors.New("nil MessageWithError")
+	}
+	if err := msg.Msg.Check(); err != nil {
+		return err
+	}
+	if msg.Err == nil {
+		return errors.New("nil Err channel")
+	}
+	return nil
+}
+
 ///////////////////////////////////////////////////////
 
 const (
@@ -44,6 +57,7 @@ type Message struct {
 	Version Version
 	Type    MessageType
 
+	// 区块索引从1开始，0表示本地还没有区块
 	Epoch uint64 // 纪元，指当前是基于哪一个区块的创建时间基准 从数量上等同于最新区块index
 
 	From string

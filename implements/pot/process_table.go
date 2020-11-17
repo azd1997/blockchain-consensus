@@ -129,6 +129,11 @@ func (pt *processTable) isSelfReady() bool {
 	return pt.isLatest(pt.id) && len(pt.holes) == 0
 }
 
+// 查询当前最新区块
+func (pt *processTable) latest() {
+
+}
+
 // totalAlive 所有状况正常的节点数
 func (pt *processTable) totalAlive() int {
 	pt.lock.RLock()

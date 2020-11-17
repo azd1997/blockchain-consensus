@@ -2,20 +2,18 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="a308decb-1282-4354-b05f-723fd7fa09eb" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/implements/pot/clock.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/implements/pot/clock_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/implements/pot/collection_pool.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/implements/pot/pot_init.go" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/implements/pot/undecided_block_table.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/request.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/request.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/consensus.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/defines/msg.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/msg.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_actions.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_actions.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot_handle_msg.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_handle_msg.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_handle_req.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_handle_req.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot_loops.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_loops.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/state.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/state.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/implements/pot/pot_init.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_init.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/implements/pot/process_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/process_table.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/bnet/net.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/net.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/modules/bnet/net_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/net_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requires/requires.go" beforeDir="false" afterPath="$PROJECT_DIR$/requires/requires.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -72,7 +70,7 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Go Test.TestClock_StartCase2 in github.com/azd1997/blockchain-consensus/implements/pot">
+  <component name="RunManager" selected="Go Test.TestNet in github.com/azd1997/blockchain-consensus/modules/bnet">
     <configuration name="TestClock in github.com/azd1997/blockchain-consensus/implements/pot" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="blockchain-consensus" />
       <working_directory value="$PROJECT_DIR$/implements/pot" />
@@ -117,24 +115,24 @@
       <pattern value="^TestClock_StartCase2$" />
       <method v="2" />
     </configuration>
-    <configuration name="Test_processTable_fill in github.com/azd1997/blockchain-consensus/implements/pot" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+    <configuration name="TestNet in github.com/azd1997/blockchain-consensus/modules/bnet" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
       <module name="blockchain-consensus" />
-      <working_directory value="$PROJECT_DIR$/implements/pot" />
+      <working_directory value="$PROJECT_DIR$/modules/bnet" />
       <framework value="gotest" />
       <kind value="PACKAGE" />
-      <package value="github.com/azd1997/blockchain-consensus/implements/pot" />
+      <package value="github.com/azd1997/blockchain-consensus/modules/bnet" />
       <directory value="$PROJECT_DIR$/" />
       <filePath value="$PROJECT_DIR$/" />
-      <pattern value="^Test_processTable_fill$" />
+      <pattern value="^TestNet$" />
       <method v="2" />
     </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Go Test.TestNet in github.com/azd1997/blockchain-consensus/modules/bnet" />
         <item itemvalue="Go Test.TestClock_StartCase2 in github.com/azd1997/blockchain-consensus/implements/pot" />
         <item itemvalue="Go Test.TestClock_StartCase1 in github.com/azd1997/blockchain-consensus/implements/pot" />
         <item itemvalue="Go Test.TestClock_NormalCase in github.com/azd1997/blockchain-consensus/implements/pot" />
         <item itemvalue="Go Test.TestClock in github.com/azd1997/blockchain-consensus/implements/pot" />
-        <item itemvalue="Go Test.Test_processTable_fill in github.com/azd1997/blockchain-consensus/implements/pot" />
       </list>
     </recent_temporary>
   </component>

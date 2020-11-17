@@ -9,14 +9,22 @@ package pot
 import (
 	"errors"
 	"github.com/azd1997/blockchain-consensus/defines"
+	"time"
 )
 
 // send指向网络中（或者说外部依赖的网络模块）发送消息。 注意本地消息不要通过该方法使用
 // 这个发送消息可以是单播也可以是多播，具体看
-func (p *Pot) send(msg *defines.Message) {
-	p.msgout <- msg
+// 注意：send可能发生较长时间阻塞，调用时使用go send()
+func (p *Pot) send(msg *defines.Message) error {
+	merr := &defines.MessageWithError{
+		Msg: msg,
+		Err: make(chan error),
+	}
+	p.msgout <- merr
+	return <- merr.Err
 }
 
+// 酌情使用 go signAndSendMsg()
 func (p *Pot) signAndSendMsg(msg *defines.Message) error {
 	if msg == nil {
 		return errors.New("nil msg")
@@ -26,8 +34,7 @@ func (p *Pot) signAndSendMsg(msg *defines.Message) error {
 		return err
 	}
 
-	p.send(msg)
-	return nil
+	return p.send(msg)
 }
 
 //// broadcast
@@ -293,4 +300,40 @@ func (p *Pot) broadcastRequestLatestBlock() error {
 	})
 
 	return nil
+}
+
+// wait() 函数用于等待邻居们的某一类消息回应
+func (p *Pot) wait() error {
+	timeoutD := 1 * time.Second
+	timeout := time.NewTimer(timeoutD)
+	if p.nWaitChan == nil {
+		p.nWaitChan = make(chan int)
+	}
+
+	cnt := 0
+	for {
+		select {
+		case <-p.done:
+			p.Logf("wait: done and return\n")
+			return nil
+		case <-p.nWaitChan:
+			p.nWait--
+			cnt++
+			p.Logf("wait: nWait--\n")
+			// 等待结束
+			if p.nWait == 0 {
+				p.Logf("wait: wait finish and return\n")
+				return nil
+			}
+		case <-timeout.C:
+			// 超时需要判断两种情况：
+			if cnt == 0 {	// 一个回复都没收到
+				p.Logf("wait: timeout, no response received\n")
+				return errors.New("wait timeout and no response received")
+			} else {
+				p.Logf("wait: timeout, %d responses received, return\n", cnt)
+				return nil
+			}
+		}
+	}
 }
