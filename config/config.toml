@@ -1,0 +1,48 @@
+# 节点配置文件. 尽管支持热重载(运行时配置)和热更新(配置文件内容)，但不允许使用热重载，可以使用热更新
+
+# 账户配置(必须), 不允许热重载
+[account]
+# 可空，空则重新创建账户，并回写至此处；非空则会校验id是否可用
+id = "id1111"
+# 不可为空。 none/peer/seed
+duty = "seed"
+
+# 共识配置(必须), 不允许热重载
+[consensus]
+# 共识协议，具体配置见pot
+type = "pot"
+
+[pot]
+tick_ms = 500
+
+[pow]
+
+[raft]
+
+# 存储配置(必须)
+[store]
+# 存储引擎, 目前只考虑badger这类kv存储，其他关系型存储需要再封装一次使之看上去是kv操作
+engine = "badger"
+# 数据库地址或连接信息
+database = "./data"
+
+# 网络配置(必须)
+[bnet]
+# 网络协议。 btcp指默认的基于tcp的协议
+protocol = "btcp"
+# 本机的监听地址
+addr = "127.0.0.1:8099"
+
+# peer-info-table 节点信息表配置，该处配置会与kv存储中配置的数据进行合并，并且在重复时以该处为准
+# 节点启动过程中会信任该配置表中的节点，并向其请求数据
+# (seed和peer由于其特殊性，不会信任自己指定的部分peer，这会危害整个共识网络的安全; duty为none的节点可以自行指定并且信任)
+
+# seeds信息对， id-addr
+[seeds]
+"seed1" = "seed1-addr"
+"seed2" = "seed2-addr"
+
+# peers信息对， id-addr.  用于手动补充可信任的节点信息
+[peers]
+"peer1" = "peer1-addr"
+"peer2" = "peer2-addr"

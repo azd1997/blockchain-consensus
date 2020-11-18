@@ -63,11 +63,11 @@ func Seeds() map[string]*defines.PeerInfo {
 }
 
 // RangePeers 对pit当前记录的所有peers执行某项操作
-func RangePeers(f func(peer *defines.PeerInfo) error) error {
+func RangePeers(f func(peer *defines.PeerInfo) error) (total int, errs map[string]error) {
 	return pit.RangePeers(f)
 }
 
 // RangeSeeds 对pit.seeds执行某项操作
-func RangeSeeds(f func(peer *defines.PeerInfo) error) error {
+func RangeSeeds(f func(peer *defines.PeerInfo) error) (total int, errs map[string]error) {
 	return pit.RangeSeeds(f)
 }

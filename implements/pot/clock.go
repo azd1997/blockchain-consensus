@@ -96,6 +96,7 @@ func StartClock(baseBlock *defines.Block) *Clock {
 		done:    make(chan struct{}),
 		trigger: make(chan uint64),
 		Tick:    make(chan Moment),
+		epoch:baseBlock.Index,
 	}
 	go c.loop()
 	if err := c.Trigger(baseBlock); err != nil {

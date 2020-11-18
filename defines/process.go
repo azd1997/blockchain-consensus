@@ -15,7 +15,7 @@ import (
 
 // Process 进度
 type Process struct {
-	Index       uint64
+	Index       int64
 	Hash        []byte
 	LatestMaker string
 	Id          string // 哪个节点的Process

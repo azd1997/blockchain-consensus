@@ -339,7 +339,7 @@ func (pit *PeerInfoTable) Del(id string) error {
 	pit.dirtyLock.Unlock()
 	pit.nPeerDecr()		// 计数减1
 
-	log.Printf("PeerInfoTable Det: {id:%s}\n", id)
+	log.Printf("PeerInfoTable Del: {id:%s}\n", id)
 	return nil
 }
 
@@ -404,6 +404,11 @@ func (pit *PeerInfoTable) Seeds() map[string]*defines.PeerInfo {
 // RangePeers 对pit当前记录的所有peers执行某项操作
 func (pit *PeerInfoTable) RangePeers(f func(peer *defines.PeerInfo) error) (
 								total int, errs map[string]error) {
+
+	if f == nil {
+		log.Fatalf("PeerInfoTable RangePeers fail: nil func\n")
+	}
+
 	errs = make(map[string]error)
 	peers := pit.Peers()
 	total = len(peers)
@@ -419,6 +424,11 @@ func (pit *PeerInfoTable) RangePeers(f func(peer *defines.PeerInfo) error) (
 // RangeSeeds 对pit.seeds执行某项操作
 func (pit *PeerInfoTable) RangeSeeds(f func(peer *defines.PeerInfo) error) (
 									total int, errs map[string]error) {
+
+	if f == nil {
+		log.Fatalf("PeerInfoTable RangeSeeds fail: nil func\n")
+	}
+
 	errs = make(map[string]error)
 	for _, seed := range pit.seeds {
 		seed := seed // 复制一份

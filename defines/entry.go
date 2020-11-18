@@ -26,7 +26,7 @@ const (
 
 // Entry 条目
 type Entry struct {
-	BaseIndex uint64 // 当前区块编号（高度），相当于任期
+	BaseIndex int64 // 当前区块编号（高度），相当于任期
 	Base      []byte // 当前消息构建时所基于的区块的Hash，当启用严格检查时，该项应被设置
 
 	Type EntryType // 指示Entry内存放的内容

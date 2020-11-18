@@ -22,7 +22,7 @@ import (
 // BlockChain 区块链接口，包括内存存储及持久化相关的内容，逻辑上是一条哈希链式结构
 type BlockChain interface {
 	GetMaxIndex() uint64
-	GetBlocksByRange(start, count uint64) ([]*defines.Block, error)
+	GetBlocksByRange(start, count int64) ([]*defines.Block, error)
 	GetBlocksByHashes(hashes [][]byte) ([]*defines.Block, error)
 	GetBlockByHash(hash []byte) (*defines.Block, error)
 

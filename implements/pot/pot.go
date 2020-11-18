@@ -43,7 +43,7 @@ type Pot struct {
 
 	// epoch等效于网络中最新区块索引
 	// 节点启动时必须Ready后判断当前处于哪一epoch
-	epoch uint64
+	epoch int64
 
 	state StateType // 状态状态
 
@@ -62,14 +62,18 @@ type Pot struct {
 
 	clock *Clock // 滴答器，每次滴答时刻都需要根据当前的状态变量确定状态该如何变更
 
-
+	// 用于启动时
+	potStart chan Moment
 
 	// proofs表可能会因为某些节点出现恶意行为而将其删除
-	proofs          map[string]*Proof // 收集的其他共识节点的证明进度
-	proofsLock      *sync.RWMutex
-	winner          string
+	//proofs          map[string]*Proof // 收集的其他共识节点的证明进度
+	//proofsLock      *sync.RWMutex
+	//winner          string
+	proofs *proofTable
 	maybeNewBlock   *defines.Block
 	waitingNewBlock *defines.Block // 等待的新区块，没等到就一直是nil
+
+	udbt *undecidedBlockTable
 
 	// 区块缓存的事交给Blockchain去做，这里不管
 	//blocksCache map[string]*defines.Block // 同步到本机节点的区块，但尚未排好序的。也就是序列化没有接着本地最高区块后边的
@@ -96,6 +100,9 @@ type Pot struct {
 
 	*log.Logger
 	done chan struct{}
+
+
+	///////////////////////// seeds peers ////////////////////
 }
 
 // New 新建Pot
@@ -109,6 +116,7 @@ func New(opt *Option) (*Pot, error) {
 		msgout:     make(chan *defines.MessageWithError, DefaultMsgChanLen),
 		proofs:     map[string]*Proof{},
 		proofsLock: new(sync.RWMutex),
+		udbt:&undecidedBlockTable{table: map[string]*undecidedBlock{}},
 		done:       make(chan struct{}),
 		Logger:     log.NewLogger(opt.LogDest, Module_Css, opt.Id),
 	}
@@ -122,6 +130,8 @@ func New(opt *Option) (*Pot, error) {
 			return nil, errors.New("PeerInfoTable should be inited")
 		}
 	}
+
+
 
 	return p, nil
 }

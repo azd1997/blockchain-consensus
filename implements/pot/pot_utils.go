@@ -77,11 +77,18 @@ func (p *Pot) latest() bool {
 }
 
 // Epoch 查看当前处于哪一个纪元
-func (p *Pot) Epoch() uint64 {
+func (p *Pot) Epoch() int64 {
 	return p.epoch
 }
 
 // NextEpoch 新纪元开启
 func (p *Pot) NextEpoch() {
 	p.epoch++
+}
+
+func bool2int(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }

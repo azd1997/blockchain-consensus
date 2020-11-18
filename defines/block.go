@@ -16,9 +16,9 @@ import (
 
 // Block 区块
 type Block struct {
-	Index     uint64
+	Index     int64
 	Maker     string
-	Timestamp uint64
+	Timestamp int64
 	SelfHash  []byte
 	PrevHash  []byte
 	Merkle    []byte
