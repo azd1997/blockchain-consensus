@@ -24,10 +24,13 @@ func (m Moment) String() string {
 	return fmt.Sprintf("%s %s\n", m.Type.String(), m.Time.Format(time.RFC3339Nano))
 }
 
+// MomentType 时刻
 type MomentType uint8
 
 const (
+	// MomentType_PotStart 竞争开始时刻
 	MomentType_PotStart MomentType = 0
+	// MomentType_PotOver 竞争结束时刻
 	MomentType_PotOver MomentType = 1
 )
 
@@ -62,11 +65,11 @@ func (mt MomentType) String() string {
 // 构造区块消耗的时间也不容忽视且不相同，所以为了尽量保证所有节点时间上的一致
 // 每次都要用新区块来矫正时间
 type Clock struct {
-	t *time.Timer
-	done chan struct{}
-	trigger chan uint64	// unixnano timestamp
-	Tick chan Moment	// 对外的tick
-	epoch uint64
+	t       *time.Timer
+	done    chan struct{}
+	trigger chan int64  // unixnano timestamp
+	Tick    chan Moment // 对外的tick
+	epoch   int64
 }
 
 // 接收到网络中最新的区块后，以该区块为起始驱动时钟运行
@@ -87,16 +90,16 @@ type Clock struct {
 //	return c
 //}
 
-// 接收到网络中最新的区块后，以该区块为起始驱动时钟运行
+// StartClock 接收到网络中最新的区块后，以该区块为起始驱动时钟运行
 func StartClock(baseBlock *defines.Block) *Clock {
 	timer := time.NewTimer(0)
 	<-timer.C
 	c := &Clock{
-		t:timer,
+		t:       timer,
 		done:    make(chan struct{}),
-		trigger: make(chan uint64),
+		trigger: make(chan int64),
 		Tick:    make(chan Moment),
-		epoch:baseBlock.Index,
+		epoch:   baseBlock.Index,
 	}
 	go c.loop()
 	if err := c.Trigger(baseBlock); err != nil {
@@ -121,13 +124,15 @@ func (c *Clock) Trigger(b *defines.Block) error {
 	//	c.trigger <- b.Timestamp
 	//}
 
-	if b.Timestamp >= uint64(time.Now().UnixNano()) {
+	if b.Timestamp >= time.Now().UnixNano() {
 		return errors.New("fatal block timestamp")
 	}
 	c.trigger <- b.Timestamp
 	return nil
 }
 
+// loop 时钟运转循环
+// 每确定一个新区块，需要驱动出两个时刻信号(PotOver(n) PotStart(n+1))
 func (c *Clock) loop() {
 
 	unit := int64(TickMs * time.Millisecond)
@@ -138,8 +143,8 @@ func (c *Clock) loop() {
 		case <-c.done:
 			return
 		case bt := <-c.trigger:
-			delta := divisor - (time.Now().UnixNano() - int64(bt)) % divisor
-			fmt.Printf("delta: %d\n", delta / 1e6)
+			delta := divisor - (time.Now().UnixNano()-int64(bt))%divisor
+			fmt.Printf("delta: %d\n", delta/1e6)
 			//fmt.Println("now: ", time.Now())
 			var phase1, phase2 time.Duration
 			if delta < unit {
@@ -161,7 +166,7 @@ func (c *Clock) loop() {
 				} // 对外传递1次Tick
 				//fmt.Println("4444", time.Now())
 			} else {
-				phase1 = time.Duration(delta-unit)
+				phase1 = time.Duration(delta - unit)
 				c.t.Reset(phase1)
 				c.Tick <- Moment{
 					Type: MomentType_PotStart,
@@ -172,6 +177,7 @@ func (c *Clock) loop() {
 	}
 }
 
+// Close 关闭时钟
 func (c *Clock) Close() {
 	close(c.done)
 	c.t.Stop()

@@ -8,5 +8,5 @@ package pot
 
 import "errors"
 
-
+// ErrCannotConnectToSeedsWhenInit 无法联通种子节点
 var ErrCannotConnectToSeedsWhenInit = errors.New("cannot connect to seeds when init")

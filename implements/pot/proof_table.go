@@ -11,17 +11,19 @@ import (
 	"sync"
 )
 
+// 证明表
 type proofTable struct {
-	baseIndex int64	// 基于哪个区块开始的竞争
-	base []byte		//
-	table map[string]*Proof	// <id, *Proof>
-	sync.RWMutex	// 保护table
-	winner *Proof	// 胜者
+	baseIndex    int64             // 基于哪个区块开始的竞争
+	base         []byte            //
+	table        map[string]*Proof // <id, *Proof>
+	sync.RWMutex                   // 保护table
+	winner       *Proof            // 胜者
 }
 
+// Add 添加
 func (proofs *proofTable) Add(p *Proof) {
 	if p.BaseIndex != proofs.baseIndex || !bytes.Equal(p.Base, proofs.base) {
-		return 		// TODO: 是否返回错误，让上层回复来信方？
+		return // TODO: 是否返回错误，让上层回复来信方？
 	}
 
 	proofs.Lock()
@@ -38,12 +40,12 @@ func (proofs *proofTable) Winner() *Proof {
 	return proofs.winner
 }
 
-// Reset
+// Reset 重置
 func (proofs *proofTable) Reset() {
 	if proofs.winner == nil {
-		return 	// 重置失败
+		return // 重置失败
 	}
-	proofs.baseIndex = proofs.winner.BaseIndex+1
+	proofs.baseIndex = proofs.winner.BaseIndex + 1
 	proofs.base = proofs.winner.BlockHash
 	proofs.winner = nil
 	proofs.Lock()
@@ -51,11 +53,11 @@ func (proofs *proofTable) Reset() {
 	proofs.Unlock()
 }
 
-// 使用最新的区块去创建证明表
+// newProofTable 使用最新的区块去创建证明表
 func newProofTable(latestBlockIndex int64, latestBlockHash []byte) *proofTable {
 	return &proofTable{
 		baseIndex: latestBlockIndex,
 		base:      latestBlockHash,
-		table: map[string]*Proof{},
+		table:     map[string]*Proof{},
 	}
 }

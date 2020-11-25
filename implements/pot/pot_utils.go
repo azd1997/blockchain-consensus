@@ -34,21 +34,21 @@ func (p *Pot) setState(newState StateType) {
 //	p.processesLock.Unlock()
 //}
 
-// 获取某个id的proof
-func (p *Pot) getProof(id string) Proof {
-	var proof Proof
-	p.proofsLock.RLock()
-	proof = *(p.proofs[id])
-	p.proofsLock.RUnlock()
-	return proof
-}
+// // 获取某个id的proof
+// func (p *Pot) getProof(id string) Proof {
+// 	var proof Proof
+// 	p.proofsLock.RLock()
+// 	proof = *(p.proofs[id])
+// 	p.proofsLock.RUnlock()
+// 	return proof
+// }
 
-// 设置某个id的proof
-func (p *Pot) setProof(id string, proof Proof) {
-	p.proofsLock.Lock()
-	p.proofs[id] = &proof
-	p.proofsLock.Unlock()
-}
+// // 设置某个id的proof
+// func (p *Pot) setProof(id string, proof Proof) {
+// 	p.proofsLock.Lock()
+// 	p.proofs[id] = &proof
+// 	p.proofsLock.Unlock()
+// }
 
 //
 //// 获取某个区块缓存

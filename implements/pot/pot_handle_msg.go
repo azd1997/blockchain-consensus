@@ -8,6 +8,7 @@ package pot
 
 import (
 	"errors"
+
 	"github.com/azd1997/blockchain-consensus/defines"
 )
 
@@ -21,26 +22,48 @@ func (p *Pot) handleMsg(msg *defines.Message) error {
 	// 根据当前状态不同，执行不同的消息处理
 	state := p.getState()
 	switch state {
-	case StateType_Init_GetNeighbors:
-		return p.handleMsgWhenInitGetNeighbors(msg)
-	case StateType_Init_GetProcesses:
-		return p.handleMsgWhenInitGetProcesses(msg)
-	case StateType_Init_GetLatestBlock:
-		return p.handleMsgWhenInitGetBlocks(msg)
+	case StateType_PreInited:
+		return p.handleMsgWhenPreInited(msg)
 	case StateType_NotReady:
 		return p.handleMsgWhenNotReady(msg)
-	case StateType_ReadyCompete:
-		return p.handleMsgWhenReadyCompete(msg)
-	case StateType_Competing:
-		return p.handleMsgWhenCompeting(msg)
-	case StateType_CompeteOver:
-		return p.handleMsgWhenCompeteOver(msg)
-	case StateType_CompeteWinner:
-		return p.handleMsgWhenCompeteWinner(msg)
-	case StateType_CompeteLoser:
-		return p.handleMsgWhenCompeteLoser(msg)
+	case StateType_InPot:
+		return p.handleMsgWhenInPot(msg)
+	case StateType_PostPot:
+		return p.handleMsgWhenPostPot(msg)
+	default:
+		p.Fatalf("unknown state(%d-%s)\n", state, state.String())
+		// case StateType_Init_GetNeighbors:
+		// 	return p.handleMsgWhenInitGetNeighbors(msg)
+		// case StateType_Init_GetProcesses:
+		// 	return p.handleMsgWhenInitGetProcesses(msg)
+		// case StateType_Init_GetLatestBlock:
+		// 	return p.handleMsgWhenInitGetBlocks(msg)
+		// case StateType_NotReady:
+		// 	return p.handleMsgWhenNotReady(msg)
+		// case StateType_ReadyCompete:
+		// 	return p.handleMsgWhenReadyCompete(msg)
+		// case StateType_Competing:
+		// 	return p.handleMsgWhenCompeting(msg)
+		// case StateType_CompeteOver:
+		// 	return p.handleMsgWhenCompeteOver(msg)
+		// case StateType_CompeteWinner:
+		// 	return p.handleMsgWhenCompeteWinner(msg)
+		// case StateType_CompeteLoser:
+		// 	return p.handleMsgWhenCompeteLoser(msg)
 	}
 	return nil
+}
+
+func (p *Pot) handleMsgWhenPreInited(msg *defines.Message) error {
+	duty := p.duty
+	switch duty {
+	case defines.PeerDuty_None:
+		return p.handleMsgWhenPreInitedForDutyNone(msg)
+	case defines.PeerDuty_Peer:
+	case defines.PeerDuty_Seed:
+	default:
+		p.Fatalf("unknown duty(%v)\n", duty)
+	}
 }
 
 /////////////////////////// 处理消息 /////////////////////////

@@ -8,8 +8,9 @@ package pot
 
 import (
 	"errors"
-	"github.com/azd1997/blockchain-consensus/defines"
 	"time"
+
+	"github.com/azd1997/blockchain-consensus/defines"
 )
 
 // send指向网络中（或者说外部依赖的网络模块）发送消息。 注意本地消息不要通过该方法使用
@@ -21,7 +22,7 @@ func (p *Pot) send(msg *defines.Message) error {
 		Err: make(chan error),
 	}
 	p.msgout <- merr
-	return <- merr.Err
+	return <-merr.Err
 }
 
 // 酌情使用 go signAndSendMsg()
@@ -105,8 +106,8 @@ func (p *Pot) broadcastSelfProof() error {
 
 	proof := &Proof{
 		Id:        p.id,
-		TxsNum:    uint64(len(nb.Txs)),
-		TxsMerkle: nb.Merkle,
+		TxsNum:    int64(len(nb.Txs)),
+		BlockHash: nb.SelfHash,
 		Base:      process.Hash,
 		BaseIndex: process.Index,
 	}
@@ -191,12 +192,14 @@ func (p *Pot) broadcastNewBlock(nb *defines.Block) error {
 // toseeds true表示向seeds请求所有共识节点进度
 // false 表示seeds/peers都问
 func (p *Pot) broadcastRequestProcesses(toseeds bool) error {
-	p.nWait = 0	// 重置
+	p.nWait = 0 // 重置
 	req := &defines.Request{
 		Type: defines.RequestType_Processes,
 	}
 	f := func(peer *defines.PeerInfo) error {
-		if peer.Id == p.id {return nil}
+		if peer.Id == p.id {
+			return nil
+		}
 
 		msg := &defines.Message{
 			Version: defines.CodeVersion,
@@ -228,13 +231,13 @@ func (p *Pot) broadcastRequestProcesses(toseeds bool) error {
 // false 则向全部最新进度节点发送请求区块消息
 func (p *Pot) broadcastRequestBlocks(random3 bool) error {
 
-	p.nWait = 0		// 重置
+	p.nWait = 0 // 重置
 
 	process := p.processes.get(p.id)
 	req := &defines.Request{
 		Type:       defines.RequestType_Blocks,
-		IndexStart: int64(process.Index+1),	// 自己的进度+1
-		IndexCount: 0,	// 0表示响应端要回复所有
+		IndexStart: int64(process.Index + 1), // 自己的进度+1
+		IndexCount: 0,                        // 0表示响应端要回复所有
 	}
 
 	// 收集要广播的节点：seeds + 若干peer
@@ -251,7 +254,9 @@ func (p *Pot) broadcastRequestBlocks(random3 bool) error {
 	}
 
 	for _, peer := range peers {
-		if peer == p.id {continue}
+		if peer == p.id {
+			continue
+		}
 		msg := &defines.Message{
 			Version: defines.CodeVersion,
 			Type:    defines.MessageType_Req,
@@ -273,16 +278,18 @@ func (p *Pot) broadcastRequestBlocks(random3 bool) error {
 // 向种子节点广播获取最新区块
 func (p *Pot) broadcastRequestLatestBlock() error {
 
-	p.nWait = 0		// 重置
+	p.nWait = 0 // 重置
 
 	req := &defines.Request{
 		Type:       defines.RequestType_Blocks,
-		IndexStart: -1,	// 请求对方的最新区块
-		IndexCount: 1,	// 最新的那个区块
+		IndexStart: -1, // 请求对方的最新区块
+		IndexCount: 1,  // 最新的那个区块
 	}
 
 	p.pit.RangeSeeds(func(peer *defines.PeerInfo) error {
-		if peer.Id == p.id {return nil}
+		if peer.Id == p.id {
+			return nil
+		}
 		msg := &defines.Message{
 			Version: defines.CodeVersion,
 			Type:    defines.MessageType_Req,
@@ -302,7 +309,9 @@ func (p *Pot) broadcastRequestLatestBlock() error {
 	return nil
 }
 
-// wait() 函数用于等待邻居们的某一类消息回应
+///////////////////////////////////////////////////////////////////
+
+// wait 函数用于等待邻居们的某一类消息回应
 func (p *Pot) wait() error {
 	timeoutD := 1 * time.Second
 	timeout := time.NewTimer(timeoutD)
@@ -327,13 +336,12 @@ func (p *Pot) wait() error {
 			}
 		case <-timeout.C:
 			// 超时需要判断两种情况：
-			if cnt == 0 {	// 一个回复都没收到
+			if cnt == 0 { // 一个回复都没收到
 				p.Logf("wait: timeout, no response received\n")
 				return errors.New("wait timeout and no response received")
-			} else {
-				p.Logf("wait: timeout, %d responses received, return\n", cnt)
-				return nil
 			}
+			p.Logf("wait: timeout, %d responses received, return\n", cnt)
+			return nil
 		}
 	}
 }

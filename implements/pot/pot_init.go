@@ -9,7 +9,6 @@ package pot
 import (
 	"errors"
 
-
 	"github.com/azd1997/blockchain-consensus/defines"
 )
 
@@ -36,17 +35,17 @@ func (p *Pot) Init() error {
 	// 区块链的最新状态
 	bc := p.bc.GetMaxIndex()
 	// 根据节点duty和其本地区块链状态决定以何种逻辑启动
-	if p.duty == defines.PeerDuty_Seed {	// seed
-		if bc == 0 {	// 初次启动
-			return p.init_Seed_FirstStart()
-		} else {	// 重启动
-			return p.init_Seed_ReStart()
+	if p.duty == defines.PeerDuty_Seed { // seed
+		if bc == 0 { // 初次启动
+			return p.initForSeedFirstStart()
+		} else { // 重启动
+			return p.initForSeedReStart()
 		}
-	} else {	// peer
-		if bc == 0 {	// 初次启动
-			return p.init_Peer_FirstStart()
-		} else {	// 重启动
-			return p.init_Peer_ReStart()
+	} else { // peer
+		if bc == 0 { // 初次启动
+			return p.initForPeerFirstStart()
+		} else { // 重启动
+			return p.initForPeerReStart()
 		}
 	}
 }
@@ -75,14 +74,12 @@ func (p *Pot) Init() error {
 //
 //}
 
-// TODO 暂时只考虑1台seed，
-
-// seed初次启动
-func (p *Pot) init_Seed_FirstStart() error {
+// initForSeedFirstStart seed初次启动
+func (p *Pot) initForSeedFirstStart() error {
 
 	// 尝试与节点表其他seed联系，请求邻居信息
 	total, errs := p.pit.RangeSeeds(p.requestNeighborsFuncGenerator())
-	if total - 1 == len(errs) {
+	if total-1 == len(errs) {
 		// 与所有其他seed的发信都失败了
 		// 存在两种可能：(a)自己是整个网络中第一个启动的seed; (b)自己不是第一个启动的seed，别人是，但是别人目前没在线
 		// 目前只按(a)情况处理
@@ -94,25 +91,25 @@ func (p *Pot) init_Seed_FirstStart() error {
 		// 创建创世区块(1号区块)
 		genesis, err := p.bc.CreateTheWorld()
 		if err != nil {
-			p.Fatalf("init_Seed_FirstStart: create genesis block fail: %s\n", err)
+			p.Fatalf("initForSeedFirstStart: create genesis block fail: %s\n", err)
 		}
 		// 启动时钟
 		c := StartClock(genesis)
 		if c == nil {
-			p.Fatalf("init_Seed_FirstStart: start clock fail\n")
+			p.Fatalf("initForSeedFirstStart: start clock fail\n")
 		}
 		// 进入InPot
-		p.setState(StateType_InPot)
-		return nil	// 此情况下预启动完成
-	} else if total - 1 < len(errs) {
+		p.setState(StateType_NotReady)
+		return nil // 此情况下预启动完成
+	} else if total-1 < len(errs) {
 		return errors.New("fatal error: impossible")
 	}
 
 	// total - 1 > len(errs) 部分成功或全部成功.   <的情况不用讨论，不可能出现
-	p.nWait = total - 1 - len(errs)		// 设置等待数量
+	p.nWait = total - 1 - len(errs) // 设置等待数量
 	// 等待
-	if err := p.wait(); err != nil {	// 一个都没等到
-		return err	// 退出启动
+	if err := p.wait(); err != nil { // 一个都没等到
+		return err // 退出启动
 	}
 
 	/*
@@ -138,7 +135,7 @@ func (p *Pot) init_Seed_FirstStart() error {
 	*/
 
 	// 其他seed有在线者，那么向其他seed请求1号区块先
-	p.udbt.Reset(1)	// 重置未决区块表
+	p.udbt.Reset(1) // 重置未决区块表
 	err := p.requestOneBlockAndWait(false, 1)
 	if err != nil {
 		return err
@@ -148,10 +145,10 @@ func (p *Pot) init_Seed_FirstStart() error {
 	p.clock = StartClock(firstBlock)
 
 	// 3. 等待一段时间，到达PotStart时刻
-	<-p.potStart
+	<-p.potStartBeforeReady
 
 	// 4. 向seed或者peer请求最新区块
-	p.udbt.Reset(-1)	// 重置未决区块表
+	p.udbt.Reset(-1) // 重置未决区块表
 	err = p.requestLatestBlockAndWait(false)
 	if err != nil {
 		return err
@@ -190,8 +187,8 @@ func (p *Pot) init_Seed_FirstStart() error {
 	return nil
 }
 
-// seed重启动
-func (p *Pot) init_Seed_ReStart() error {
+// initForSeedReStart seed重启动
+func (p *Pot) initForSeedReStart() error {
 
 	// 1. 广播seeds(以及peers)，看有无在线的
 	// 尝试与节点表其他seed联系，请求邻居信息
@@ -208,7 +205,7 @@ func (p *Pot) init_Seed_ReStart() error {
 	p.clock = StartClock(localMaxBlock[0])
 
 	// 3. 等待一段时间，到达PotStart时刻
-	<-p.potStart
+	<-p.potStartBeforeReady
 
 	// 4. 发起请求最新区块。
 	// 之所以要在PotStart时刻请求，是为了降低复杂性，2*TickMs能保证回应能在新区块诞生前收到
@@ -225,12 +222,12 @@ func (p *Pot) init_Seed_ReStart() error {
 	}
 
 	// 6. 设置状态
-	p.setState(StateType_Seed_NotReady)
+	p.setState(StateType_NotReady)
 	return nil
 }
 
-// peer初次启动
-func (p *Pot) init_Peer_FirstStart() error {
+// initForPeerFirstStart peer初次启动
+func (p *Pot) initForPeerFirstStart() error {
 	// 1. 向seeds和预配置的peers请求节点表
 	seedsAllFail, err := p.requestNeighborsAndWait()
 	if err != nil {
@@ -238,7 +235,7 @@ func (p *Pot) init_Peer_FirstStart() error {
 	}
 
 	// 2. 请求1号区块，初始化时钟	// TODO: 1号区块距当前最新区块太远导致时间偏差较大问题，待解决
-	p.udbt.Reset(1)	// 重置未决区块表
+	p.udbt.Reset(1) // 重置未决区块表
 	err = p.requestOneBlockAndWait(seedsAllFail, 1)
 	if err != nil {
 		return err
@@ -248,10 +245,10 @@ func (p *Pot) init_Peer_FirstStart() error {
 	p.clock = StartClock(firstBlock)
 
 	// 3. 等待一段时间，到达PotStart时刻
-	<-p.potStart
+	<-p.potStartBeforeReady
 
 	// 4. 向seed或者peer请求最新区块
-	p.udbt.Reset(0)	// 重置未决区块表
+	p.udbt.Reset(0) // 重置未决区块表
 	err = p.requestLatestBlockAndWait(seedsAllFail)
 	if err != nil {
 		return err
@@ -265,13 +262,13 @@ func (p *Pot) init_Peer_FirstStart() error {
 	}
 
 	// 6. 设置当前状态
-	p.setState(StateType_Seed_NotReady)
+	p.setState(StateType_NotReady)
 
 	return nil
 }
 
-// peer重启动
-func (p *Pot) init_Peer_ReStart() error {
+// initForPeerReStart peer重启动
+func (p *Pot) initForPeerReStart() error {
 	// 1. 向seeds和预配置的peers请求节点表
 	seedsAllFail, err := p.requestNeighborsAndWait()
 	if err != nil {
@@ -286,10 +283,10 @@ func (p *Pot) init_Peer_ReStart() error {
 	p.clock = StartClock(localMaxBlock[0])
 
 	// 3. 等待一段时间，到达PotStart时刻
-	<-p.potStart
+	<-p.potStartBeforeReady
 
 	// 4. 向seed或者peer请求最新区块
-	p.udbt.Reset(0)	// 重置未决区块表
+	p.udbt.Reset(0) // 重置未决区块表
 	err = p.requestLatestBlockAndWait(seedsAllFail)
 	if err != nil {
 		return err
@@ -303,11 +300,10 @@ func (p *Pot) init_Peer_ReStart() error {
 	}
 
 	// 6. 设置当前状态
-	p.setState(StateType_Seed_NotReady)
+	p.setState(StateType_NotReady)
 
 	return nil
 }
-
 
 ////////////////////////////////////////////////////
 
@@ -316,10 +312,10 @@ func (p *Pot) requestNeighborsAndWait() (seedsAllFail bool, err error) {
 	all := 0
 	total, errs := p.pit.RangeSeeds(p.requestNeighborsFuncGenerator())
 	all = total - bool2int(p.duty == defines.PeerDuty_Seed)
-	if all == len(errs) {		// 全部发信失败，则尝试请求peers
+	if all == len(errs) { // 全部发信失败，则尝试请求peers
 		seedsAllFail = true
 		total, errs = p.pit.RangePeers(p.requestNeighborsFuncGenerator())
-		if total == len(errs) {		// 还是全部失败，则退出
+		if total == len(errs) { // 还是全部失败，则退出
 			return true, errors.New("request neighbors to seeds and peers all fail")
 		}
 		all = total - bool2int(p.duty == defines.PeerDuty_Seed)
@@ -328,10 +324,10 @@ func (p *Pot) requestNeighborsAndWait() (seedsAllFail bool, err error) {
 		return seedsAllFail, errors.New("fatal error: impossible")
 	}
 	// 部分成功或全部成功
-	p.nWait = all - len(errs)		// 设置等待数量
+	p.nWait = all - len(errs) // 设置等待数量
 	// 等待 (此时的handle函数会将邻居节点进行存储，若重复以先存为准)
-	if err := p.wait(); err != nil {	// 一个都没等到
-		return seedsAllFail, err	// 退出启动
+	if err := p.wait(); err != nil { // 一个都没等到
+		return seedsAllFail, err // 退出启动
 	}
 	return seedsAllFail, nil
 }
@@ -357,11 +353,11 @@ func (p *Pot) requestOneBlockAndWait(seedsAllFail bool, index int64) error {
 		return errors.New("fatal error: impossible")
 	} else {
 		// 部分成功或全部成功
-		p.nWait = all - len(errs)		// 设置等待数量
+		p.nWait = all - len(errs) // 设置等待数量
 	}
 	// 等待 (此时的handle函数会将最新区块进行收集比较，多数者获胜。 p.udbt.Add(block))
-	if err := p.wait(); err != nil {	// 一个都没等到
-		return err	// 退出启动
+	if err := p.wait(); err != nil { // 一个都没等到
+		return err // 退出启动
 	}
 	return nil
 }

@@ -6,6 +6,7 @@
 
 package pot
 
+// StateType pot共识中的阶段类型
 type StateType uint32
 
 const (
@@ -43,13 +44,13 @@ const (
 
 	// seed状态
 
-	// PreInited(初始化之前)的状态，启动之后到进入到NotReady之前的阶段
+	// StateType_PreInited (初始化之前)的状态，启动之后到进入到NotReady之前的阶段
 	StateType_PreInited StateType = 10
-	// NotReady状态: 区块链有缺失或者网络中能正常连接且均无缺失的节点>=3个
+	// StateType_NotReady 状态: 区块链有缺失或者网络中能正常连接且均无缺失的节点>=3个
 	StateType_NotReady StateType = 11
-	// Pot竞赛的阶段，位于PotStart到PotOver之间
+	// StateType_InPot Pot竞赛的阶段，位于PotStart到PotOver之间
 	StateType_InPot StateType = 12
-	// Pot竞赛结束之后的阶段，位于PotOver到PotStart之间
+	// StateType_PostPot Pot竞赛结束之后的阶段，位于PotOver到PotStart之间
 	StateType_PostPot StateType = 13
 )
 

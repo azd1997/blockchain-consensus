@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
+
 	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
 )
 
@@ -20,7 +21,7 @@ import (
 //	Data []byte
 //}
 
-// 节点属性 正常、断连、恶意
+// PeerAttr 节点属性 正常、断连、恶意
 type PeerAttr uint8
 
 const (
@@ -29,7 +30,7 @@ const (
 	PeerAttr_Malicious    PeerAttr = 2
 )
 
-// 节点角色：病人、医生、医院、研究机构
+// PeerRole 节点角色：病人、医生、医院、研究机构
 // TODO：节点角色的话允许外部自定义，并注册处理函数，从而限制各个角色的行为
 // 角色信息被编码进id字段，无需显示指定
 type PeerRole uint8
@@ -39,13 +40,16 @@ const (
 	PeerRole_Hospital PeerRole = 2
 )
 
-// 节点职责: 普通、种子、工人
+// PeerDuty 节点职责: 普通、种子、工人
 type PeerDuty uint8
 
+// 预定义的三种节点职责：None/Seed/Peer
 const (
-	PeerDuty_None   PeerDuty = 0
-	PeerDuty_Seed   PeerDuty = 1
-	PeerDuty_Worker PeerDuty = 2
+	PeerDuty_None PeerDuty = 0
+	PeerDuty_Seed PeerDuty = 1
+
+	// PeerDuty_Peer 对等节点，承担共识节点的责任
+	PeerDuty_Peer PeerDuty = 2
 )
 
 // PeerInfo 节点信息

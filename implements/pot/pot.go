@@ -8,21 +8,21 @@ package pot
 
 import (
 	"errors"
+
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/modules/peerinfo"
 	"github.com/azd1997/blockchain-consensus/requires"
 	"github.com/azd1997/blockchain-consensus/utils/log"
-	"sync"
 )
 
 const (
-	// 逻辑时钟每个滴答就是500ms
+	// TickMs 逻辑时钟每个滴答就是500ms
 	TickMs = 500
 
-	// 默认channel长度
+	// DefaultMsgChanLen 默认channel长度
 	DefaultMsgChanLen = 100
 
-	// 模块名
+	// Module_Css 模块名
 	Module_Css = "CSS"
 )
 
@@ -62,14 +62,14 @@ type Pot struct {
 
 	clock *Clock // 滴答器，每次滴答时刻都需要根据当前的状态变量确定状态该如何变更
 
-	// 用于启动时
-	potStart chan Moment
+	// potStartBeforeReady 用于启动时
+	potStartBeforeReady chan Moment
 
 	// proofs表可能会因为某些节点出现恶意行为而将其删除
 	//proofs          map[string]*Proof // 收集的其他共识节点的证明进度
 	//proofsLock      *sync.RWMutex
 	//winner          string
-	proofs *proofTable
+	proofs          *proofTable
 	maybeNewBlock   *defines.Block
 	waitingNewBlock *defines.Block // 等待的新区块，没等到就一直是nil
 
@@ -101,24 +101,23 @@ type Pot struct {
 	*log.Logger
 	done chan struct{}
 
-
 	///////////////////////// seeds peers ////////////////////
 }
 
 // New 新建Pot
 func New(opt *Option) (*Pot, error) {
 	p := &Pot{
-		id:         opt.Id,
-		duty:       opt.Duty,
-		state:      StateType_Init_GetNeighbors, // 初始状态
-		processes:  newProcessTable(),
-		msgin:      make(chan *defines.Message, DefaultMsgChanLen),
-		msgout:     make(chan *defines.MessageWithError, DefaultMsgChanLen),
-		proofs:     map[string]*Proof{},
-		proofsLock: new(sync.RWMutex),
-		udbt:&undecidedBlockTable{table: map[string]*undecidedBlock{}},
-		done:       make(chan struct{}),
-		Logger:     log.NewLogger(opt.LogDest, Module_Css, opt.Id),
+		id:                  opt.Id,
+		duty:                opt.Duty,
+		state:               StateType_PreInited, // 初始状态
+		processes:           newProcessTable(),
+		msgin:               make(chan *defines.Message, DefaultMsgChanLen),
+		msgout:              make(chan *defines.MessageWithError, DefaultMsgChanLen),
+		potStartBeforeReady: make(chan Moment), //阻塞式
+		proofs:              nil,
+		udbt:                newUndecidedBlockTable(),
+		done:                make(chan struct{}),
+		Logger:              log.NewLogger(opt.LogDest, Module_Css, opt.Id),
 	}
 
 	if opt.Pit == nil {
@@ -130,8 +129,6 @@ func New(opt *Option) (*Pot, error) {
 			return nil, errors.New("PeerInfoTable should be inited")
 		}
 	}
-
-
 
 	return p, nil
 }

@@ -24,10 +24,11 @@ func (p *Pot) stateMachineLoop() {
 
 			case StateType_PreInited:
 				// 能够处理邻居消息,区块消息。
-				// 在启动流程最后将由该阶段切换为InPot
+				// 该阶段用于启动流程中，启动结束时将由启动逻辑切换到NotReady阶段，此处不需要进行切换
 
+				// 通过该chan向启动逻辑传递时刻信号
 				if moment.Type == MomentType_PotStart {
-					p.potStart <- moment
+					p.potStartBeforeReady <- moment
 				}
 
 			case StateType_NotReady:
@@ -35,7 +36,6 @@ func (p *Pot) stateMachineLoop() {
 
 				// 检查是否满足切换Ready的条件
 				if p.processes.isSelfReady() && moment.Type == MomentType_PotStart {
-					// TODO: 广播proof和process，参与到Pot竞争
 					p.setState(StateType_InPot)
 					p.startPot()
 				} else {
@@ -48,8 +48,6 @@ func (p *Pot) stateMachineLoop() {
 						// 开始接收新区块和seed广播的winner
 					}
 				}
-
-
 			case StateType_InPot:
 				if moment.Type == MomentType_PotOver {// 正常情况应该是PotOver时刻到来
 					p.setState(StateType_PostPot)

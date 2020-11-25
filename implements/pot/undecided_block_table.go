@@ -12,6 +12,12 @@ import (
 	"github.com/azd1997/blockchain-consensus/defines"
 )
 
+// newUndecidedBlockTable 新建未决区块表
+func newUndecidedBlockTable() *undecidedBlockTable {
+	return &undecidedBlockTable{table: map[string]*undecidedBlock{}}
+}
+
+// undecidedBlock 未决区块
 type undecidedBlock struct {
 	count int
 	b *defines.Block
@@ -29,6 +35,7 @@ type undecidedBlockTable struct {
 	table map[string]*undecidedBlock	// <hash_hex, v>
 }
 
+// Add 添加未决区块
 func (udbt *undecidedBlockTable) Add(b *defines.Block) {
 	if udbt.undecidedIndex > 0 && b.Index != udbt.undecidedIndex {
 		return
@@ -45,7 +52,7 @@ func (udbt *undecidedBlockTable) Add(b *defines.Block) {
 	}
 }
 
-// Major 多数的区块
+// Major 判定多数的区块
 func (udbt *undecidedBlockTable) Major() *defines.Block {
 	maxcount := 0
 	maxk := ""
