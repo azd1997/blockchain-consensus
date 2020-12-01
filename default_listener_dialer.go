@@ -23,7 +23,7 @@ func DefaultDialer(id, addr string) (requires.Dialer, error) {
 	return _default.NewDialer(id, addr, 0)
 }
 
-// DefaultDialer 默认的Dialer，带超时
+// DefaultDialerTimeout 默认的Dialer，带超时
 func DefaultDialerTimeout(id, addr string, timeout time.Duration) (requires.Dialer, error) {
 	return _default.NewDialer(id, addr, timeout)
 }

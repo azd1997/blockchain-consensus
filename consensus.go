@@ -36,7 +36,7 @@ type Consensus interface {
 	InMsgChan() chan *defines.Message
 }
 
-// 新建一个共识状态机
+// NewConsensus 新建一个共识状态机
 func NewConsensus(typ string) (Consensus, error) {
 	return nil, nil
 }

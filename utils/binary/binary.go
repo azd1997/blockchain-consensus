@@ -11,6 +11,7 @@ import (
 	"io"
 )
 
+// 字节序
 var (
 	BigEndian    = binary.BigEndian
 	LittleEndian = binary.LittleEndian

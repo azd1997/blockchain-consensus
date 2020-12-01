@@ -29,7 +29,7 @@ type Logger struct {
 	dest   LogDest
 }
 
-// NewLogger
+// NewLogger 新建
 func NewLogger(dest LogDest, module string, id string) *Logger {
 	prefix := fmt.Sprintf("[%s](%s) ", module, id)
 	var w io.Writer

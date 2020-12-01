@@ -14,14 +14,17 @@ type ConsensusLog struct {
 	// 其他字段
 }
 
+// ReadConsensusState xxx
 func (cl *ConsensusLog) ReadConsensusState() []byte {
 	return []byte{}
 }
 
+// SaveConsensusState xxx
 func (cl *ConsensusLog) SaveConsensusState(clog []byte) {
 
 }
 
+// Copy xxx
 func (cl *ConsensusLog) Copy() *ConsensusLog {
 	ncl := new(ConsensusLog)
 	// 复制
