@@ -52,6 +52,19 @@ const (
 	PeerDuty_Peer PeerDuty = 2
 )
 
+func (duty PeerDuty) String() string {
+	switch duty {
+	case PeerDuty_None:
+		return "None"
+	case PeerDuty_Peer:
+		return "Peer"
+	case PeerDuty_Seed:
+		return "Seed"
+	default:
+		return "Unknown"
+	}
+}
+
 // PeerInfo 节点信息
 type PeerInfo struct {
 	Id   string

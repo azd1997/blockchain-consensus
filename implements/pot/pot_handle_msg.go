@@ -118,15 +118,34 @@ func (p *Pot) handleMsgWhenPostPot(msg *defines.Message) error {
 // 无法处理Req消息，只能处理Data消息中的一部分
 
 func (p *Pot) handleMsgWhenPreInitedForDutyNone(msg *defines.Message) error {
-	return nil
+	return p.handleMsgWhenPreInitedForAllDuty(msg)
 }
 
 func (p *Pot) handleMsgWhenPreInitedForDutyPeer(msg *defines.Message) error {
-	return nil
+	return p.handleMsgWhenPreInitedForAllDuty(msg)	
 }
 
 func (p *Pot) handleMsgWhenPreInitedForDutySeed(msg *defines.Message) error {
-	return nil
+	return p.handleMsgWhenPreInitedForAllDuty(msg)
+}
+
+// 再PreInited阶段，所有类型的节点能处理的消息是相同的
+func (p *Pot) handleMsgWhenPreInitedForAllDuty(msg *defines.Message) error {
+	switch msg.Type {
+	case defines.MessageType_None:
+		p.Errorf("%s-%s can only handle [EntryType_Neighbor, EntryType_Block]\n", 
+			p.duty.String(), p.getState().String())
+	case defines.MessageType_Data:
+		for _, ent := range msg.Entries {
+			ent := ent
+			
+		}
+	case defines.MessageType_Req:
+		p.Errorf("%s-%s can only handle [EntryType_Neighbor, EntryType_Block]\n", 
+			p.duty.String(), p.getState().String())
+	default:
+		p.Errorf("unknown msg type")
+	}
 }
 
 // NotReady阶段
@@ -173,9 +192,6 @@ func (p *Pot) handleMsgWhenPostPotForDutyPeer(msg *defines.Message) error {
 func (p *Pot) handleMsgWhenPostPotForDutySeed(msg *defines.Message) error {
 	return nil
 }
-
-
-
 
 
 // /////////////////////////// 处理消息 /////////////////////////

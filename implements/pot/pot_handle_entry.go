@@ -128,7 +128,7 @@ func (p *Pot) handleEntryTransaction(from string, ent *defines.Entry) error {
 	return p.txPool.AddTransaction(txbytes)
 }
 
-// 处理邻居节点信息
+// handleEntryNeighbor 处理邻居节点信息
 // TODO: 考虑节点恶意
 // 目前直接相信这个节点信息，添加到本地节点信息表
 // 暂定：节点信息只会从seed(可信)到peer
