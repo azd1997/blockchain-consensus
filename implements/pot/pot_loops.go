@@ -22,15 +22,13 @@ func (p *Pot) stateMachineLoop() {
 			state := p.getState()
 			switch state {
 
-			case StateType_PreInited:
-				// 能够处理邻居消息,区块消息。
-				// 该阶段用于启动流程中，启动结束时将由启动逻辑切换到NotReady阶段，此处不需要进行切换
-
+			case StateType_PreInited_RequestNeighbors:		// nothing
+			case StateType_PreInited_RequestFirstBlock:
 				// 通过该chan向启动逻辑传递时刻信号
 				if moment.Type == MomentType_PotStart {
 					p.potStartBeforeReady <- moment
 				}
-
+			case StateType_PreInited_RequestLatestBlock:	// nothing
 			case StateType_NotReady:
 				// 能够处理邻居消息,区块消息,最新区块消息
 

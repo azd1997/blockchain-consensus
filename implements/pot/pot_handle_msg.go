@@ -22,8 +22,12 @@ func (p *Pot) handleMsg(msg *defines.Message) error {
 	// 根据当前状态不同，执行不同的消息处理
 	state := p.getState()
 	switch state {
-	case StateType_PreInited:
-		return p.handleMsgWhenPreInited(msg)
+	case StateType_PreInited_RequestNeighbors:
+		return p.handleMsgWhenPreInitedRN(msg)
+	case StateType_PreInited_RequestFirstBlock:
+		return p.handleMsgWhenPreInitedRFB(msg)
+	case StateType_PreInited_RequestLatestBlock:
+		return p.handleMsgWhenPreInitedRLB(msg)
 	case StateType_NotReady:
 		return p.handleMsgWhenNotReady(msg)
 	case StateType_InPot:
@@ -32,37 +36,47 @@ func (p *Pot) handleMsg(msg *defines.Message) error {
 		return p.handleMsgWhenPostPot(msg)
 	default:
 		p.Fatalf("unknown state(%d-%s)\n", state, state.String())
-		// case StateType_Init_GetNeighbors:
-		// 	return p.handleMsgWhenInitGetNeighbors(msg)
-		// case StateType_Init_GetProcesses:
-		// 	return p.handleMsgWhenInitGetProcesses(msg)
-		// case StateType_Init_GetLatestBlock:
-		// 	return p.handleMsgWhenInitGetBlocks(msg)
-		// case StateType_NotReady:
-		// 	return p.handleMsgWhenNotReady(msg)
-		// case StateType_ReadyCompete:
-		// 	return p.handleMsgWhenReadyCompete(msg)
-		// case StateType_Competing:
-		// 	return p.handleMsgWhenCompeting(msg)
-		// case StateType_CompeteOver:
-		// 	return p.handleMsgWhenCompeteOver(msg)
-		// case StateType_CompeteWinner:
-		// 	return p.handleMsgWhenCompeteWinner(msg)
-		// case StateType_CompeteLoser:
-		// 	return p.handleMsgWhenCompeteLoser(msg)
 	}
 	return nil
 }
 
-func (p *Pot) handleMsgWhenPreInited(msg *defines.Message) error {
+func (p *Pot) handleMsgWhenPreInitedRN(msg *defines.Message) error {
 	duty := p.duty
 	switch duty {
 	case defines.PeerDuty_None:
-		return p.handleMsgWhenPreInitedForDutyNone(msg)
+		return p.handleMsgWhenPreInitedRNForDutyNone(msg)
 	case defines.PeerDuty_Peer:
-		return p.handleMsgWhenPreInitedForDutyPeer(msg)
+		return p.handleMsgWhenPreInitedRNForDutyPeer(msg)
 	case defines.PeerDuty_Seed:
-		return p.handleMsgWhenPreInitedForDutySeed(msg)
+		return p.handleMsgWhenPreInitedRNForDutySeed(msg)
+	default:
+		p.Fatalf("unknown duty(%v)\n", duty)
+	}
+}
+
+func (p *Pot) handleMsgWhenPreInitedRFB(msg *defines.Message) error {
+	duty := p.duty
+	switch duty {
+	case defines.PeerDuty_None:
+		return p.handleMsgWhenPreInitedRFBForDutyNone(msg)
+	case defines.PeerDuty_Peer:
+		return p.handleMsgWhenPreInitedRFBForDutyPeer(msg)
+	case defines.PeerDuty_Seed:
+		return p.handleMsgWhenPreInitedRFBForDutySeed(msg)
+	default:
+		p.Fatalf("unknown duty(%v)\n", duty)
+	}
+}
+
+func (p *Pot) handleMsgWhenPreInitedRLB(msg *defines.Message) error {
+	duty := p.duty
+	switch duty {
+	case defines.PeerDuty_None:
+		return p.handleMsgWhenPreInitedRLBForDutyNone(msg)
+	case defines.PeerDuty_Peer:
+		return p.handleMsgWhenPreInitedRLBForDutyPeer(msg)
+	case defines.PeerDuty_Seed:
+		return p.handleMsgWhenPreInitedRLBForDutySeed(msg)
 	default:
 		p.Fatalf("unknown duty(%v)\n", duty)
 	}
@@ -114,42 +128,148 @@ func (p *Pot) handleMsgWhenPostPot(msg *defines.Message) error {
 
 // Message分Data和Req两大类
 
-// PreInited阶段
-// 无法处理Req消息，只能处理Data消息中的一部分
+// PreInited_RN阶段
+// 仅处理邻居消息
 
-func (p *Pot) handleMsgWhenPreInitedForDutyNone(msg *defines.Message) error {
-	return p.handleMsgWhenPreInitedForAllDuty(msg)
+func (p *Pot) handleMsgWhenPreInitedRNForDutyNone(msg *defines.Message) error {
+	return p.handleMsgWhenPreInitedRNForAllDuty(msg)
 }
 
-func (p *Pot) handleMsgWhenPreInitedForDutyPeer(msg *defines.Message) error {
-	return p.handleMsgWhenPreInitedForAllDuty(msg)	
+func (p *Pot) handleMsgWhenPreInitedRNForDutyPeer(msg *defines.Message) error {
+	return p.handleMsgWhenPreInitedRNForAllDuty(msg)	
 }
 
-func (p *Pot) handleMsgWhenPreInitedForDutySeed(msg *defines.Message) error {
-	return p.handleMsgWhenPreInitedForAllDuty(msg)
+func (p *Pot) handleMsgWhenPreInitedRNForDutySeed(msg *defines.Message) error {
+	return p.handleMsgWhenPreInitedRNForAllDuty(msg)
 }
 
 // 再PreInited阶段，所有类型的节点能处理的消息是相同的
-func (p *Pot) handleMsgWhenPreInitedForAllDuty(msg *defines.Message) error {
+func (p *Pot) handleMsgWhenPreInitedRNForAllDuty(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		p.Errorf("%s-%s can only handle [EntryType_Neighbor, EntryType_Block]\n", 
-			p.duty.String(), p.getState().String())
+		p.Errorf("%s can only handle [EntryType_Neighbor]\n", p.DutyState())
 	case defines.MessageType_Data:
+		count := 0
 		for _, ent := range msg.Entries {
 			ent := ent
-			
+			if ent.Type == EntryType_Neighbor {
+				count++
+				// 通用的handleEntryNeighbor，添加就完事
+				if err := p.handleEntryNeighbor(msg.From, ent); err != nil {
+					p.Errorf("%s handle EntryType_Neighbor from (%s) fail: %s\n", p.DutyState(), msg.From, err)
+				} else {
+					p.Logf("%s handle EntryType_Neighbor from (%s) succ\n", p.DutyState(), msg.From)
+				}
+			}
+		}
+		if count > 0 && p.nWaitChan != nil { // 说明包含Neighbors
+			p.nWaitChan <- 1 // 通知收到一个节点回传了节点信息表
 		}
 	case defines.MessageType_Req:
-		p.Errorf("%s-%s can only handle [EntryType_Neighbor, EntryType_Block]\n", 
-			p.duty.String(), p.getState().String())
+		p.Errorf("%s can only handle [EntryType_Neighbor]\n", p.DutyState())
 	default:
-		p.Errorf("unknown msg type")
+		p.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
 	}
+	return nil
+}
+
+// PreInited_RFB阶段
+// 仅处理区块消息，且是仅包含1个1号区块的区块消息
+
+func (p *Pot) handleMsgWhenPreInitedRFBForDutyNone(msg *defines.Message) error {
+	return p.handleMsgWhenPreInitedRFBForAllDuty(msg)
+}
+
+func (p *Pot) handleMsgWhenPreInitedRFBForDutyPeer(msg *defines.Message) error {
+	return p.handleMsgWhenPreInitedRFBForAllDuty(msg)	
+}
+
+func (p *Pot) handleMsgWhenPreInitedRFBForDutySeed(msg *defines.Message) error {
+	return p.handleMsgWhenPreInitedRFBForAllDuty(msg)
+}
+
+// 再PreInited阶段，所有类型的节点能处理的消息是相同的
+func (p *Pot) handleMsgWhenPreInitedRFBForAllDuty(msg *defines.Message) error {
+	switch msg.Type {
+	case defines.MessageType_None:
+		p.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	case defines.MessageType_Data:
+		count := len(msg.Entries)
+		// 等待的是1号区块，其baseindex=0
+		if count == 0 || count != 1 || msg.Entries[0].Type != EntryType_Block || msg.Entries[0].BaseIndex > 0 {
+			p.Errorf("%s received a unexpected msg from %s\n", p.DutyState(), msg.From)
+		}
+		firstBlock := new(defines.Block)
+		err := firstBlock.Decode(msg.Entries[0].Data)
+		if err != nil {
+			return err
+		}
+		if p.nWaitBlockChan != nil {
+			p.nWaitBlockChan <- firstBlock // 通知收到一个节点回传了1号区块
+			p.Logf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
+		}
+		// 这个firstBlock由启动逻辑确定之后再写到本地
+
+	case defines.MessageType_Req:
+		p.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	default:
+		p.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+	}
+	return nil
+}
+
+// PreInited_RLB阶段
+// 仅处理区块消息，且是仅包含1个最新区块(序号未知)的区块消息
+
+func (p *Pot) handleMsgWhenPreInitedRLBForDutyNone(msg *defines.Message) error {
+	return p.handleMsgWhenPreInitedRLBForAllDuty(msg)
+}
+
+func (p *Pot) handleMsgWhenPreInitedRLBForDutyPeer(msg *defines.Message) error {
+	return p.handleMsgWhenPreInitedRLBForAllDuty(msg)	
+}
+
+func (p *Pot) handleMsgWhenPreInitedRLBForDutySeed(msg *defines.Message) error {
+	return p.handleMsgWhenPreInitedRLBForAllDuty(msg)
+}
+
+// 再PreInited阶段，所有类型的节点能处理的消息是相同的
+func (p *Pot) handleMsgWhenPreInitedRLBForAllDuty(msg *defines.Message) error {
+	switch msg.Type {
+	case defines.MessageType_None:
+		p.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	case defines.MessageType_Data:
+		count := len(msg.Entries)
+		// 等待的是最新区块，其序号未知
+		if count == 0 || count != 1 || msg.Entries[0].Type != EntryType_Block {
+			p.Errorf("%s received a unexpected msg from %s\n", p.DutyState(), msg.From)
+		}
+		latestBlock := new(defines.Block)
+		err := latestBlock.Decode(msg.Entries[0].Data)
+		if err != nil {
+			return err
+		}
+		if p.nWaitBlockChan != nil {
+			p.nWaitBlockChan <- latestBlock // 通知收到一个节点回传了最新区块
+			p.Logf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
+		}
+		// 这个latestBlock由启动逻辑确定之后再写到本地
+
+	case defines.MessageType_Req:
+		p.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	default:
+		p.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+	}
+	return nil
 }
 
 // NotReady阶段
 // Req中只能处理邻居请求，能处理Data消息中的一部分
+// Req最常见的就是请求邻居和请求区块
+//
+// NotReady 的条件：进度未补全。 当本机节点进度被补全，且再过一段时间到达邻近的PotStart时刻时，节点切换状态至InPot
+// 显然是否能接受区块请求应该看是否IsSelfReady，而不是看当前是否处于NotReady状态.
+// 或者不管是否Ready，如果本机有，就返回给请求方
 
 func (p *Pot) handleMsgWhenNotReadyForDutyNone(msg *defines.Message) error {
 	return nil
@@ -160,6 +280,70 @@ func (p *Pot) handleMsgWhenNotReadyForDutyPeer(msg *defines.Message) error {
 }
 
 func (p *Pot) handleMsgWhenNotReadyForDutySeed(msg *defines.Message) error {
+	switch msg.Type {
+	case defines.MessageType_None:
+		p.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	case defines.MessageType_Data:
+		for _, ent := range msg.Entries {
+			ent := ent
+			switch ent.Type {
+			case EntryType_Block:
+				// 在NotReady状态下接收过往区块需要注意，所有接收到的区块临时存到一个哈希表
+				// 且按LatestBlock倒序补漏
+				if err := p.handleEntryBlock(msg.From, req); err != nil {
+					p.Errorf("%s handle EntryType_Block from (%s) fail: %s\n", p.DutyState(), msg.From, err)
+				} else {
+					p.Logf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
+				}
+			case EntryType_Proof:	
+				// 收集Proof. NotReady只是不竞选不校验，不代表不见证
+				if err := p.handleEntryBlock(msg.From, req); err != nil {
+					p.Errorf("%s handle EntryType_Block from (%s) fail: %s\n", p.DutyState(), msg.From, err)
+				} else {
+					p.Logf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
+				}
+			case EntryType_NewBlock:
+				// 收集新区块
+
+			case EntryType_Transaction:
+			case EntryType_Neighbor:
+			case EntryType_Process:
+
+			default:
+				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)	
+			}
+		}
+	case defines.MessageType_Req:
+		for _, req := range msg.Reqs {
+			req := req
+			switch req.Type {
+			case RequestType_Neighbors:
+				if err := p.handleRequestNeighbors(msg.From, req); err != nil {
+					p.Errorf("%s handle RequestType_Neighbors from (%s) fail: %s\n", p.DutyState(), msg.From, err)
+				} else {
+					p.Logf("%s handle RequestType_Neighbors from (%s) succ\n", p.DutyState(), msg.From)
+				}
+			case RequestType_Blocks:
+				if err := p.handleRequestBlocks(msg.From, req); err != nil {
+					p.Errorf("%s handle RequestType_Blocks from (%s) fail: %s\n", p.DutyState(), msg.From, err)
+				} else {
+					p.Logf("%s handle RequestType_Blocks from (%s) succ\n", p.DutyState(), msg.From)
+				}
+			case RequestType_Processes:
+				if err := p.handleRequestProcesses(msg.From, req); err != nil {
+					p.Errorf("%s handle RequestType_Processes from (%s) fail: %s\n", p.DutyState(), msg.From, err)
+				} else {
+					p.Logf("%s handle RequestType_Processes from (%s) succ\n", p.DutyState(), msg.From)
+				}
+			default:
+				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)	
+			}
+		}
+	default:
+		p.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+	}
+	
+	
 	return nil
 }
 

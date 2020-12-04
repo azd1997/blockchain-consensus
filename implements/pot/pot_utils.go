@@ -6,7 +6,10 @@
 
 package pot
 
-import "sync/atomic"
+import (
+	"fmt"
+	"sync/atomic"
+)
 
 // 查看当前状态
 func (p *Pot) getState() StateType {
@@ -17,6 +20,12 @@ func (p *Pot) getState() StateType {
 func (p *Pot) setState(newState StateType) {
 	atomic.StoreUint32((*uint32)(&p.state), uint32(newState))
 }
+
+// 查看当前状态和duty
+func (p *Pot) DutyState() string {
+	return fmt.Sprintf("%s-%s", p.duty.String(), p.getState.String())
+}
+
 
 //// 获取某个id的进度
 //func (p *Pot) getProcess(id string) defines.Process {

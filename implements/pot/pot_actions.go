@@ -312,7 +312,7 @@ func (p *Pot) broadcastRequestLatestBlock() error {
 ///////////////////////////////////////////////////////////////////
 
 // wait 函数用于等待邻居们的某一类消息回应
-func (p *Pot) wait() error {
+func (p *Pot) wait(nWait int) error {
 	timeoutD := 1 * time.Second
 	timeout := time.NewTimer(timeoutD)
 	if p.nWaitChan == nil {
@@ -326,11 +326,11 @@ func (p *Pot) wait() error {
 			p.Logf("wait: done and return\n")
 			return nil
 		case <-p.nWaitChan:
-			p.nWait--
+			nWait--
 			cnt++
 			p.Logf("wait: nWait--\n")
 			// 等待结束
-			if p.nWait == 0 {
+			if nWait == 0 {
 				p.Logf("wait: wait finish and return\n")
 				return nil
 			}
@@ -342,6 +342,45 @@ func (p *Pot) wait() error {
 			}
 			p.Logf("wait: timeout, %d responses received, return\n", cnt)
 			return nil
+		}
+	}
+}
+
+// 等待某个区块，需要在wait阶段决定哪个才是正确的
+// blockIndex=-1时表示等最新区块; nWait表示等待的数量
+func (p *Pot) waitAndDecideOneBlock(blockIndex int64, nWait int) (*defines.Block, error) {
+	timeoutD := 1 * time.Second
+	timeout := time.NewTimer(timeoutD)
+	if p.nWaitBlockChan == nil {
+		p.nWaitBlockChan = make(chan *defines.Block)
+	}
+
+	p.udbt.Reset(blockIndex)	// 重置未决区块表
+
+	cnt := 0
+	for {
+		select {
+		case <-p.done:		// 程序被关闭
+			p.Logf("wait: done and return\n")
+			return nil, nil
+		case b := <-p.nWaitBlockChan:
+			nWait--
+			cnt++
+			p.Logf("wait: nWait--\n")
+			p.udbt.Add(b)	// 添加到未决区块表
+			// 等待结束
+			if nWait == 0 {
+				p.Logf("wait: wait finish and return\n")
+				return p.udbt.Major(), nil
+			}
+		case <-timeout.C:
+			// 超时需要判断两种情况：
+			if cnt == 0 { // 一个回复都没收到
+				p.Logf("wait: timeout, no response received\n")
+				return nil, errors.New("wait timeout and no response received")
+			}
+			p.Logf("wait: timeout, %d responses received, return\n", cnt)
+			return p.udbt.Major(), nil
 		}
 	}
 }

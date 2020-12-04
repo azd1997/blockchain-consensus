@@ -78,6 +78,7 @@ func (p *Pot) Init() error {
 func (p *Pot) initForSeedFirstStart() error {
 
 	// 尝试与节点表其他seed联系，请求邻居信息
+	p.setState(StateType_PreInited_RequestNeighbors)
 	total, errs := p.pit.RangeSeeds(p.requestNeighborsFuncGenerator())
 	if total-1 == len(errs) {
 		// 与所有其他seed的发信都失败了
@@ -106,9 +107,9 @@ func (p *Pot) initForSeedFirstStart() error {
 	}
 
 	// total - 1 > len(errs) 部分成功或全部成功.   <的情况不用讨论，不可能出现
-	p.nWait = total - 1 - len(errs) // 设置等待数量
+	nWait := total - 1 - len(errs) // 设置等待数量
 	// 等待
-	if err := p.wait(); err != nil { // 一个都没等到
+	if err := p.wait(nWait); err != nil { // 一个都没等到
 		return err // 退出启动
 	}
 
@@ -135,26 +136,23 @@ func (p *Pot) initForSeedFirstStart() error {
 	*/
 
 	// 其他seed有在线者，那么向其他seed请求1号区块先
-	p.udbt.Reset(1) // 重置未决区块表
-	err := p.requestOneBlockAndWait(false, 1)
+	p.setState(StateType_PreInited_RequestFirstBlock)
+	firstBlock, err := p.requestOneBlockAndWait(false, 1)
 	if err != nil {
 		return err
 	}
-	// 此时可以选出多数支持的区块, 初始化时钟
-	firstBlock := p.udbt.Major()
+	// 初始化时钟
 	p.clock = StartClock(firstBlock)
 
 	// 3. 等待一段时间，到达PotStart时刻
 	<-p.potStartBeforeReady
 
 	// 4. 向seed或者peer请求最新区块
-	p.udbt.Reset(-1) // 重置未决区块表
-	err = p.requestLatestBlockAndWait(false)
+	p.setState(StateType_PreInited_RequestLatestBlock)
+	latestBlock, err = p.requestLatestBlockAndWait(false)
 	if err != nil {
 		return err
 	}
-
-	latestBlock := p.udbt.Major()
 	// 驱动时钟，跟上网络时间
 	if err := p.clock.Trigger(latestBlock); err != nil {
 		return err
@@ -192,6 +190,7 @@ func (p *Pot) initForSeedReStart() error {
 
 	// 1. 广播seeds(以及peers)，看有无在线的
 	// 尝试与节点表其他seed联系，请求邻居信息
+	p.setState(StateType_PreInited_RequestNeighbors)
 	seedsAllFail, err := p.requestNeighborsAndWait()
 	if err != nil {
 		return err
@@ -209,14 +208,13 @@ func (p *Pot) initForSeedReStart() error {
 
 	// 4. 发起请求最新区块。
 	// 之所以要在PotStart时刻请求，是为了降低复杂性，2*TickMs能保证回应能在新区块诞生前收到
-	err = p.requestLatestBlockAndWait(seedsAllFail)
+	p.setState(StateType_PreInited_RequestLatestBlock)
+	latestBlock, err = p.requestLatestBlockAndWait(seedsAllFail)
 	if err != nil {
 		return err
 	}
 
-	// 5. 此时可以选出多数支持的区块
-	latestBlock := p.udbt.Major()
-	// 驱动时钟，跟上网络时间
+	// 5. 驱动时钟，跟上网络时间
 	if err := p.clock.Trigger(latestBlock); err != nil {
 		return err
 	}
@@ -229,34 +227,32 @@ func (p *Pot) initForSeedReStart() error {
 // initForPeerFirstStart peer初次启动
 func (p *Pot) initForPeerFirstStart() error {
 	// 1. 向seeds和预配置的peers请求节点表
+	p.setState(StateType_PreInited_RequestNeighbors)
 	seedsAllFail, err := p.requestNeighborsAndWait()
 	if err != nil {
 		return err
 	}
 
 	// 2. 请求1号区块，初始化时钟	// TODO: 1号区块距当前最新区块太远导致时间偏差较大问题，待解决
-	p.udbt.Reset(1) // 重置未决区块表
-	err = p.requestOneBlockAndWait(seedsAllFail, 1)
+	p.setState(StateType_PreInited_RequestFirstBlock)
+	firstBlock, err = p.requestOneBlockAndWait(seedsAllFail, 1)
 	if err != nil {
 		return err
 	}
-	// 此时可以选出多数支持的区块, 初始化时钟
-	firstBlock := p.udbt.Major()
+	// 初始化时钟
 	p.clock = StartClock(firstBlock)
 
 	// 3. 等待一段时间，到达PotStart时刻
 	<-p.potStartBeforeReady
 
 	// 4. 向seed或者peer请求最新区块
-	p.udbt.Reset(0) // 重置未决区块表
-	err = p.requestLatestBlockAndWait(seedsAllFail)
+	p.setState(StateType_PreInited_RequestLatestBlock)
+	latestBlock, err = p.requestLatestBlockAndWait(seedsAllFail)
 	if err != nil {
 		return err
 	}
 
-	// 5. 此时可以选出多数支持的区块
-	latestBlock := p.udbt.Major()
-	// 驱动时钟，跟上网络时间
+	// 5. 驱动时钟，跟上网络时间
 	if err := p.clock.Trigger(latestBlock); err != nil {
 		return err
 	}
@@ -270,6 +266,7 @@ func (p *Pot) initForPeerFirstStart() error {
 // initForPeerReStart peer重启动
 func (p *Pot) initForPeerReStart() error {
 	// 1. 向seeds和预配置的peers请求节点表
+	p.setState(StateType_PreInited_RequestNeighbors)
 	seedsAllFail, err := p.requestNeighborsAndWait()
 	if err != nil {
 		return err
@@ -286,15 +283,12 @@ func (p *Pot) initForPeerReStart() error {
 	<-p.potStartBeforeReady
 
 	// 4. 向seed或者peer请求最新区块
-	p.udbt.Reset(0) // 重置未决区块表
-	err = p.requestLatestBlockAndWait(seedsAllFail)
+	p.setState(StateType_PreInited_RequestLatestBlock)
+	latestBlock, err = p.requestLatestBlockAndWait(seedsAllFail)
 	if err != nil {
 		return err
 	}
-
-	// 5. 此时可以选出多数支持的区块
-	latestBlock := p.udbt.Major()
-	// 驱动时钟，跟上网络时间
+	// 5. 驱动时钟，跟上网络时间
 	if err := p.clock.Trigger(latestBlock); err != nil {
 		return err
 	}
@@ -324,23 +318,24 @@ func (p *Pot) requestNeighborsAndWait() (seedsAllFail bool, err error) {
 		return seedsAllFail, errors.New("fatal error: impossible")
 	}
 	// 部分成功或全部成功
-	p.nWait = all - len(errs) // 设置等待数量
+	nWait := all - len(errs) // 设置等待数量
 	// 等待 (此时的handle函数会将邻居节点进行存储，若重复以先存为准)
-	if err := p.wait(); err != nil { // 一个都没等到
+	if err := p.wait(nWait); err != nil { // 一个都没等到
 		return seedsAllFail, err // 退出启动
 	}
 	return seedsAllFail, nil
 }
 
 // 请求最新区块
-func (p *Pot) requestLatestBlockAndWait(seedsAllFail bool) error {
+func (p *Pot) requestLatestBlockAndWait(seedsAllFail bool) (*defines.Block, error) {
 	return p.requestOneBlockAndWait(seedsAllFail, -1)
 }
 
 // 请求具体某一个区块
-func (p *Pot) requestOneBlockAndWait(seedsAllFail bool, index int64) error {
+func (p *Pot) requestOneBlockAndWait(seedsAllFail bool, index int64) (*defines.Block, error) {
 	var total, all int
 	var errs map[string]error
+	var nWait int
 	if seedsAllFail {
 		total, errs = p.pit.RangePeers(p.requestOneBlockFuncGenerator(index))
 	} else {
@@ -348,16 +343,17 @@ func (p *Pot) requestOneBlockAndWait(seedsAllFail bool, index int64) error {
 	}
 	all = total - bool2int(p.duty == defines.PeerDuty_Seed)
 	if all == len(errs) { // 全部发信失败，则退出
-		return errors.New("request latest block to seeds and peers all fail")
+		return nil, errors.New("request latest block to seeds and peers all fail")
 	} else if all < len(errs) {
-		return errors.New("fatal error: impossible")
+		return nil, errors.New("fatal error: impossible")
 	} else {
 		// 部分成功或全部成功
-		p.nWait = all - len(errs) // 设置等待数量
+		nWait = all - len(errs) // 设置等待数量
 	}
-	// 等待 (此时的handle函数会将最新区块进行收集比较，多数者获胜。 p.udbt.Add(block))
-	if err := p.wait(); err != nil { // 一个都没等到
-		return err // 退出启动
+	// 等待该区块，并从众多回复中确定接收哪一个
+	if wb, err := p.waitAndDecideOneBlock(index, nWait); err != nil { // 一个都没等到
+		return nil, err // 退出启动
+	} else {
+		return wb, nil
 	}
-	return nil
 }

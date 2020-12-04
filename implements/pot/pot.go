@@ -54,6 +54,7 @@ type Pot struct {
 	// 用于p.loopBeforeReady
 	nWait     int
 	nWaitChan chan int
+	nWaitBlockChan chan *defines.Block
 
 	// 对外提供的消息通道
 	// 本机节点生成新交易时，也是构造成交易消息从msgin传入
@@ -109,7 +110,6 @@ func New(opt *Option) (*Pot, error) {
 	p := &Pot{
 		id:                  opt.Id,
 		duty:                opt.Duty,
-		state:               StateType_PreInited, // 初始状态
 		processes:           newProcessTable(),
 		msgin:               make(chan *defines.Message, DefaultMsgChanLen),
 		msgout:              make(chan *defines.MessageWithError, DefaultMsgChanLen),
