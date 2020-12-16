@@ -9,8 +9,6 @@ package defines
 import (
 	"bytes"
 	"encoding/gob"
-
-	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
 )
 
 // Process 进度
@@ -19,14 +17,12 @@ type Process struct {
 	Hash        []byte
 	LatestMaker string
 	Id          string // 哪个节点的Process
-	NoHole bool	// 是否存在空洞？若存在，则只能接受最新区块，并不能直接参与共识。
+	NoHole      bool   // 是否存在空洞？若存在，则只能接受最新区块，并不能直接参与共识。
 }
 
 func (p *Process) Encode() ([]byte, error) {
-	buf := bufferpool.Get()
-	defer bufferpool.Return(buf)
-	enc := gob.NewEncoder(buf)
-	err := enc.Encode(p)
+	buf := new(bytes.Buffer)
+	err := gob.NewEncoder(buf).Encode(p)
 	return buf.Bytes(), err
 }
 

@@ -20,7 +20,7 @@ func newUndecidedBlockTable() *undecidedBlockTable {
 // undecidedBlock 未决区块
 type undecidedBlock struct {
 	count int
-	b *defines.Block
+	b     *defines.Block
 }
 
 // 未决区块表
@@ -32,7 +32,7 @@ type undecidedBlock struct {
 // 该表的生命周期为一次收集期，之后将会重置以给下次使用
 type undecidedBlockTable struct {
 	undecidedIndex int64
-	table map[string]*undecidedBlock	// <hash_hex, v>
+	table          map[string]*undecidedBlock // <hash_hex, v>
 }
 
 // Add 添加未决区块
@@ -44,15 +44,22 @@ func (udbt *undecidedBlockTable) Add(b *defines.Block) {
 	k := fmt.Sprintf("%x", b.SelfHash)
 	if udbt.table[k] == nil {
 		udbt.table[k] = &undecidedBlock{
-			count:1,
-			b:b,
+			count: 1,
+			b:     b,
 		}
 	} else {
 		udbt.table[k].count++
 	}
 }
 
+// Get 根据区块的哈希查询区块
+func (udbt *undecidedBlockTable) Get(bhash []byte) *defines.Block {
+	k := fmt.Sprintf("%x", bhash)
+	return udbt.table[k].b
+}
+
 // Major 判定多数的区块
+// 仅在需要依赖多数获胜原则时使用
 func (udbt *undecidedBlockTable) Major() *defines.Block {
 	maxcount := 0
 	maxk := ""

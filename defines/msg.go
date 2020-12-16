@@ -13,10 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-
-	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
 )
-
 
 type MessageWithError struct {
 	Msg *Message
@@ -114,8 +111,7 @@ func (msg *Message) Encode() ([]byte, error) {
 	}
 
 	// 获取缓冲
-	buf := bufferpool.Get()
-	defer bufferpool.Return(buf)
+	buf := new(bytes.Buffer)
 
 	// 写入魔数 2B
 	err = binary.Write(buf, binary.BigEndian, MessageMagicNumber)
@@ -226,7 +222,7 @@ func (msg *Message) Encode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("encode: desclen=%d\n", desclen)
+	//fmt.Printf("encode: desclen=%d\n", desclen)
 	// 写入Desc (desclen)B
 	err = binary.Write(buf, binary.BigEndian, []byte(msg.Desc))
 	if err != nil {
@@ -235,7 +231,7 @@ func (msg *Message) Encode() ([]byte, error) {
 
 	// 写入签名长度 2B
 	siglen := uint16(len(msg.Sig))
-	fmt.Printf("encode: siglen=%d\n", siglen)
+	//fmt.Printf("encode: siglen=%d\n", siglen)
 	err = binary.Write(buf, binary.BigEndian, siglen)
 	if err != nil {
 		return nil, err
@@ -519,4 +515,21 @@ func (msg *Message) String() string {
 		return err.Error()
 	}
 	return string(b)
+}
+
+func (msg *Message) WriteDesc(keyValues ...string) error {
+	descmap := map[string]string{}
+	length := len(keyValues)
+	if length % 2 != 0 {
+		return errors.New("wrong arguments")
+	}
+	for i:=0; i<length/2; i++ {
+		descmap[keyValues[2*i]] = keyValues[2*i+1]
+	}
+	res, err := json.Marshal(descmap)
+	if err != nil {
+		return err
+	}
+	msg.Desc = string(res)
+	return nil
 }

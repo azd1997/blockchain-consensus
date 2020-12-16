@@ -7,6 +7,7 @@
 package bcc
 
 import (
+	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/modules/bnet"
 	"github.com/azd1997/blockchain-consensus/modules/peerinfo"
 	"github.com/azd1997/blockchain-consensus/requires"
@@ -35,14 +36,33 @@ import (
 	}
 */
 
+// Option Node所需的选项
+type Option struct {
+}
+
+// PrepareOption 准备Option
+//func PrepareOption(configReader io.Reader) (*Option, error) {
+//	// 解析配置
+//	tc, err := config.ParseConfig(configReader)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	、、
+//}
+
 // Node 节点服务器
 type Node struct {
 
 	// 节点ID，与账户共用一个ID
-	id string
+	id   string
+	duty defines.PeerDuty
+	addr string
 
 	// kv 存储
 	kv requires.Store
+	// bc 区块链（相当于日志持久器）
+	bc requires.BlockChain
 
 	// 节点信息表
 	pit *peerinfo.PeerInfoTable
@@ -58,13 +78,18 @@ type Node struct {
 }
 
 // NewNode 构建Node
-func NewNode(id string, consensusType string,
-	ln requires.Listener, dialer requires.Dialer, kv requires.Store,
-	logdest log.LogDest) (*Node, error) {
+func NewNode(
+	id string, duty defines.PeerDuty, // 账户配置
+	consensusType string, // 共识配置
+	ln requires.Listener, dialer requires.Dialer, // 网络配置
+	kv requires.Store, bc requires.BlockChain, // 外部依赖
+	logdest log.LogDest, // 日志配置
+) (*Node, error) {
 
 	node := &Node{
 		id: id,
 		kv: kv,
+		bc: bc,
 	}
 
 	// 构建节点表
@@ -126,14 +151,12 @@ func (s *Node) Init() error {
 
 // Ok 检查Node是否非空，以及内部一些成员是否准备好
 func (s *Node) Ok() bool {
-	return s != nil && s.css != nil && s.net != nil
+	return s != nil && s.css != nil && s.net != nil && s.bc != nil
 }
 
-// IsWorker 判断该Node是否是共识节点
-// 这将通过id的第一个字节判断
-func (s *Node) IsWorker() bool {
-	// TODO
-	return true
+// IsConsensusNode 判断该Node是否是共识节点
+func (s *Node) IsConsensusNode() bool {
+	return s.duty == defines.PeerDuty_Peer
 }
 
 // ID 获取Node的唯一标识

@@ -10,8 +10,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
-
-	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
 )
 
 //// Peer 节点信息
@@ -69,8 +67,8 @@ func (duty PeerDuty) String() string {
 type PeerInfo struct {
 	Id   string
 	Addr string
-	Attr PeerAttr
 	Duty PeerDuty
+	Attr PeerAttr
 	Data []byte
 }
 
@@ -85,10 +83,8 @@ func (pi *PeerInfo) String() string {
 
 // Encode 编码
 func (pi *PeerInfo) Encode() ([]byte, error) {
-	buf := bufferpool.Get()
-	defer bufferpool.Return(buf)
-	enc := gob.NewEncoder(buf)
-	err := enc.Encode(pi)
+	buf := new(bytes.Buffer)
+	err := gob.NewEncoder(buf).Encode(pi)
 	return buf.Bytes(), err
 }
 

@@ -15,8 +15,8 @@ import (
 
 func Test_binarySearch(t *testing.T) {
 	type args struct {
-		holes  [][2]uint64
-		target uint64
+		holes  [][2]int64
+		target int64
 	}
 	tests := []struct {
 		name string
@@ -24,7 +24,7 @@ func Test_binarySearch(t *testing.T) {
 		want int
 	}{
 		{"normal",
-			args{holes: [][2]uint64{{1,3}, {4,6}, {7,10}}, target:5},
+			args{holes: [][2]int64{{1, 3}, {4, 6}, {7, 10}}, target: 5},
 			1},
 	}
 	for _, tt := range tests {
@@ -39,13 +39,13 @@ func Test_binarySearch(t *testing.T) {
 func Test_processTable_fill(t *testing.T) {
 	type fields struct {
 		id        string
-		maxIndex  uint64
+		maxIndex  int64
 		processes map[string]*defines.Process
 		lock      *sync.RWMutex
-		holes     [][2]uint64
+		holes     [][2]int64
 	}
 	type args struct {
-		bIndex uint64
+		bIndex int64
 	}
 	tests := []struct {
 		name   string
@@ -53,8 +53,8 @@ func Test_processTable_fill(t *testing.T) {
 		args   args
 	}{
 		{"normal", fields{
-			holes:     [][2]uint64{{1,3}, {4,6}, {7,10}},
-		},args{bIndex:5}},
+			holes: [][2]int64{{1, 3}, {4, 6}, {7, 10}},
+		}, args{bIndex: 5}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

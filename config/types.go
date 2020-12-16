@@ -6,50 +6,49 @@
 
 package config
 
-type tomlConfig struct {
-	Account accountConfig `toml:"account"`
-	Consensus consensusConfig `toml:"consensus"`
-	Pot potConfig `toml:"pot"`	// 可选
-	Pow powConfig `toml:"pow"`	// 可选
-	Raft raftConfig `toml:"raft"`	// 可选
-	Store storeConfig `toml:"store"`
-	Bnet bnetConfig `toml:"bnet"`
+type TomlConfig struct {
+	Account   AccountConfig   `toml:"account"`
+	Consensus ConsensusConfig `toml:"consensus"`
+	Pot       PotConfig       `toml:"pot"`  // 可选
+	Pow       PowConfig       `toml:"pow"`  // 可选
+	Raft      RaftConfig      `toml:"raft"` // 可选
+	Store     StoreConfig     `toml:"store"`
+	Bnet      BnetConfig      `toml:"bnet"`
 
 	Seeds map[string]string `toml:"seeds"`
 	Peers map[string]string `toml:"peers"`
 }
 
-type accountConfig struct {
-	Id string `toml:"id"`
+type AccountConfig struct {
+	Id   string `toml:"id"`
 	Duty string `toml:"duty"`
+	Addr string `toml:"addr"`
 }
 
-type consensusConfig struct {
+type ConsensusConfig struct {
 	Type string `toml:"type"`
 }
 
 //////////////////
 
-type potConfig struct {
+type PotConfig struct {
 	TickMs int `toml:"tick_ms"`
 }
 
-type powConfig struct {
-
+type PowConfig struct {
 }
 
-type raftConfig struct {
-
+type RaftConfig struct {
 }
 
 ///////////////////
 
-type storeConfig struct {
-	Engine string `toml:"engine"`
+type StoreConfig struct {
+	Engine   string `toml:"engine"`
 	Database string `toml:"database"`
 }
 
-type bnetConfig struct {
+type BnetConfig struct {
 	Protocol string `toml:"protocol"`
-	Addr string `toml:"addr"`
+	Addr     string `toml:"addr"`
 }

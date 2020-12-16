@@ -28,10 +28,10 @@ const (
 
 // Option 选项
 type Option struct {
-	Id      string
-	Duty    defines.PeerDuty
-	LogDest log.LogDest
-	Pit     *peerinfo.PeerInfoTable
+	Id   string
+	Duty defines.PeerDuty
+	Pit  *peerinfo.PeerInfoTable
+	BC   requires.BlockChain
 }
 
 // Pot pot节点
@@ -52,14 +52,21 @@ type Pot struct {
 	processes *processTable
 
 	// 用于p.loopBeforeReady
-	nWait     int
-	nWaitChan chan int
+	nWait          int
+	nWaitChan      chan int
 	nWaitBlockChan chan *defines.Block
 
 	// 对外提供的消息通道
 	// 本机节点生成新交易时，也是构造成交易消息从msgin传入
 	msgin  chan *defines.Message
 	msgout chan *defines.MessageWithError
+
+	// 本地生成的交易从该chan传入
+	localTxIn chan *defines.Transaction
+
+	//// 交易传出通道
+	//// 从网络中接收到的交易，需要传入该通道，交给bc存储
+	//txout chan *defines.Transaction
 
 	clock *Clock // 滴答器，每次滴答时刻都需要根据当前的状态变量确定状态该如何变更
 
@@ -87,11 +94,13 @@ type Pot struct {
 	// 交易池
 	// 1. 添加交易。交易的检验由交易池负责
 	// 2. 生成新区块
-	txPool requires.TransactionPool
+	//txPool requires.TransactionPool
 
 	// 区块链
 	// 1. 添加区块，区块的校验由区块链负责
 	// 2. 查询区块
+	// 3. 添加交易。交易的检验由交易池负责
+	// 4. 生成新区块
 	bc requires.BlockChain
 
 	// 节点信息表，传入的需要是已初始化好的
@@ -107,17 +116,38 @@ type Pot struct {
 
 // New 新建Pot
 func New(opt *Option) (*Pot, error) {
+	logger := log.NewLogger(Module_Css, opt.Id)
+	if logger == nil {
+		return nil, errors.New("nil logger, please init logger first")
+	}
+
+	var latestBlockHash []byte
+	latestIndex := opt.BC.GetMaxIndex()
+	if latestIndex > 0 {
+		latestBlock, err := opt.BC.GetBlocksByRange(-1, 1)
+		if err != nil {
+			return nil, err
+		}
+		if len(latestBlock) > 0 {
+			latestBlockHash = latestBlock[0].SelfHash
+		}
+	}
+	proofs := newProofTable(latestIndex, latestBlockHash)
+
 	p := &Pot{
 		id:                  opt.Id,
 		duty:                opt.Duty,
+		clock:               NewClock(false),
 		processes:           newProcessTable(),
 		msgin:               make(chan *defines.Message, DefaultMsgChanLen),
 		msgout:              make(chan *defines.MessageWithError, DefaultMsgChanLen),
+		localTxIn:           make(chan *defines.Transaction, DefaultMsgChanLen),
 		potStartBeforeReady: make(chan Moment), //阻塞式
-		proofs:              nil,
+		proofs:              proofs,
 		udbt:                newUndecidedBlockTable(),
+		bc:                  opt.BC,
 		done:                make(chan struct{}),
-		Logger:              log.NewLogger(opt.LogDest, Module_Css, opt.Id),
+		Logger:              logger,
 	}
 
 	if opt.Pit == nil {
@@ -141,12 +171,16 @@ func (p *Pot) Close() error {
 	return nil
 }
 
-// OutMsgChan 对外提供消息通道，用于数据向外传输
-func (p *Pot) OutMsgChan() chan *defines.MessageWithError {
+// MsgOutChan 对外提供消息通道，用于数据向外传输
+func (p *Pot) MsgOutChan() chan *defines.MessageWithError {
 	return p.msgout
 }
 
-// InMsgChan 对外提供消息通道，用于数据向内传输
-func (p *Pot) InMsgChan() chan *defines.Message {
+// MsgInChan 对外提供消息通道，用于数据向内传输
+func (p *Pot) MsgInChan() chan *defines.Message {
 	return p.msgin
+}
+
+func (p *Pot) LocalTxInChan() chan *defines.Transaction {
+	return p.localTxIn
 }

@@ -65,11 +65,26 @@ func (mt MomentType) String() string {
 // 构造区块消耗的时间也不容忽视且不相同，所以为了尽量保证所有节点时间上的一致
 // 每次都要用新区块来矫正时间
 type Clock struct {
+	// 启用的话，程序会利用每一次的新区块进行时间纠偏
+	enableTimeCorrect bool
+
 	t       *time.Timer
 	done    chan struct{}
 	trigger chan int64  // unixnano timestamp
 	Tick    chan Moment // 对外的tick
 	epoch   int64
+}
+
+func NewClock(enableTimeCorrect bool) *Clock {
+	timer := time.NewTimer(0)
+	<-timer.C
+	return &Clock{
+		enableTimeCorrect:enableTimeCorrect,
+		t:       timer,
+		done:    make(chan struct{}),
+		trigger: make(chan int64),
+		Tick:    make(chan Moment),
+	}
 }
 
 // 接收到网络中最新的区块后，以该区块为起始驱动时钟运行
@@ -91,20 +106,17 @@ type Clock struct {
 //}
 
 // StartClock 接收到网络中最新的区块后，以该区块为起始驱动时钟运行
-func StartClock(baseBlock *defines.Block) *Clock {
-	timer := time.NewTimer(0)
-	<-timer.C
-	c := &Clock{
-		t:       timer,
-		done:    make(chan struct{}),
-		trigger: make(chan int64),
-		Tick:    make(chan Moment),
-		epoch:   baseBlock.Index,
+func (c *Clock) Start(baseBlock *defines.Block) *Clock {
+	c.epoch = baseBlock.Index
+	if c.enableTimeCorrect {
+		go c.loop()
+		if err := c.Trigger(baseBlock); err != nil {
+			return nil
+		}
+	} else {
+		go c.loop2(baseBlock.Timestamp)
 	}
-	go c.loop()
-	if err := c.Trigger(baseBlock); err != nil {
-		return nil
-	}
+
 	return c
 }
 
@@ -123,6 +135,10 @@ func (c *Clock) Trigger(b *defines.Block) error {
 	//} else {
 	//	c.trigger <- b.Timestamp
 	//}
+
+	if !c.enableTimeCorrect {
+		return nil
+	}
 
 	if b.Timestamp >= time.Now().UnixNano() {
 		return errors.New("fatal block timestamp")
@@ -143,14 +159,14 @@ func (c *Clock) loop() {
 		case <-c.done:
 			return
 		case bt := <-c.trigger:
-			delta := divisor - (time.Now().UnixNano()-int64(bt))%divisor
-			fmt.Printf("delta: %d\n", delta/1e6)
+			delta := divisor - (time.Now().UnixNano() - bt)%divisor
+			//fmt.Printf("delta: %dms\n", delta/1e6)
 			//fmt.Println("now: ", time.Now())
 			var phase1, phase2 time.Duration
 			if delta < unit {
 				phase1 = time.Duration(delta)
 				phase2 = time.Duration(unit)
-				fmt.Println(phase1.Milliseconds(), phase2.Milliseconds())
+				//fmt.Println(phase1.Milliseconds(), phase2.Milliseconds())
 				//fmt.Println("1111", time.Now())
 				c.t.Reset(phase1)
 				//fmt.Println("2222", time.Now())
@@ -165,6 +181,8 @@ func (c *Clock) loop() {
 					Time: <-c.t.C,
 				} // 对外传递1次Tick
 				//fmt.Println("4444", time.Now())
+
+
 			} else {
 				phase1 = time.Duration(delta - unit)
 				c.t.Reset(phase1)
@@ -176,6 +194,71 @@ func (c *Clock) loop() {
 		}
 	}
 }
+
+// loop2 时钟运转循环
+// 依赖base时刻(ns， base是1号区块的创建时间)不断驱动出两个时刻信号(PotOver(n) PotStart(n+1))
+func (c *Clock) loop2(base int64) {
+
+	//potOverTick, potStartTick := new(time.Ticker), new(time.Ticker)
+
+	unit := int64(TickMs * time.Millisecond)
+	divisor := 2 * unit
+	delta := divisor - (time.Now().UnixNano() - base) % divisor
+	//fmt.Println(delta / 1e6)
+	var startBegin, overBegin *time.Timer
+	if delta < unit {
+		overBegin = time.NewTimer(time.Duration(delta))
+		startBegin = time.NewTimer(time.Duration(delta + unit))
+		//time.Sleep()
+		//potOverTick = time.NewTicker(time.Duration(divisor) * time.Nanosecond)
+		//time.Sleep(time.Duration(unit))
+		//potStartTick = time.NewTicker(time.Duration(divisor) * time.Nanosecond)
+	} else {
+		startBegin = time.NewTimer(time.Duration(delta - unit))
+		overBegin = time.NewTimer(time.Duration(delta))
+
+		//time.Sleep(time.Duration(delta - unit))
+		//potStartTick = time.NewTicker(time.Duration(divisor) * time.Nanosecond)
+		//time.Sleep(time.Duration(unit))
+		//potOverTick = time.NewTicker(time.Duration(divisor) * time.Nanosecond)
+	}
+
+	go func() {
+		for {
+			select {
+			case <-c.done:
+				return
+			//case t := <-potOverTick.C:
+			//	fmt.Println("2222")
+			//	c.Tick <- Moment{
+			//		Type: MomentType_PotOver,
+			//		Time: t,
+			//	} // 对外传递1次Tick
+			//case t := <-potStartTick.C:
+			//	fmt.Println("3333")
+			//	c.Tick <- Moment{
+			//		Type: MomentType_PotStart,
+			//		Time: t,
+			//	} // 对外传递1次Tick
+
+			case t := <-startBegin.C:
+				c.Tick <- Moment{
+					Type: MomentType_PotStart,
+					Time: t,
+				} // 对外传递1次Tick
+				startBegin.Reset(time.Duration(divisor))
+			case t := <-overBegin.C:
+				c.Tick <- Moment{
+					Type: MomentType_PotOver,
+					Time: t,
+				} // 对外传递1次Tick
+				overBegin.Reset(time.Duration(divisor))
+			}
+		}
+	}()
+
+}
+
 
 // Close 关闭时钟
 func (c *Clock) Close() {

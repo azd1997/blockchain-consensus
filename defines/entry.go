@@ -7,13 +7,13 @@
 package defines
 
 import (
+	"bytes"
 	"encoding/binary"
-	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
 	"io"
 )
 
 // EntryType 条目类型，没有做预定义，具体解释由各个实现自行定义、解析
-type EntryType = uint8
+type EntryType uint8
 
 const (
 	EntryType_Block       EntryType = 0 // 区块同步 Base BaseIndex Type Data
@@ -24,9 +24,28 @@ const (
 	EntryType_Process     EntryType = 5 // 进度	Type Data
 )
 
+func (et EntryType) String() string {
+	switch et {
+	case EntryType_Block:
+		return "EntryBlock"
+	case EntryType_Proof:
+		return "EntryProof"
+	case EntryType_NewBlock:
+		return "EntryNewBlock"
+	case EntryType_Transaction:
+		return "EntryTransaction"
+	case EntryType_Neighbor:
+		return "EntryNeighbor"
+	case EntryType_Process:
+		return "EntryProcess"
+	default:
+		return "EntryUnknown"
+	}
+}
+
 // Entry 条目
 type Entry struct {
-	BaseIndex int64 // 当前区块编号（高度），相当于任期
+	BaseIndex int64  // 当前区块编号（高度），相当于任期
 	Base      []byte // 当前消息构建时所基于的区块的Hash，当启用严格检查时，该项应被设置
 
 	Type EntryType // 指示Entry内存放的内容
@@ -53,16 +72,21 @@ func (e *Entry) Encode() ([]byte, error) {
 	}
 
 	// 获取缓冲
-	buf := bufferpool.Get()
-	defer bufferpool.Return(buf)
+	buf := new(bytes.Buffer)
+
+	//fmt.Println("buf: ", buf.Bytes())
+	//fmt.Println("e.Data: ", e.Data)
 
 	/* 序列化Entry */
 
-	// BaseIndex 4B
+	// BaseIndex 8B
 	err = binary.Write(buf, binary.BigEndian, e.BaseIndex)
 	if err != nil {
 		return nil, err
 	}
+
+	//fmt.Println("buf: ", buf.Bytes())
+	//fmt.Println("e.Data: ", e.Data)
 
 	// baselen 2B
 	baselen := uint16(len(e.Base))
@@ -71,11 +95,19 @@ func (e *Entry) Encode() ([]byte, error) {
 		return nil, err
 	}
 
-	// Base (baselen)B
-	err = binary.Write(buf, binary.BigEndian, e.Base)
-	if err != nil {
-		return nil, err
+	//fmt.Println("buf: ", buf.Bytes())
+	//fmt.Println("e.Data: ", e.Data)
+
+	if baselen > 0 {
+		// Base (baselen)B
+		err = binary.Write(buf, binary.BigEndian, e.Base)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	//fmt.Println("buf: ", buf.Bytes())
+	//fmt.Println("e.Data: ", e.Data)
 
 	// Type 1B
 	err = binary.Write(buf, binary.BigEndian, e.Type)
@@ -83,18 +115,30 @@ func (e *Entry) Encode() ([]byte, error) {
 		return nil, err
 	}
 
+	//fmt.Println("buf: ", buf.Bytes())
+	//fmt.Println("e.Data: ", e.Data)
+
 	// datalen 4B
 	datalen := uint32(len(e.Data))
+	//fmt.Println("encode datalen: ", datalen)
 	err = binary.Write(buf, binary.BigEndian, datalen)
 	if err != nil {
 		return nil, err
 	}
 
-	// Data (datalen)B
-	err = binary.Write(buf, binary.BigEndian, e.Data)
-	if err != nil {
-		return nil, err
+	//fmt.Println("buf: ", buf.Bytes())
+	//fmt.Println("e.Data: ", e.Data)
+
+	if datalen > 0 {
+		// Data (datalen)B
+		//fmt.Println("e.Data: ", e.Data)
+		err = binary.Write(buf, binary.BigEndian, e.Data)
+		if err != nil {
+			return nil, err
+		}
 	}
+
+	//fmt.Println("buf: ", buf.Bytes())
 
 	return buf.Bytes(), nil
 }
@@ -115,10 +159,12 @@ func (e *Entry) Decode(r io.Reader) error {
 		return err
 	}
 	// Base
-	e.Base = make([]byte, baselen)
-	err = binary.Read(r, binary.BigEndian, e.Base)
-	if err != nil {
-		return err
+	if baselen > 0 {
+		e.Base = make([]byte, baselen)
+		err = binary.Read(r, binary.BigEndian, e.Base)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Type
@@ -133,11 +179,14 @@ func (e *Entry) Decode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	// Data
-	e.Data = make([]byte, datalen)
-	err = binary.Read(r, binary.BigEndian, e.Data)
-	if err != nil {
-		return err
+	//fmt.Println("decode datalen: ", datalen)
+	if datalen > 0 {
+		// Data
+		e.Data = make([]byte, datalen)
+		err = binary.Read(r, binary.BigEndian, e.Data)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

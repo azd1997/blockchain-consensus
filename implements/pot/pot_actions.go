@@ -43,6 +43,41 @@ func (p *Pot) signAndSendMsg(msg *defines.Message) error {
 //
 //}
 
+// 将tx广播给所有种子节点和共识节点
+func (p *Pot) broadcastTx(tx *defines.Transaction) error {
+	txBytes, err := tx.Encode()
+	if err != nil {
+		return err
+	}
+	entry := &defines.Entry{
+		Type: defines.EntryType_Transaction,
+		Data: txBytes,
+	}
+
+	// 广播
+	f := func(peer *defines.PeerInfo) error {
+		if peer.Id != p.id {
+			msg := &defines.Message{
+				Version: defines.CodeVersion,
+				Type:    defines.MessageType_Data,
+				From:    p.id,
+				To:      peer.Id,
+				Entries: []*defines.Entry{entry},
+			}
+			if err := msg.WriteDesc("type", "transaction"); err != nil {
+				return err
+			}
+			return p.signAndSendMsg(msg)
+		}
+		return nil
+	}
+
+	//p.pit.RangeSeeds(f)
+	p.pit.RangePeers(f)
+
+	return nil
+}
+
 // 广播getNeighbors请求
 // toseeds true则向种子节点广播；否则向所有节点广播
 func (p *Pot) broadcastRequestNeighbors(toseeds bool) error {
@@ -75,11 +110,14 @@ func (p *Pot) broadcastRequestNeighbors(toseeds bool) error {
 			To:      peer.Id,
 			Reqs:    []*defines.Request{req},
 		}
+		if err := msg.WriteDesc("type", "req-neighbor"); err != nil {
+			return err
+		}
 		err = p.signAndSendMsg(msg)
 		if err != nil {
 			p.Errorf("broadcastRequestNeighbors: to %s fail: %v\n", peer.Id, err)
 		} else {
-			p.Logf("broadcastRequestNeighbors: to %s\n", peer.Id)
+			p.Infof("broadcastRequestNeighbors: to %s\n", peer.Id)
 			p.nWait++
 		}
 
@@ -96,20 +134,25 @@ func (p *Pot) broadcastRequestNeighbors(toseeds bool) error {
 // 广播自己的证明
 func (p *Pot) broadcastSelfProof() error {
 	// 首先需要获取证明
-	nb := p.txPool.GenBlock()
+	nb, err := p.bc.GenNextBlock()
+	if err != nil {
+		return err
+	}
 	p.maybeNewBlock = nb
 
-	process := p.processes.get(p.id)
-	if process == nil {
-		return errors.New("nil self process")
-	}
+	//process := p.processes.get(p.id)
+	//if process == nil {
+	//	return errors.New("nil self process")
+	//}
 
 	proof := &Proof{
 		Id:        p.id,
 		TxsNum:    int64(len(nb.Txs)),
 		BlockHash: nb.SelfHash,
-		Base:      process.Hash,
-		BaseIndex: process.Index,
+		//Base:      process.Hash,
+		//BaseIndex: process.Index,
+		Base:      nb.PrevHash,
+		BaseIndex: nb.Index - 1,
 	}
 
 	return p.broadcastProof(proof, false)
@@ -137,6 +180,9 @@ func (p *Pot) broadcastProof(proof *Proof, onlypeers bool) error {
 				From:    p.id,
 				To:      peer.Id,
 				Entries: []*defines.Entry{entry},
+			}
+			if err := msg.WriteDesc("type", "proof"); err != nil {
+				return err
 			}
 			return p.signAndSendMsg(msg)
 		}
@@ -177,11 +223,10 @@ func (p *Pot) broadcastNewBlock(nb *defines.Block) error {
 				To:      peer.Id,
 				Entries: []*defines.Entry{entry},
 			}
-			err := msg.Sign()
-			if err != nil {
+			if err := msg.WriteDesc("type", "newblock"); err != nil {
 				return err
 			}
-			p.send(msg)
+			return p.signAndSendMsg(msg)
 		}
 		return nil
 	})
@@ -208,11 +253,14 @@ func (p *Pot) broadcastRequestProcesses(toseeds bool) error {
 			To:      peer.Id,
 			Reqs:    []*defines.Request{req},
 		}
+		if err := msg.WriteDesc("type", "process"); err != nil {
+			return err
+		}
 		err := p.signAndSendMsg(msg)
 		if err != nil {
 			p.Errorf("broadcastRequestProcesses: to %s fail: %v\n", peer.Id, err)
 		} else {
-			p.Logf("broadcastRequestProcesses: to %s\n", peer.Id)
+			p.Infof("broadcastRequestProcesses: to %s\n", peer.Id)
 			p.nWait++
 		}
 
@@ -236,8 +284,8 @@ func (p *Pot) broadcastRequestBlocks(random3 bool) error {
 	process := p.processes.get(p.id)
 	req := &defines.Request{
 		Type:       defines.RequestType_Blocks,
-		IndexStart: int64(process.Index + 1), // 自己的进度+1
-		IndexCount: 0,                        // 0表示响应端要回复所有
+		IndexStart: process.Index + 1, // 自己的进度+1
+		IndexCount: 0,                 // 0表示响应端要回复所有
 	}
 
 	// 收集要广播的节点：seeds + 若干peer
@@ -264,10 +312,13 @@ func (p *Pot) broadcastRequestBlocks(random3 bool) error {
 			To:      peer,
 			Reqs:    []*defines.Request{req},
 		}
+		if err := msg.WriteDesc("type", "req-blocks"); err != nil {
+			return err
+		}
 		if err := p.signAndSendMsg(msg); err != nil {
 			p.Errorf("broadcastRequestBlocks: to %s fail: %s\n", peer, err)
 		} else {
-			p.Logf("broadcastRequestBlocks: to %s\n", peer)
+			p.Infof("broadcastRequestBlocks: to %s\n", peer)
 			p.nWait++
 		}
 	}
@@ -297,10 +348,13 @@ func (p *Pot) broadcastRequestLatestBlock() error {
 			To:      peer.Id,
 			Reqs:    []*defines.Request{req},
 		}
+		if err := msg.WriteDesc("type", "req-latestblock"); err != nil {
+			return err
+		}
 		if err := p.signAndSendMsg(msg); err != nil {
 			p.Errorf("broadcastRequestBlocks: to %s fail: %s\n", peer.Id, err)
 		} else {
-			p.Logf("broadcastRequestBlocks: to %s\n", peer.Id)
+			p.Infof("broadcastRequestBlocks: to %s\n", peer.Id)
 			p.nWait++
 		}
 		return nil
@@ -313,7 +367,7 @@ func (p *Pot) broadcastRequestLatestBlock() error {
 
 // wait 函数用于等待邻居们的某一类消息回应
 func (p *Pot) wait(nWait int) error {
-	timeoutD := 1 * time.Second
+	timeoutD := time.Duration(2 * TickMs) * time.Millisecond
 	timeout := time.NewTimer(timeoutD)
 	if p.nWaitChan == nil {
 		p.nWaitChan = make(chan int)
@@ -323,24 +377,24 @@ func (p *Pot) wait(nWait int) error {
 	for {
 		select {
 		case <-p.done:
-			p.Logf("wait: done and return\n")
+			p.Infof("wait: done and return\n")
 			return nil
 		case <-p.nWaitChan:
 			nWait--
 			cnt++
-			p.Logf("wait: nWait--\n")
+			p.Infof("wait: nWait--\n")
 			// 等待结束
 			if nWait == 0 {
-				p.Logf("wait: wait finish and return\n")
+				p.Infof("wait: wait finish and return\n")
 				return nil
 			}
 		case <-timeout.C:
 			// 超时需要判断两种情况：
 			if cnt == 0 { // 一个回复都没收到
-				p.Logf("wait: timeout, no response received\n")
+				p.Infof("wait: timeout, no response received\n")
 				return errors.New("wait timeout and no response received")
 			}
-			p.Logf("wait: timeout, %d responses received, return\n", cnt)
+			p.Infof("wait: timeout, %d responses received, return\n", cnt)
 			return nil
 		}
 	}
@@ -349,37 +403,37 @@ func (p *Pot) wait(nWait int) error {
 // 等待某个区块，需要在wait阶段决定哪个才是正确的
 // blockIndex=-1时表示等最新区块; nWait表示等待的数量
 func (p *Pot) waitAndDecideOneBlock(blockIndex int64, nWait int) (*defines.Block, error) {
-	timeoutD := 1 * time.Second
+	timeoutD := time.Duration(2 * TickMs) * time.Millisecond
 	timeout := time.NewTimer(timeoutD)
 	if p.nWaitBlockChan == nil {
 		p.nWaitBlockChan = make(chan *defines.Block)
 	}
 
-	p.udbt.Reset(blockIndex)	// 重置未决区块表
+	p.udbt.Reset(blockIndex) // 重置未决区块表
 
 	cnt := 0
 	for {
 		select {
-		case <-p.done:		// 程序被关闭
-			p.Logf("wait: done and return\n")
+		case <-p.done: // 程序被关闭
+			p.Infof("wait: done and return\n")
 			return nil, nil
 		case b := <-p.nWaitBlockChan:
 			nWait--
 			cnt++
-			p.Logf("wait: nWait--\n")
-			p.udbt.Add(b)	// 添加到未决区块表
+			p.Infof("wait: nWait--\n")
+			p.udbt.Add(b) // 添加到未决区块表
 			// 等待结束
 			if nWait == 0 {
-				p.Logf("wait: wait finish and return\n")
+				p.Infof("wait: wait finish and return\n")
 				return p.udbt.Major(), nil
 			}
 		case <-timeout.C:
 			// 超时需要判断两种情况：
 			if cnt == 0 { // 一个回复都没收到
-				p.Logf("wait: timeout, no response received\n")
+				p.Infof("wait: timeout, no response received\n")
 				return nil, errors.New("wait timeout and no response received")
 			}
-			p.Logf("wait: timeout, %d responses received, return\n", cnt)
+			p.Infof("wait: timeout, %d responses received, return\n", cnt)
 			return p.udbt.Major(), nil
 		}
 	}

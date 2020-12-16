@@ -6,36 +6,46 @@
 
 package pot
 
+import "sync"
 
 // 状态切换循环
 // 这里要注意这个循环启动的前提是同步到了最新进度，拿到了世界时钟之后才进入状态切换循环
 func (p *Pot) stateMachineLoop() {
+
+	once := new(sync.Once)
+
 	for {
 		select {
 		case <-p.done:
-			p.Logf("stateMachineLoop: return ...\n")
+			p.Infof("stateMachineLoop: return ...\n")
 			return
 		case moment := <-p.clock.Tick:
-			p.Logf("stateMachineLoop: clock tick: %s\n", moment.String())
+			p.Infof("stateMachineLoop: clock tick: %s\n", moment.String())
+			p.Info(p.bc.Display())
 
 			// 根据当前状态来处理此滴答消息
 			state := p.getState()
 			switch state {
 
-			case StateType_PreInited_RequestNeighbors:		// nothing
+			case StateType_PreInited_RequestNeighbors: // nothing
 			case StateType_PreInited_RequestFirstBlock:
 				// 通过该chan向启动逻辑传递时刻信号
 				if moment.Type == MomentType_PotStart {
-					p.potStartBeforeReady <- moment
+					once.Do(func() {
+						p.potStartBeforeReady <- moment
+					})
 				}
-			case StateType_PreInited_RequestLatestBlock:	// nothing
+			case StateType_PreInited_RequestLatestBlock: // nothing
 			case StateType_NotReady:
 				// 能够处理邻居消息,区块消息,最新区块消息
 
+				p.Debugf("current is ready? %v", !p.bc.Discontinuous())
+
 				// 检查是否满足切换Ready的条件
-				if p.processes.isSelfReady() && moment.Type == MomentType_PotStart {
+				if !p.bc.Discontinuous() && moment.Type == MomentType_PotStart {
 					p.setState(StateType_InPot)
-					p.startPot()
+					p.Infof("switch state from %s to %s\n", StateType_NotReady, StateType_InPot)
+					p.startPot(moment)
 				} else {
 					// 还没满足切换Ready状态的条件，暂时不能收集证明消息(有一定但没有全部判别能力)，
 					// 只能在pot竞赛结束后听从seed和winner
@@ -47,74 +57,77 @@ func (p *Pot) stateMachineLoop() {
 					}
 				}
 			case StateType_InPot:
-				if moment.Type == MomentType_PotOver {// 正常情况应该是PotOver时刻到来
+				if moment.Type == MomentType_PotOver { // 正常情况应该是PotOver时刻到来
 					p.setState(StateType_PostPot)
+					p.Infof("switch state from %s to %s\n", StateType_InPot, StateType_PostPot)
 					// 汇总已收集的证明消息，决出胜者，判断自己是否出块，接下去等待胜者区块和seed广播的胜者证明
-					p.endPot()
-				} else if moment.Type == MomentType_PotStart {		// 不可能出现的错误
+					p.endPot(moment)
+				} else if moment.Type == MomentType_PotStart { // 不可能出现的错误
 					p.Errorf("stateMachineLoop: Moment(%s) comes at StateInPot\n", moment)
 				}
 
 			case StateType_PostPot:
-				if moment.Type == MomentType_PotStart {// 正常情况应该是PotOver时刻到来
+				if moment.Type == MomentType_PotStart { // 正常情况应该是PotOver时刻到来
 					p.setState(StateType_InPot)
-					p.decide()
+					p.Infof("switch state from %s to %s\n", StateType_PostPot, StateType_InPot)
+					// 决定出新区块
+					p.decide(moment)
 					// 汇总已收集的证明消息，决出胜者，判断自己是否出块，接下去等待胜者区块和seed广播的胜者证明
-					p.startPot()
-				} else if moment.Type == MomentType_PotOver {		// 不可能出现的错误
+					p.startPot(moment)
+				} else if moment.Type == MomentType_PotOver { // 不可能出现的错误
 					p.Errorf("stateMachineLoop: Moment(%s) comes at StatePostPot\n", moment)
 				}
 			default:
 				p.Fatalf("stateMachineLoop: Moment(%s) comes at UnknownState(%s)\n", moment, state.String())
 
 				//case StateType_NotReady:
-			//	// 没准备好，啥也不干，等区块链同步
-			//
-			//	// 如果追上进度了则切换状态为ReadyCompete
-			//	if p.latest() {
-			//		p.setState(StateType_ReadyCompete)
-			//	} else {
-			//		// 否则请求快照数据
-			//		p.broadcastRequestBlocks(true)
-			//	}
-			//
-			//case StateType_ReadyCompete:
-			//	// 当前是ReadyCompete，则状态切换为Competing
-			//
-			//	// 状态切换
-			//	p.setState(StateType_Competing)
-			//	// 发起竞争（广播证明消息）
-			//	p.broadcastSelfProof()
-			//
-			//case StateType_Competing:
-			//	// 当前是Competing，则状态切换为CompetingEnd，并判断竞赛结果，将状态迅速切换为Winner或Loser
-			//
-			//	// 状态切换
-			//	p.setState(StateType_CompeteOver)
-			//	// 判断竞赛结果，状态切换
-			//	if p.winner == p.id { // 自己胜出
-			//		p.setState(StateType_CompeteWinner)
-			//		// 广播新区块
-			//		p.broadcastNewBlock(p.maybeNewBlock)
-			//	} else { // 别人胜出
-			//		p.setState(StateType_CompeteLoser)
-			//		// 等待新区块(“逻辑上”的等待，代码中并不需要wait)
-			//	}
-			//
-			//case StateType_CompeteOver:
-			//	// 正常来说，tick时不会是恰好CompeteOver而又没确定是Winner/Loser
-			//	// 所以暂时无视
-			//case StateType_CompeteWinner:
-			//	// Winner来说的话，立马广播新区块，广播结束后即切换为Ready
-			//	// 所以不太可能tick时状态为Winner
-			//	// 暂时无视
-			//case StateType_CompeteLoser:
-			//	// Loser等待新区块，接收到tick说明还没得到新区块
-			//	// 状态切换为Ready
-			//
-			//	p.setState(StateType_ReadyCompete)
-			//	// 发起竞争（广播证明消息）
-			//	p.broadcastSelfProof()
+				//	// 没准备好，啥也不干，等区块链同步
+				//
+				//	// 如果追上进度了则切换状态为ReadyCompete
+				//	if p.latest() {
+				//		p.setState(StateType_ReadyCompete)
+				//	} else {
+				//		// 否则请求快照数据
+				//		p.broadcastRequestBlocks(true)
+				//	}
+				//
+				//case StateType_ReadyCompete:
+				//	// 当前是ReadyCompete，则状态切换为Competing
+				//
+				//	// 状态切换
+				//	p.setState(StateType_Competing)
+				//	// 发起竞争（广播证明消息）
+				//	p.broadcastSelfProof()
+				//
+				//case StateType_Competing:
+				//	// 当前是Competing，则状态切换为CompetingEnd，并判断竞赛结果，将状态迅速切换为Winner或Loser
+				//
+				//	// 状态切换
+				//	p.setState(StateType_CompeteOver)
+				//	// 判断竞赛结果，状态切换
+				//	if p.winner == p.id { // 自己胜出
+				//		p.setState(StateType_CompeteWinner)
+				//		// 广播新区块
+				//		p.broadcastNewBlock(p.maybeNewBlock)
+				//	} else { // 别人胜出
+				//		p.setState(StateType_CompeteLoser)
+				//		// 等待新区块(“逻辑上”的等待，代码中并不需要wait)
+				//	}
+				//
+				//case StateType_CompeteOver:
+				//	// 正常来说，tick时不会是恰好CompeteOver而又没确定是Winner/Loser
+				//	// 所以暂时无视
+				//case StateType_CompeteWinner:
+				//	// Winner来说的话，立马广播新区块，广播结束后即切换为Ready
+				//	// 所以不太可能tick时状态为Winner
+				//	// 暂时无视
+				//case StateType_CompeteLoser:
+				//	// Loser等待新区块，接收到tick说明还没得到新区块
+				//	// 状态切换为Ready
+				//
+				//	p.setState(StateType_ReadyCompete)
+				//	// 发起竞争（广播证明消息）
+				//	p.broadcastSelfProof()
 			}
 		}
 	}
@@ -126,12 +139,20 @@ func (p *Pot) msgHandleLoop() {
 	for {
 		select {
 		case <-p.done:
-			p.Logf("msgHandleLoop: return ...\n")
+			p.Infof("msgHandleLoop: return ...\n")
 			return
 		case msg := <-p.msgin:
 			err = p.handleMsg(msg)
 			if err != nil {
-				p.Errorf("msgHandleLoop: handle msg(%v) fail: %s\n", msg, err)
+				p.Errorf("msgHandleLoop: handle msg(%s) fail: msg=%s,err=%s\n", msg.Desc, msg, err)
+			}
+		case tx := <-p.localTxIn:
+			// 存到本地
+			p.bc.TxInChan() <- tx
+			// 广播
+			err = p.broadcastTx(tx)
+			if err != nil {
+				p.Errorf("msgHandleLoop: broadcast localtx(%s) fail: tx=%v, err=%s\n", tx.ShortName(), tx, err)
 			}
 		}
 	}

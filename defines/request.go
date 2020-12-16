@@ -7,10 +7,9 @@
 package defines
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
-
-	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
 )
 
 type RequestType uint8
@@ -21,6 +20,19 @@ const (
 	RequestType_Processes RequestType = 2
 )
 
+func (rt RequestType) String() string {
+	switch rt {
+	case RequestType_Blocks:
+		return "RequestBlocks"
+	case RequestType_Neighbors:
+		return "RequestNeighbors"
+	case RequestType_Processes:
+		return "RequestProcesses"
+	default:
+		return "RequestUnknown"
+	}
+}
+
 // Request 请求
 // Index用于请求区块，哈希可用于请求区块和交易
 // 请求区块时，若Index设为0，则按照哈希请求，否则index优先
@@ -29,7 +41,7 @@ type Request struct {
 
 	// 根据index区间请求
 	IndexStart int64
-	IndexCount int64	// 正数代表正向获取，负数代表反方向获取
+	IndexCount int64 // 正数代表正向获取，负数代表反方向获取
 
 	// 根据哈希请求
 	Hashes [][]byte
@@ -67,8 +79,7 @@ func (req *Request) Encode() ([]byte, error) {
 	}
 
 	// 获取缓冲
-	buf := bufferpool.Get()
-	defer bufferpool.Return(buf)
+	buf := new(bytes.Buffer)
 
 	/* 序列化 */
 

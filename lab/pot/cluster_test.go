@@ -1,34 +1,31 @@
 /**********************************************************************
 * @Author: Eiger (201820114847@mail.scut.edu.cn)
-* @Date: 10/13/20 1:02 PM
+* @Date: 12/15/20 12:27 AM
 * @Description: The file is for
 ***********************************************************************/
 
-package defines
+package pot
 
 import (
-	"reflect"
 	"testing"
+	"time"
 )
 
-func TestPeerInfo(t *testing.T) {
-	pi := &PeerInfo{
-		Id:   "id",
-		Addr: "addr",
-		Duty: PeerDuty_Seed,
-	}
-	b, err := pi.Encode()
+func TestCluster(t *testing.T) {
+	c, err := StartCluster(1, 3)
 	if err != nil {
 		t.Error(err)
 	}
+	c = c
 
-	api := new(PeerInfo)
-	err = api.Decode(b)
+	time.Sleep(10 * time.Second)
+}
+
+func TestStartNode(t *testing.T) {
+	_, _, seedsm, peersm := genIdsAndAddrs(1, 3)
+	peer01 := "peer01"
+	_, err := StartNode(peer01, peersm[peer01], seedsm, peersm)
 	if err != nil {
 		t.Error(err)
-	}
-
-	if !reflect.DeepEqual(pi, api) {
-		t.Error("error")
 	}
 }

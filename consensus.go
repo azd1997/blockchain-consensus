@@ -6,7 +6,12 @@
 
 package bcc
 
-import "github.com/azd1997/blockchain-consensus/defines"
+import (
+	"errors"
+	"github.com/azd1997/blockchain-consensus/defines"
+	"github.com/azd1997/blockchain-consensus/implements/pot"
+	"strings"
+)
 
 // Consensus 共识接口。事实上一个Consensus实例代表一个基于该共识协议的共识节点
 type Consensus interface {
@@ -38,5 +43,13 @@ type Consensus interface {
 
 // NewConsensus 新建一个共识状态机
 func NewConsensus(typ string) (Consensus, error) {
+	typ = strings.ToLower(typ) // 支持pot, Pot等大小写
+	switch typ {
+	case "pot":
+		return pot.New()
+	default:
+		return nil, errors.New("unknown consensus type")
+	}
+
 	return nil, nil
 }

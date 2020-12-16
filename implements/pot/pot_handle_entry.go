@@ -9,7 +9,6 @@ package pot
 import (
 	"bytes"
 	"errors"
-
 	"github.com/azd1997/blockchain-consensus/defines"
 )
 
@@ -72,24 +71,10 @@ func (p *Pot) handleEntryProof(from string, ent *defines.Entry) error {
 	}
 	// 如果证明信息有效，用以更新本地winner
 	if proof.Id == from { // 情况1
-		p.setProof(from, *proof)
-		if proof.GreaterThan(p.proofs[p.winner]) {
-			p.winner = from
-		}
+		p.proofs.Add(proof)
 	} else { // 情况2
-		if p.winner == proof.Id { // 自己判断的winner和seed（默认是诚实可靠的）判断一致
-
-		} else { // 自己与seed产生分歧
-			pWinnerProof := p.getProof(p.winner)
-			if proof.GreaterThan(&pWinnerProof) { // seed判断的winner比自己判断的更大
-				p.winner = proof.Id
-				p.setProof(proof.Id, *proof)
-			} else { // 由于seed是诚实的，所以seed判断的winner >= 自己判断的winner，如果<的话，那么按自己的来
-				// nothing
-			}
-		}
+		p.proofs.AddProofRelayedBySeed(proof)
 	}
-
 	return nil
 }
 
@@ -109,7 +94,7 @@ func (p *Pot) handleEntryNewBlock(from string, ent *defines.Entry) error {
 	}
 
 	// 只更新p.waitingNewBlock
-	winnerProof := p.getProof(p.winner)
+	winnerProof := p.proofs.Decided
 	if winnerProof.Match(block) {
 		p.waitingNewBlock = block
 	}
@@ -121,11 +106,19 @@ func (p *Pot) handleEntryNewBlock(from string, ent *defines.Entry) error {
 // 处理交易
 func (p *Pot) handleEntryTransaction(from string, ent *defines.Entry) error {
 
-	// 解码
-	txbytes := ent.Data
+	// 只有共识节点才需要存储这些游离的交易。种子和普通节点都是通过区块来获取到内部的交易
+	if p.duty == defines.PeerDuty_Peer {
+		// 解码
+		tx := new(defines.Transaction)
+		if err := tx.Decode(ent.Data); err != nil {
+			return err
+		}
 
-	// 尝试添加到本地交易池
-	return p.txPool.AddTransaction(txbytes)
+		// 尝试添加到本地交易池
+		p.bc.TxInChan() <- tx
+	}
+
+	return nil
 }
 
 // handleEntryNeighbor 处理邻居节点信息
@@ -133,6 +126,7 @@ func (p *Pot) handleEntryTransaction(from string, ent *defines.Entry) error {
 // 目前直接相信这个节点信息，添加到本地节点信息表
 // 暂定：节点信息只会从seed(可信)到peer
 func (p *Pot) handleEntryNeighbor(from string, ent *defines.Entry) error {
+	//fmt.Printf("%v\n", ent)
 	pi := new(defines.PeerInfo)
 	err := pi.Decode(ent.Data)
 	if err != nil {

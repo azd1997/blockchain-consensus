@@ -9,13 +9,13 @@ package peerinfo
 import (
 	"errors"
 	"fmt"
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/requires"
+	"github.com/azd1997/blockchain-consensus/utils/log"
 )
 
 // dirtyPeerInfo 脏的、与从存储引擎不一致的数据
@@ -42,18 +42,21 @@ const (
 	PeerInfoKeyPrefix    = "peers-"
 	SeedInfoKeyPrefix    = "seeds-"
 	DefaultMergeInterval = 5 * time.Minute
+	Module_Pit           = "PIT"
 )
 
 // PeerInfoTable 节点信息表
 // 节点信息表实际在使用时，一般是不会删除数据的，只会新增
 // 但是后序会考虑到节点的断连、恶意等，需要删除操作
 type PeerInfoTable struct {
+	id string // 自己的账号
+
 	// seeds目前设定为固定的配置，运行期间不修改其数据
 	// 因此使用期间不加锁
 	seeds map[string]*defines.PeerInfo
-	nSeed uint32	// 必须使用atomic包的方法加载和变更
+	nSeed uint32 // 必须使用atomic包的方法加载和变更
 
-	nPeer uint32	// 必须使用atomic包的方法加载和变更
+	nPeer     uint32 // 必须使用atomic包的方法加载和变更
 	peers     map[string]*defines.PeerInfo
 	dirty     map[string]*dirtyPeerInfo // 被修改的/新增的/删除的
 	peersLock *sync.RWMutex
@@ -70,11 +73,19 @@ type PeerInfoTable struct {
 
 	inited bool // 是否已初始化
 	done   chan struct{}
+
+	*log.Logger
 }
 
 // NewPeerInfoTable
-func NewPeerInfoTable(kv requires.Store) *PeerInfoTable {
+func NewPeerInfoTable(id string, kv requires.Store) (*PeerInfoTable, error) {
+	logger := log.NewLogger(Module_Pit, id)
+	if logger == nil {
+		return nil, errors.New("nil logger, please init logger first")
+	}
+
 	return &PeerInfoTable{
+		id:            id,
 		seeds:         make(map[string]*defines.PeerInfo),
 		peers:         make(map[string]*defines.PeerInfo),
 		dirty:         make(map[string]*dirtyPeerInfo),
@@ -85,7 +96,8 @@ func NewPeerInfoTable(kv requires.Store) *PeerInfoTable {
 		seedsCF:       requires.String2CF(SeedInfoKeyPrefix),
 		mergeInterval: DefaultMergeInterval,
 		done:          make(chan struct{}),
-	}
+		Logger:        logger,
+	}, nil
 }
 
 // Init NewPeerInfoTable之后需要调用Init来初始化，并启动mergeLoop
@@ -94,6 +106,8 @@ func (pit *PeerInfoTable) Init() error {
 	if pit.Inited() {
 		return nil
 	}
+
+	pit.Info("Init start")
 
 	// 开启kv(与之建立连接)
 	err := pit.kv.Open()
@@ -117,6 +131,7 @@ func (pit *PeerInfoTable) Init() error {
 	go pit.mergeLoop()
 
 	pit.inited = true
+	pit.Info("Init succ")
 	return nil
 }
 
@@ -136,7 +151,7 @@ func (pit *PeerInfoTable) load() error {
 			return err
 		}
 		pit.seeds[string(key)] = pi
-		pit.nSeedIncr()	// 计数加1
+		pit.nSeedIncr() // 计数加1
 		return nil
 	})
 	if err != nil {
@@ -149,7 +164,7 @@ func (pit *PeerInfoTable) load() error {
 			return err
 		}
 		pit.peers[string(key)] = pi
-		pit.nPeerIncr()	// 计数加1
+		pit.nPeerIncr() // 计数加1
 		return nil
 	})
 	if err != nil {
@@ -249,14 +264,14 @@ func (pit *PeerInfoTable) mergeLoop() {
 		select {
 		case <-ticker:
 			if err = pit.merge(); err != nil {
-				log.Printf("PeerInfoTable merge into kvstore fail: %s\n", err)
+				pit.Errorf("PeerInfoTable merge into kvstore fail: %s\n", err)
 			}
-			log.Printf("PeerInfoTable merge into kvstore succ\n")
+			pit.Infof("PeerInfoTable merge into kvstore succ\n")
 		case <-pit.done:
 			if err = pit.merge(); err != nil {
-				log.Printf("PeerInfoTable merge into kvstore fail: %s\n", err)
+				pit.Errorf("PeerInfoTable merge into kvstore fail: %s\n", err)
 			}
-			log.Printf("PeerInfoTable merge into kvstore succ\n")
+			pit.Infof("PeerInfoTable merge into kvstore succ\n")
 			return
 		}
 	}
@@ -284,7 +299,7 @@ func (pit *PeerInfoTable) Get(id string) (*defines.PeerInfo, error) {
 		return pi, nil
 	}
 	if ok2 && dpi.op == OpSet {
-		log.Printf("PeerInfoTable Get: {id:%s, PeerInfo:%s}\n", id, dpi.info.String())
+		pit.Debugf("PeerInfoTable Get: {id:%s, PeerInfo:%s}\n", id, dpi.info.String())
 		return dpi.info, nil
 	}
 	return nil, errors.New("unknown error")
@@ -293,9 +308,16 @@ func (pit *PeerInfoTable) Get(id string) (*defines.PeerInfo, error) {
 // Set 添加或修改
 // 只写到dirty中
 func (pit *PeerInfoTable) Set(info *defines.PeerInfo) error {
+
+	if info == nil {
+		return nil
+	}
+
 	// 如果是seed
 	if info.Duty == defines.PeerDuty_Seed {
-		pit.nSeedIncr()	// 计数加1
+		if pit.seeds[info.Id] == nil {
+			pit.nSeedIncr() // 计数加1
+		}
 		pit.seeds[info.Id] = info
 		return nil
 	}
@@ -305,8 +327,8 @@ func (pit *PeerInfoTable) Set(info *defines.PeerInfo) error {
 	id := info.Id
 
 	// 先查看id是否存在
-	if _, err := pit.Get(id); err == nil {
-		pit.nPeerIncr()		// 计数加1
+	if info, _ := pit.Get(id); info == nil {
+		pit.nPeerIncr() // 计数加1
 	}
 
 	// 不论dirty中对应键值对是否存在，都直接写dirty
@@ -317,7 +339,39 @@ func (pit *PeerInfoTable) Set(info *defines.PeerInfo) error {
 	}
 	pit.dirtyLock.Unlock()
 
-	log.Printf("PeerInfoTable Set: {id:%s, PeerInfo:%s}\n", id, info.String())
+	pit.Debugf("PeerInfoTable Set: {id:%s, PeerInfo:%s}\n", id, info.String())
+	return nil
+}
+
+func (pit *PeerInfoTable) AddPeers(peers map[string]string) error {
+	for id, addr := range peers {
+		info := defines.PeerInfo{
+			Id:   id,
+			Addr: addr,
+			Attr: 0,
+			Duty: defines.PeerDuty_Peer,
+			Data: nil,
+		}
+		if err := pit.Set(&info); err != nil {
+			fmt.Printf("AddPeers: err: %s\n", err)
+		}
+	}
+	return nil
+}
+
+func (pit *PeerInfoTable) AddSeeds(seeds map[string]string) error {
+	for id, addr := range seeds {
+		info := defines.PeerInfo{
+			Id:   id,
+			Addr: addr,
+			Attr: 0,
+			Duty: defines.PeerDuty_Seed,
+			Data: nil,
+		}
+		if err := pit.Set(&info); err != nil {
+			fmt.Printf("AddSeeds: err: %s\n", err)
+		}
+	}
 	return nil
 }
 
@@ -337,9 +391,9 @@ func (pit *PeerInfoTable) Del(id string) error {
 	pit.dirtyLock.Lock()
 	pit.dirty[id] = &dirtyPeerInfo{op: OpDel}
 	pit.dirtyLock.Unlock()
-	pit.nPeerDecr()		// 计数减1
+	pit.nPeerDecr() // 计数减1
 
-	log.Printf("PeerInfoTable Del: {id:%s}\n", id)
+	pit.Debugf("PeerInfoTable Del: {id:%s}\n", id)
 	return nil
 }
 
@@ -403,10 +457,10 @@ func (pit *PeerInfoTable) Seeds() map[string]*defines.PeerInfo {
 
 // RangePeers 对pit当前记录的所有peers执行某项操作
 func (pit *PeerInfoTable) RangePeers(f func(peer *defines.PeerInfo) error) (
-								total int, errs map[string]error) {
+	total int, errs map[string]error) {
 
 	if f == nil {
-		log.Fatalf("PeerInfoTable RangePeers fail: nil func\n")
+		pit.Fatalf("PeerInfoTable RangePeers fail: nil func\n")
 	}
 
 	errs = make(map[string]error)
@@ -423,10 +477,10 @@ func (pit *PeerInfoTable) RangePeers(f func(peer *defines.PeerInfo) error) (
 
 // RangeSeeds 对pit.seeds执行某项操作
 func (pit *PeerInfoTable) RangeSeeds(f func(peer *defines.PeerInfo) error) (
-									total int, errs map[string]error) {
+	total int, errs map[string]error) {
 
 	if f == nil {
-		log.Fatalf("PeerInfoTable RangeSeeds fail: nil func\n")
+		pit.Fatalf("PeerInfoTable RangeSeeds fail: nil func\n")
 	}
 
 	errs = make(map[string]error)

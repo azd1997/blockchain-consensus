@@ -8,7 +8,6 @@ package pot
 
 import (
 	"errors"
-
 	"github.com/azd1997/blockchain-consensus/defines"
 )
 
@@ -18,21 +17,21 @@ func (p *Pot) handleRequestBlocks(from string, req *defines.Request) error {
 	var err error
 	var blocks []*defines.Block
 
-	if req.IndexStart >= 0 && req.IndexCount == 0 && len(req.Hashes) == 0 { // 特殊情况：响应方应该将IndexStart之后所有区块返回
+	if req.IndexStart >= 1 && req.IndexCount == 0 && len(req.Hashes) == 0 { // 特殊情况：响应方应该将IndexStart之后所有区块返回
 		maxIndex := p.bc.GetMaxIndex()
-		if maxIndex < uint64(req.IndexStart) {
+		if maxIndex < req.IndexStart {
 			return errors.New("maxIndex < req.IndexStart")
 		}
-		blocks, err = p.bc.GetBlocksByRange(uint64(req.IndexStart), maxIndex)
-	} else if req.IndexStart == -1 {	// start为-1，代表反向获取区块，例如start=-1,count=1表示把最新区块返回
+		blocks, err = p.bc.GetBlocksByRange(req.IndexStart, maxIndex)
+	} else if req.IndexStart == -1 { // start为-1，代表反向获取区块，例如start=-1,count=1表示把最新区块返回
 		maxIndex := p.bc.GetMaxIndex()
-		start := uint64(0)
-		if maxIndex + 1 > uint64(req.IndexCount) {
-			start = maxIndex - uint64(req.IndexCount) + 1
+		start := int64(0)
+		if maxIndex+1 > req.IndexCount {
+			start = maxIndex - req.IndexCount + 1
 		}
 		blocks, err = p.bc.GetBlocksByRange(start, maxIndex)
 	} else if req.IndexCount > 0 { // 按Index请求
-		blocks, err = p.bc.GetBlocksByRange(uint64(req.IndexStart), uint64(req.IndexCount)) //TODO
+		blocks, err = p.bc.GetBlocksByRange(req.IndexStart, req.IndexCount) //TODO
 	} else { // 按Hash请求
 		blocks, err = p.bc.GetBlocksByHashes(req.Hashes)
 	}
@@ -41,7 +40,7 @@ func (p *Pot) handleRequestBlocks(from string, req *defines.Request) error {
 		p.Errorf("handleRequestBlocks: get blocks from blockchain(p.bc) for %s fail: %s\n", from, err)
 		return err
 	}
-	p.Errorf("handleRequestBlocks: get blocks from blockchain(p.bc) for %s \n", from)
+	p.Infof("handleRequestBlocks: get blocks from blockchain(p.bc) for %s \n", from)
 	return p.responseBlocks(from, blocks...)
 }
 
@@ -75,7 +74,9 @@ func (p *Pot) handleRequestNeighbors(from string, req *defines.Request) error {
 		To:      from,
 		Entries: entries,
 	}
-
+	if err := msg.WriteDesc("type", "rsp-neighbors"); err != nil {
+		return err
+	}
 	err := p.signAndSendMsg(msg)
 	if err != nil {
 		return err
@@ -96,6 +97,9 @@ func (p *Pot) handleRequestNeighbors(from string, req *defines.Request) error {
 			From:    p.id,
 			To:      peer.Id,
 			Entries: []*defines.Entry{bEntry},
+		}
+		if err := msg.WriteDesc("type", "neighbor"); err != nil {
+			return err
 		}
 		return p.signAndSendMsg(msg)
 	})
@@ -128,7 +132,9 @@ func (p *Pot) handleRequestProcesses(from string, req *defines.Request) error {
 		To:      from,
 		Entries: entries,
 	}
-
+	if err := msg.WriteDesc("type", "rsp-processes"); err != nil {
+		return err
+	}
 	return p.signAndSendMsg(msg)
 }
 
@@ -167,6 +173,9 @@ func (p *Pot) responseBlocks(to string, blocks ...*defines.Block) error {
 		From:    p.id,
 		To:      to,
 		Entries: entries,
+	}
+	if err := msg.WriteDesc("type", "rsp-blocks"); err != nil {
+		return err
 	}
 	return p.signAndSendMsg(msg)
 }

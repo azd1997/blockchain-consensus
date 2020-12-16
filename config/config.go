@@ -11,6 +11,7 @@ package config
 import (
 	"fmt"
 	"github.com/BurntSushi/toml"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -19,8 +20,8 @@ import (
 )
 
 var (
-	cfg * tomlConfig
-	once sync.Once
+	cfg     *TomlConfig
+	once    sync.Once
 	cfgLock sync.RWMutex
 )
 
@@ -44,7 +45,7 @@ func Init(cfgPath string) {
 }
 
 // Global 全局单例
-func Global() *tomlConfig {
+func Global() *TomlConfig {
 	cfgLock.RLock()
 	defer cfgLock.RUnlock()
 	return cfg
@@ -57,11 +58,22 @@ func reloadConfig(cfgPath string) {
 	//	panic(err)
 	//}
 	fmt.Printf("parse toml file once. filePath: %s\n", cfgPath)
-	conf := new(tomlConfig)
-	if _ , err := toml.DecodeFile(cfgPath, conf); err != nil {
+	conf := new(TomlConfig)
+	if _, err := toml.DecodeFile(cfgPath, conf); err != nil {
 		panic(err)
 	}
 	cfgLock.Lock()
 	defer cfgLock.Unlock()
 	cfg = conf
+}
+
+////////////////////// 单纯解析一个配置 ////////////////////////
+
+// ParseConfig 以toml协议解析配置
+func ParseConfig(r io.Reader) (*TomlConfig, error) {
+	c := new(TomlConfig)
+	if _, err := toml.DecodeReader(r, c); err != nil {
+		return nil, err
+	}
+	return c, nil
 }

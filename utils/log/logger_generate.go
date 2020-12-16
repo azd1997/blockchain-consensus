@@ -1,15 +1,11 @@
 /**********************************************************************
 * @Author: Eiger (201820114847@mail.scut.edu.cn)
-* @Date: 11/4/20 4:17 PM
+* @Date: 12/15/20 12:33 AM
 * @Description: The file is for
 ***********************************************************************/
 
-package pot
+package log
 
-// Collection 集合
-type Collection interface {
-}
+func NewZapLoggerAnd() {
 
-// 收藏池
-type collectionPool struct {
 }

@@ -23,9 +23,8 @@ func (p *Pot) setState(newState StateType) {
 
 // 查看当前状态和duty
 func (p *Pot) DutyState() string {
-	return fmt.Sprintf("%s-%s", p.duty.String(), p.getState.String())
+	return fmt.Sprintf("%s-%s", p.duty.String(), p.getState().String())
 }
-
 
 //// 获取某个id的进度
 //func (p *Pot) getProcess(id string) defines.Process {
@@ -83,6 +82,11 @@ func (p *Pot) DutyState() string {
 // 检查是否追上最新进度
 func (p *Pot) latest() bool {
 	return p.processes.isLatest(p.id)
+}
+
+// 判断自身记录是否准备好（最新 + 完整）
+func (p *Pot) isSelfReady() bool {
+	return p.processes.isSelfReady() && !p.bc.Discontinuous()
 }
 
 // Epoch 查看当前处于哪一个纪元

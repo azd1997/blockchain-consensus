@@ -7,7 +7,7 @@
 package pot
 
 import (
-	"errors"
+	"fmt"
 
 	"github.com/azd1997/blockchain-consensus/defines"
 )
@@ -35,9 +35,8 @@ func (p *Pot) handleMsg(msg *defines.Message) error {
 	case StateType_PostPot:
 		return p.handleMsgWhenPostPot(msg)
 	default:
-		p.Fatalf("unknown state(%d-%s)\n", state, state.String())
+		return fmt.Errorf("unknown state(%d-%s)\n", state, state.String())
 	}
-	return nil
 }
 
 func (p *Pot) handleMsgWhenPreInitedRN(msg *defines.Message) error {
@@ -50,7 +49,8 @@ func (p *Pot) handleMsgWhenPreInitedRN(msg *defines.Message) error {
 	case defines.PeerDuty_Seed:
 		return p.handleMsgWhenPreInitedRNForDutySeed(msg)
 	default:
-		p.Fatalf("unknown duty(%v)\n", duty)
+		//p.Fatalf("unknown duty(%v)\n", duty)
+		return fmt.Errorf("fatal error: unknown duty(%v)", duty)
 	}
 }
 
@@ -64,7 +64,8 @@ func (p *Pot) handleMsgWhenPreInitedRFB(msg *defines.Message) error {
 	case defines.PeerDuty_Seed:
 		return p.handleMsgWhenPreInitedRFBForDutySeed(msg)
 	default:
-		p.Fatalf("unknown duty(%v)\n", duty)
+		//p.Fatalf("unknown duty(%v)\n", duty)
+		return fmt.Errorf("fatal error: unknown duty(%v)", duty)
 	}
 }
 
@@ -78,7 +79,8 @@ func (p *Pot) handleMsgWhenPreInitedRLB(msg *defines.Message) error {
 	case defines.PeerDuty_Seed:
 		return p.handleMsgWhenPreInitedRLBForDutySeed(msg)
 	default:
-		p.Fatalf("unknown duty(%v)\n", duty)
+		//p.Fatalf("unknown duty(%v)\n", duty)
+		return fmt.Errorf("fatal error: unknown duty(%v)", duty)
 	}
 }
 
@@ -92,7 +94,8 @@ func (p *Pot) handleMsgWhenNotReady(msg *defines.Message) error {
 	case defines.PeerDuty_Seed:
 		return p.handleMsgWhenNotReadyForDutySeed(msg)
 	default:
-		p.Fatalf("unknown duty(%v)\n", duty)
+		//p.Fatalf("unknown duty(%v)\n", duty)
+		return fmt.Errorf("fatal error: unknown duty(%v)", duty)
 	}
 }
 
@@ -106,7 +109,8 @@ func (p *Pot) handleMsgWhenInPot(msg *defines.Message) error {
 	case defines.PeerDuty_Seed:
 		return p.handleMsgWhenInPotForDutySeed(msg)
 	default:
-		p.Fatalf("unknown duty(%v)\n", duty)
+		//p.Fatalf("unknown duty(%v)\n", duty)
+		return fmt.Errorf("fatal error: unknown duty(%v)", duty)
 	}
 }
 
@@ -120,7 +124,8 @@ func (p *Pot) handleMsgWhenPostPot(msg *defines.Message) error {
 	case defines.PeerDuty_Seed:
 		return p.handleMsgWhenPostPotForDutySeed(msg)
 	default:
-		p.Fatalf("unknown duty(%v)\n", duty)
+		//p.Fatalf("unknown duty(%v)\n", duty)
+		return fmt.Errorf("fatal error: unknown duty(%v)", duty)
 	}
 }
 
@@ -136,7 +141,7 @@ func (p *Pot) handleMsgWhenPreInitedRNForDutyNone(msg *defines.Message) error {
 }
 
 func (p *Pot) handleMsgWhenPreInitedRNForDutyPeer(msg *defines.Message) error {
-	return p.handleMsgWhenPreInitedRNForAllDuty(msg)	
+	return p.handleMsgWhenPreInitedRNForAllDuty(msg)
 }
 
 func (p *Pot) handleMsgWhenPreInitedRNForDutySeed(msg *defines.Message) error {
@@ -147,30 +152,30 @@ func (p *Pot) handleMsgWhenPreInitedRNForDutySeed(msg *defines.Message) error {
 func (p *Pot) handleMsgWhenPreInitedRNForAllDuty(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		p.Errorf("%s can only handle [EntryType_Neighbor]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Neighbor]\n", p.DutyState())
 	case defines.MessageType_Data:
 		count := 0
 		for _, ent := range msg.Entries {
 			ent := ent
-			if ent.Type == EntryType_Neighbor {
+			if ent.Type == defines.EntryType_Neighbor {
 				count++
 				// 通用的handleEntryNeighbor，添加就完事
 				if err := p.handleEntryNeighbor(msg.From, ent); err != nil {
 					p.Errorf("%s handle EntryType_Neighbor from (%s) fail: %s\n", p.DutyState(), msg.From, err)
 				} else {
-					p.Logf("%s handle EntryType_Neighbor from (%s) succ\n", p.DutyState(), msg.From)
+					p.Infof("%s handle EntryType_Neighbor from (%s) succ\n", p.DutyState(), msg.From)
 				}
 			}
 		}
 		if count > 0 && p.nWaitChan != nil { // 说明包含Neighbors
 			p.nWaitChan <- 1 // 通知收到一个节点回传了节点信息表
 		}
+		return nil
 	case defines.MessageType_Req:
-		p.Errorf("%s can only handle [EntryType_Neighbor]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Neighbor]\n", p.DutyState())
 	default:
-		p.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
 	}
-	return nil
 }
 
 // PreInited_RFB阶段
@@ -181,7 +186,7 @@ func (p *Pot) handleMsgWhenPreInitedRFBForDutyNone(msg *defines.Message) error {
 }
 
 func (p *Pot) handleMsgWhenPreInitedRFBForDutyPeer(msg *defines.Message) error {
-	return p.handleMsgWhenPreInitedRFBForAllDuty(msg)	
+	return p.handleMsgWhenPreInitedRFBForAllDuty(msg)
 }
 
 func (p *Pot) handleMsgWhenPreInitedRFBForDutySeed(msg *defines.Message) error {
@@ -192,12 +197,12 @@ func (p *Pot) handleMsgWhenPreInitedRFBForDutySeed(msg *defines.Message) error {
 func (p *Pot) handleMsgWhenPreInitedRFBForAllDuty(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		p.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
 	case defines.MessageType_Data:
 		count := len(msg.Entries)
 		// 等待的是1号区块，其baseindex=0
-		if count == 0 || count != 1 || msg.Entries[0].Type != EntryType_Block || msg.Entries[0].BaseIndex > 0 {
-			p.Errorf("%s received a unexpected msg from %s\n", p.DutyState(), msg.From)
+		if count != 1 || msg.Entries[0].Type != defines.EntryType_Block || msg.Entries[0].BaseIndex > 0 {
+			return fmt.Errorf("%s received a unexpected msg from %s\n", p.DutyState(), msg.From)
 		}
 		firstBlock := new(defines.Block)
 		err := firstBlock.Decode(msg.Entries[0].Data)
@@ -206,16 +211,15 @@ func (p *Pot) handleMsgWhenPreInitedRFBForAllDuty(msg *defines.Message) error {
 		}
 		if p.nWaitBlockChan != nil {
 			p.nWaitBlockChan <- firstBlock // 通知收到一个节点回传了1号区块
-			p.Logf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
+			p.Infof("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
 		}
 		// 这个firstBlock由启动逻辑确定之后再写到本地
-
+		return nil
 	case defines.MessageType_Req:
-		p.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
 	default:
-		p.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
 	}
-	return nil
 }
 
 // PreInited_RLB阶段
@@ -226,7 +230,7 @@ func (p *Pot) handleMsgWhenPreInitedRLBForDutyNone(msg *defines.Message) error {
 }
 
 func (p *Pot) handleMsgWhenPreInitedRLBForDutyPeer(msg *defines.Message) error {
-	return p.handleMsgWhenPreInitedRLBForAllDuty(msg)	
+	return p.handleMsgWhenPreInitedRLBForAllDuty(msg)
 }
 
 func (p *Pot) handleMsgWhenPreInitedRLBForDutySeed(msg *defines.Message) error {
@@ -237,12 +241,12 @@ func (p *Pot) handleMsgWhenPreInitedRLBForDutySeed(msg *defines.Message) error {
 func (p *Pot) handleMsgWhenPreInitedRLBForAllDuty(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		p.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
 	case defines.MessageType_Data:
 		count := len(msg.Entries)
 		// 等待的是最新区块，其序号未知
-		if count == 0 || count != 1 || msg.Entries[0].Type != EntryType_Block {
-			p.Errorf("%s received a unexpected msg from %s\n", p.DutyState(), msg.From)
+		if count != 1 || msg.Entries[0].Type != defines.EntryType_Block {
+			return fmt.Errorf("%s received a unexpected msg from %s\n", p.DutyState(), msg.From)
 		}
 		latestBlock := new(defines.Block)
 		err := latestBlock.Decode(msg.Entries[0].Data)
@@ -251,16 +255,15 @@ func (p *Pot) handleMsgWhenPreInitedRLBForAllDuty(msg *defines.Message) error {
 		}
 		if p.nWaitBlockChan != nil {
 			p.nWaitBlockChan <- latestBlock // 通知收到一个节点回传了最新区块
-			p.Logf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
+			p.Infof("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
 		}
 		// 这个latestBlock由启动逻辑确定之后再写到本地
-
+		return nil
 	case defines.MessageType_Req:
-		p.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
 	default:
-		p.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
 	}
-	return nil
 }
 
 // NotReady阶段
@@ -272,111 +275,640 @@ func (p *Pot) handleMsgWhenPreInitedRLBForAllDuty(msg *defines.Message) error {
 // 或者不管是否Ready，如果本机有，就返回给请求方
 
 func (p *Pot) handleMsgWhenNotReadyForDutyNone(msg *defines.Message) error {
-	return nil
+	switch msg.Type {
+	case defines.MessageType_None:
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	case defines.MessageType_Data:
+
+		// 种子在NotReady阶段能够处理的Data类消息
+
+		for _, ent := range msg.Entries {
+			ent := ent
+			var err error
+
+			switch ent.Type {
+			case defines.EntryType_Block:
+				// 在NotReady状态下接收过往区块需要注意，所有接收到的区块临时存到一个哈希表
+				// 且按LatestBlock倒序补漏
+				err = p.handleEntryBlock(msg.From, ent)
+			case defines.EntryType_Proof:
+				// 收集Proof. NotReady只是不竞选不校验，不代表不见证
+				err = p.handleEntryProof(msg.From, ent)
+			case defines.EntryType_NewBlock:
+				// 收集新区块
+				err = p.handleEntryNewBlock(msg.From, ent)
+			case defines.EntryType_Transaction:
+				err = p.handleEntryTransaction(msg.From, ent)
+			case defines.EntryType_Neighbor:
+				err = p.handleEntryNeighbor(msg.From, ent)
+			case defines.EntryType_Process:
+				err = p.handleEntryProcess(msg.From, ent)
+			default:
+				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+			}
+		}
+
+		return nil
+	case defines.MessageType_Req: // 对于请求，正常响应，逻辑基本是一致的
+		for _, req := range msg.Reqs {
+			req := req
+			var err error
+
+			switch req.Type {
+			case defines.RequestType_Neighbors:
+				err = p.handleRequestNeighbors(msg.From, req)
+			case defines.RequestType_Blocks:
+				err = p.handleRequestBlocks(msg.From, req)
+			case defines.RequestType_Processes:
+				err = p.handleRequestProcesses(msg.From, req)
+			default:
+				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+			}
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+	}
 }
 
 func (p *Pot) handleMsgWhenNotReadyForDutyPeer(msg *defines.Message) error {
-	return nil
+	switch msg.Type {
+	case defines.MessageType_None:
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	case defines.MessageType_Data:
+
+		// 种子在NotReady阶段能够处理的Data类消息
+
+		for _, ent := range msg.Entries {
+			ent := ent
+			var err error
+
+			switch ent.Type {
+			case defines.EntryType_Block:
+				// 在NotReady状态下接收过往区块需要注意，所有接收到的区块临时存到一个哈希表
+				// 且按LatestBlock倒序补漏
+				err = p.handleEntryBlock(msg.From, ent)
+			case defines.EntryType_Proof:
+				// 收集Proof. NotReady只是不竞选不校验，不代表不见证
+				err = p.handleEntryProof(msg.From, ent)
+			case defines.EntryType_NewBlock:
+				// 收集新区块
+				err = p.handleEntryNewBlock(msg.From, ent)
+			case defines.EntryType_Transaction:
+				err = p.handleEntryTransaction(msg.From, ent)
+			case defines.EntryType_Neighbor:
+				err = p.handleEntryNeighbor(msg.From, ent)
+			case defines.EntryType_Process:
+				err = p.handleEntryProcess(msg.From, ent)
+			default:
+				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+			}
+		}
+
+		return nil
+	case defines.MessageType_Req: // 对于请求，正常响应，逻辑基本是一致的
+		for _, req := range msg.Reqs {
+			req := req
+			var err error
+
+			switch req.Type {
+			case defines.RequestType_Neighbors:
+				err = p.handleRequestNeighbors(msg.From, req)
+			case defines.RequestType_Blocks:
+				err = p.handleRequestBlocks(msg.From, req)
+			case defines.RequestType_Processes:
+				err = p.handleRequestProcesses(msg.From, req)
+			default:
+				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+			}
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+	}
 }
 
 func (p *Pot) handleMsgWhenNotReadyForDutySeed(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		p.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
 	case defines.MessageType_Data:
+
+		// 种子在NotReady阶段能够处理的Data类消息
+
 		for _, ent := range msg.Entries {
 			ent := ent
+			var err error
+
 			switch ent.Type {
-			case EntryType_Block:
+			case defines.EntryType_Block:
 				// 在NotReady状态下接收过往区块需要注意，所有接收到的区块临时存到一个哈希表
 				// 且按LatestBlock倒序补漏
-				if err := p.handleEntryBlock(msg.From, req); err != nil {
-					p.Errorf("%s handle EntryType_Block from (%s) fail: %s\n", p.DutyState(), msg.From, err)
-				} else {
-					p.Logf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
-				}
-			case EntryType_Proof:	
+				err = p.handleEntryBlock(msg.From, ent)
+			case defines.EntryType_Proof:
 				// 收集Proof. NotReady只是不竞选不校验，不代表不见证
-				if err := p.handleEntryBlock(msg.From, req); err != nil {
-					p.Errorf("%s handle EntryType_Block from (%s) fail: %s\n", p.DutyState(), msg.From, err)
-				} else {
-					p.Logf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
-				}
-			case EntryType_NewBlock:
+				err = p.handleEntryProof(msg.From, ent)
+			case defines.EntryType_NewBlock:
 				// 收集新区块
-
-			case EntryType_Transaction:
-			case EntryType_Neighbor:
-			case EntryType_Process:
-
+				err = p.handleEntryNewBlock(msg.From, ent)
+			case defines.EntryType_Transaction:
+				err = p.handleEntryTransaction(msg.From, ent)
+			case defines.EntryType_Neighbor:
+				err = p.handleEntryNeighbor(msg.From, ent)
+			case defines.EntryType_Process:
+				err = p.handleEntryProcess(msg.From, ent)
 			default:
-				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)	
+				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
 			}
 		}
-	case defines.MessageType_Req:
+
+		return nil
+	case defines.MessageType_Req: // 对于请求，正常响应，逻辑基本是一致的
 		for _, req := range msg.Reqs {
 			req := req
+			var err error
+
 			switch req.Type {
-			case RequestType_Neighbors:
-				if err := p.handleRequestNeighbors(msg.From, req); err != nil {
-					p.Errorf("%s handle RequestType_Neighbors from (%s) fail: %s\n", p.DutyState(), msg.From, err)
-				} else {
-					p.Logf("%s handle RequestType_Neighbors from (%s) succ\n", p.DutyState(), msg.From)
-				}
-			case RequestType_Blocks:
-				if err := p.handleRequestBlocks(msg.From, req); err != nil {
-					p.Errorf("%s handle RequestType_Blocks from (%s) fail: %s\n", p.DutyState(), msg.From, err)
-				} else {
-					p.Logf("%s handle RequestType_Blocks from (%s) succ\n", p.DutyState(), msg.From)
-				}
-			case RequestType_Processes:
-				if err := p.handleRequestProcesses(msg.From, req); err != nil {
-					p.Errorf("%s handle RequestType_Processes from (%s) fail: %s\n", p.DutyState(), msg.From, err)
-				} else {
-					p.Logf("%s handle RequestType_Processes from (%s) succ\n", p.DutyState(), msg.From)
-				}
+			case defines.RequestType_Neighbors:
+				err = p.handleRequestNeighbors(msg.From, req)
+			case defines.RequestType_Blocks:
+				err = p.handleRequestBlocks(msg.From, req)
+			case defines.RequestType_Processes:
+				err = p.handleRequestProcesses(msg.From, req)
 			default:
-				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)	
+				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
 			}
 		}
+
+		return nil
 	default:
-		p.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
 	}
-	
-	
-	return nil
 }
 
 // InPot阶段
 // 处理Req消息和Data消息
 
 func (p *Pot) handleMsgWhenInPotForDutyNone(msg *defines.Message) error {
-	return nil
+	switch msg.Type {
+	case defines.MessageType_None:
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	case defines.MessageType_Data:
+
+		// 种子在NotReady阶段能够处理的Data类消息
+
+		for _, ent := range msg.Entries {
+			ent := ent
+			var err error
+
+			switch ent.Type {
+			case defines.EntryType_Block:
+				// 在NotReady状态下接收过往区块需要注意，所有接收到的区块临时存到一个哈希表
+				// 且按LatestBlock倒序补漏
+				err = p.handleEntryBlock(msg.From, ent)
+			case defines.EntryType_Proof:
+				// 收集Proof. NotReady只是不竞选不校验，不代表不见证
+				err = p.handleEntryProof(msg.From, ent)
+			case defines.EntryType_NewBlock:
+				// 收集新区块
+				err = p.handleEntryNewBlock(msg.From, ent)
+			case defines.EntryType_Transaction:
+				err = p.handleEntryTransaction(msg.From, ent)
+			case defines.EntryType_Neighbor:
+				err = p.handleEntryNeighbor(msg.From, ent)
+			case defines.EntryType_Process:
+				err = p.handleEntryProcess(msg.From, ent)
+			default:
+				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+			}
+		}
+
+		return nil
+	case defines.MessageType_Req: // 对于请求，正常响应，逻辑基本是一致的
+		for _, req := range msg.Reqs {
+			req := req
+			var err error
+
+			switch req.Type {
+			case defines.RequestType_Neighbors:
+				err = p.handleRequestNeighbors(msg.From, req)
+			case defines.RequestType_Blocks:
+				err = p.handleRequestBlocks(msg.From, req)
+			case defines.RequestType_Processes:
+				err = p.handleRequestProcesses(msg.From, req)
+			default:
+				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+			}
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+	}
 }
 
 func (p *Pot) handleMsgWhenInPotForDutyPeer(msg *defines.Message) error {
-	return nil
+	switch msg.Type {
+	case defines.MessageType_None:
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	case defines.MessageType_Data:
+
+		// 种子在NotReady阶段能够处理的Data类消息
+
+		for _, ent := range msg.Entries {
+			ent := ent
+			var err error
+
+			switch ent.Type {
+			case defines.EntryType_Block:
+				// 在NotReady状态下接收过往区块需要注意，所有接收到的区块临时存到一个哈希表
+				// 且按LatestBlock倒序补漏
+				err = p.handleEntryBlock(msg.From, ent)
+			case defines.EntryType_Proof:
+				// 收集Proof. NotReady只是不竞选不校验，不代表不见证
+				err = p.handleEntryProof(msg.From, ent)
+			case defines.EntryType_NewBlock:
+				// 收集新区块
+				err = p.handleEntryNewBlock(msg.From, ent)
+			case defines.EntryType_Transaction:
+				err = p.handleEntryTransaction(msg.From, ent)
+			case defines.EntryType_Neighbor:
+				err = p.handleEntryNeighbor(msg.From, ent)
+			case defines.EntryType_Process:
+				err = p.handleEntryProcess(msg.From, ent)
+			default:
+				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+			}
+		}
+
+		return nil
+	case defines.MessageType_Req: // 对于请求，正常响应，逻辑基本是一致的
+		for _, req := range msg.Reqs {
+			req := req
+			var err error
+
+			switch req.Type {
+			case defines.RequestType_Neighbors:
+				err = p.handleRequestNeighbors(msg.From, req)
+			case defines.RequestType_Blocks:
+				err = p.handleRequestBlocks(msg.From, req)
+			case defines.RequestType_Processes:
+				err = p.handleRequestProcesses(msg.From, req)
+			default:
+				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+			}
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+	}
 }
 
 func (p *Pot) handleMsgWhenInPotForDutySeed(msg *defines.Message) error {
-	return nil
+	switch msg.Type {
+	case defines.MessageType_None:
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	case defines.MessageType_Data:
+
+		// 种子在NotReady阶段能够处理的Data类消息
+
+		for _, ent := range msg.Entries {
+			ent := ent
+			var err error
+
+			switch ent.Type {
+			case defines.EntryType_Block:
+				// 在NotReady状态下接收过往区块需要注意，所有接收到的区块临时存到一个哈希表
+				// 且按LatestBlock倒序补漏
+				err = p.handleEntryBlock(msg.From, ent)
+			case defines.EntryType_Proof:
+				// 收集Proof. NotReady只是不竞选不校验，不代表不见证
+				err = p.handleEntryProof(msg.From, ent)
+			case defines.EntryType_NewBlock:
+				// 收集新区块
+				err = p.handleEntryNewBlock(msg.From, ent)
+			case defines.EntryType_Transaction:
+				err = p.handleEntryTransaction(msg.From, ent)
+			case defines.EntryType_Neighbor:
+				err = p.handleEntryNeighbor(msg.From, ent)
+			case defines.EntryType_Process:
+				err = p.handleEntryProcess(msg.From, ent)
+			default:
+				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+			}
+		}
+
+		return nil
+	case defines.MessageType_Req: // 对于请求，正常响应，逻辑基本是一致的
+		for _, req := range msg.Reqs {
+			req := req
+			var err error
+
+			switch req.Type {
+			case defines.RequestType_Neighbors:
+				err = p.handleRequestNeighbors(msg.From, req)
+			case defines.RequestType_Blocks:
+				err = p.handleRequestBlocks(msg.From, req)
+			case defines.RequestType_Processes:
+				err = p.handleRequestProcesses(msg.From, req)
+			default:
+				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+			}
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+	}
 }
 
 // PostPot阶段
 // 处理Req消息和Data消息
 
 func (p *Pot) handleMsgWhenPostPotForDutyNone(msg *defines.Message) error {
-	return nil
+	switch msg.Type {
+	case defines.MessageType_None:
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	case defines.MessageType_Data:
+
+		// 种子在NotReady阶段能够处理的Data类消息
+
+		for _, ent := range msg.Entries {
+			ent := ent
+			var err error
+
+			switch ent.Type {
+			case defines.EntryType_Block:
+				// 在NotReady状态下接收过往区块需要注意，所有接收到的区块临时存到一个哈希表
+				// 且按LatestBlock倒序补漏
+				err = p.handleEntryBlock(msg.From, ent)
+			case defines.EntryType_Proof:
+				// 收集Proof. NotReady只是不竞选不校验，不代表不见证
+				err = p.handleEntryProof(msg.From, ent)
+			case defines.EntryType_NewBlock:
+				// 收集新区块
+				err = p.handleEntryNewBlock(msg.From, ent)
+			case defines.EntryType_Transaction:
+				err = p.handleEntryTransaction(msg.From, ent)
+			case defines.EntryType_Neighbor:
+				err = p.handleEntryNeighbor(msg.From, ent)
+			case defines.EntryType_Process:
+				err = p.handleEntryProcess(msg.From, ent)
+			default:
+				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+			}
+		}
+
+		return nil
+	case defines.MessageType_Req: // 对于请求，正常响应，逻辑基本是一致的
+		for _, req := range msg.Reqs {
+			req := req
+			var err error
+
+			switch req.Type {
+			case defines.RequestType_Neighbors:
+				err = p.handleRequestNeighbors(msg.From, req)
+			case defines.RequestType_Blocks:
+				err = p.handleRequestBlocks(msg.From, req)
+			case defines.RequestType_Processes:
+				err = p.handleRequestProcesses(msg.From, req)
+			default:
+				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+			}
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+	}
 }
 
 func (p *Pot) handleMsgWhenPostPotForDutyPeer(msg *defines.Message) error {
-	return nil
+	switch msg.Type {
+	case defines.MessageType_None:
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	case defines.MessageType_Data:
+
+		// 种子在NotReady阶段能够处理的Data类消息
+
+		for _, ent := range msg.Entries {
+			ent := ent
+			var err error
+
+			switch ent.Type {
+			case defines.EntryType_Block:
+				// 在NotReady状态下接收过往区块需要注意，所有接收到的区块临时存到一个哈希表
+				// 且按LatestBlock倒序补漏
+				err = p.handleEntryBlock(msg.From, ent)
+			case defines.EntryType_Proof:
+				// 收集Proof. NotReady只是不竞选不校验，不代表不见证
+				err = p.handleEntryProof(msg.From, ent)
+			case defines.EntryType_NewBlock:
+				// 收集新区块
+				err = p.handleEntryNewBlock(msg.From, ent)
+			case defines.EntryType_Transaction:
+				err = p.handleEntryTransaction(msg.From, ent)
+			case defines.EntryType_Neighbor:
+				err = p.handleEntryNeighbor(msg.From, ent)
+			case defines.EntryType_Process:
+				err = p.handleEntryProcess(msg.From, ent)
+			default:
+				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+			}
+		}
+
+		return nil
+	case defines.MessageType_Req: // 对于请求，正常响应，逻辑基本是一致的
+		for _, req := range msg.Reqs {
+			req := req
+			var err error
+
+			switch req.Type {
+			case defines.RequestType_Neighbors:
+				err = p.handleRequestNeighbors(msg.From, req)
+			case defines.RequestType_Blocks:
+				err = p.handleRequestBlocks(msg.From, req)
+			case defines.RequestType_Processes:
+				err = p.handleRequestProcesses(msg.From, req)
+			default:
+				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+			}
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+	}
 }
 
 func (p *Pot) handleMsgWhenPostPotForDutySeed(msg *defines.Message) error {
-	return nil
-}
+	switch msg.Type {
+	case defines.MessageType_None:
+		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+	case defines.MessageType_Data:
 
+		// 种子在NotReady阶段能够处理的Data类消息
+
+		for _, ent := range msg.Entries {
+			ent := ent
+			var err error
+
+			switch ent.Type {
+			case defines.EntryType_Block:
+				// 在NotReady状态下接收过往区块需要注意，所有接收到的区块临时存到一个哈希表
+				// 且按LatestBlock倒序补漏
+				err = p.handleEntryBlock(msg.From, ent)
+			case defines.EntryType_Proof:
+				// 收集Proof. NotReady只是不竞选不校验，不代表不见证
+				err = p.handleEntryProof(msg.From, ent)
+			case defines.EntryType_NewBlock:
+				// 收集新区块
+				err = p.handleEntryNewBlock(msg.From, ent)
+			case defines.EntryType_Transaction:
+				err = p.handleEntryTransaction(msg.From, ent)
+			case defines.EntryType_Neighbor:
+				err = p.handleEntryNeighbor(msg.From, ent)
+			case defines.EntryType_Process:
+				err = p.handleEntryProcess(msg.From, ent)
+			default:
+				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+			}
+		}
+
+		return nil
+	case defines.MessageType_Req: // 对于请求，正常响应，逻辑基本是一致的
+		for _, req := range msg.Reqs {
+			req := req
+			var err error
+
+			switch req.Type {
+			case defines.RequestType_Neighbors:
+				err = p.handleRequestNeighbors(msg.From, req)
+			case defines.RequestType_Blocks:
+				err = p.handleRequestBlocks(msg.From, req)
+			case defines.RequestType_Processes:
+				err = p.handleRequestProcesses(msg.From, req)
+			default:
+				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+			}
+
+			if err != nil {
+				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+			} else {
+				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+			}
+		}
+
+		return nil
+	default:
+		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+	}
+}
 
 // /////////////////////////// 处理消息 /////////////////////////
 

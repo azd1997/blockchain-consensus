@@ -13,7 +13,6 @@ import (
 	"time"
 )
 
-
 var testClockUser = testClockUser2
 
 func testClockUser1(t *testing.T, c *Clock, zero time.Time) {
@@ -21,13 +20,13 @@ func testClockUser1(t *testing.T, c *Clock, zero time.Time) {
 	for {
 		select {
 		case curT := <-c.Tick:
-			if flag % 2 == 0 {
+			if flag%2 == 0 {
 				fmt.Println("pot over, win or lose, make block or wait block ", time.Now().Sub(zero).Milliseconds())
 			} else {
 				now := time.Now()
 				t.Logf("now....: %v\n", now.Sub(zero).Milliseconds())
 				err := c.Trigger(&defines.Block{
-					Timestamp: uint64(now.UnixNano() - TickMs * int64(time.Millisecond)),
+					Timestamp: now.UnixNano() - TickMs*int64(time.Millisecond),
 				})
 				if err != nil {
 					t.Error(err)
@@ -56,14 +55,16 @@ func testClockUser2(t *testing.T, c *Clock, zero time.Time) {
 // 正常情况指的是Clock已经启动，新区块是在Clock控制之下来触发的
 // zero.UnixNano() - TickMs * int64(time.Millisecond)
 func TestClock_NormalCase(t *testing.T) {
+	c := NewClock(true)
+
 	zero := time.Now()
 	baseBlock := &defines.Block{
-		Timestamp: uint64(zero.UnixNano() - TickMs * int64(time.Millisecond)),
+		Timestamp: zero.UnixNano() - TickMs*int64(time.Millisecond),
 	}
 	fmt.Println("recv a decided block and pot start now")
 	t.Logf("start1111: %d\n", time.Now().Sub(zero).Milliseconds())
 	// 启动时钟
-	c := StartClock(baseBlock)	// 区块1
+	c.Start(baseBlock) // 区块1
 	t.Logf("start: %d\n", time.Now().Sub(zero).Milliseconds())
 
 	// 启动时钟使用方
@@ -75,14 +76,16 @@ func TestClock_NormalCase(t *testing.T) {
 // StartCase指接收到最新区块，然后以此触发clock，启动clock
 // 存在两种情况，一种是启动clock时接下里就要“decide block”，一种是接下来就要“pot over / make block” 再"decide block"
 func TestClock_StartCase1(t *testing.T) {
+	c := NewClock(true)
+
 	zero := time.Now()
 	baseBlock := &defines.Block{
-		Timestamp: uint64(zero.UnixNano() - 1.5 * TickMs * int64(time.Millisecond)),
+		Timestamp: zero.UnixNano() - 1.5*TickMs*int64(time.Millisecond),
 	}
 	fmt.Println("recv a decided block")
 	t.Logf("start1111: %d\n", time.Now().Sub(zero).Milliseconds())
 	// 启动时钟
-	c := StartClock(baseBlock)	// 区块1
+	c.Start(baseBlock) // 区块1
 	t.Logf("start: %d\n", time.Now().Sub(zero).Milliseconds())
 
 	// 启动时钟使用方
@@ -94,14 +97,37 @@ func TestClock_StartCase1(t *testing.T) {
 // StartCase指接收到最新区块，然后以此触发clock，启动clock
 // 存在两种情况，一种是启动clock时接下里就要“decide block”，一种是接下来就要“pot over / make block” 再"decide block"
 func TestClock_StartCase2(t *testing.T) {
+	c := NewClock(true)
+
 	zero := time.Now()
 	baseBlock := &defines.Block{
-		Timestamp: uint64(zero.UnixNano() - 2.5 * TickMs * int64(time.Millisecond)),
+		Timestamp: zero.UnixNano() - 2.5*TickMs*int64(time.Millisecond),
 	}
 	fmt.Println("recv a decided block")
 	t.Logf("start1111: %d\n", time.Now().Sub(zero).Milliseconds())
 	// 启动时钟
-	c := StartClock(baseBlock)	// 区块1
+	c.Start(baseBlock) // 区块1
+	t.Logf("start: %d\n", time.Now().Sub(zero).Milliseconds())
+
+	// 启动时钟使用方
+	go testClockUser(t, c, zero)
+
+	time.Sleep(3 * time.Second)
+}
+
+//////////////////////////// 测试基于loop2的时钟 ///////////////////////////////
+
+func TestClock_disableTimeCorrect(t *testing.T) {
+	c := NewClock(false)
+
+	zero := time.Now()
+	baseBlock := &defines.Block{
+		Timestamp: zero.UnixNano() - 2.5*TickMs*int64(time.Millisecond),
+	}
+	fmt.Println("recv a decided block")
+	t.Logf("start1111: %d\n", time.Now().Sub(zero).Milliseconds())
+	// 启动时钟
+	c.Start(baseBlock) // 区块1
 	t.Logf("start: %d\n", time.Now().Sub(zero).Milliseconds())
 
 	// 启动时钟使用方

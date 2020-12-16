@@ -21,25 +21,47 @@ import (
 
 // BlockChain 区块链接口，包括内存存储及持久化相关的内容，逻辑上是一条哈希链式结构
 type BlockChain interface {
-	GetMaxIndex() uint64
+	ID() string
+
+	Init() error
+	Inited() bool
+
+	GetMaxIndex() int64
 	GetBlocksByRange(start, count int64) ([]*defines.Block, error)
 	GetBlocksByHashes(hashes [][]byte) ([]*defines.Block, error)
 	GetBlockByHash(hash []byte) (*defines.Block, error)
 
+	// 用来添加当前网络中最新的区块
+	AddNewBlock(b *defines.Block) error
 	// 添加区块，不成功返回错误，如果暂时
 	AddBlock(b *defines.Block) error
 
 	// 创世界(创建区块链，构建0号区块)
 	CreateTheWorld() (genesis *defines.Block, err error)
+
+	////////////////////////// blockchain模块还需要能够处理交易、生成新区块 //////////////////////////////
+
+	// bc内部的TransactionPool交易池，其内部实现必须提供UBTXP,TBTXP,UCTXP这三类交易池
+
+	// GenNextBlock 聚集可用的交易，生成下一个区块
+	GenNextBlock() (*defines.Block, error)
+	// 交易传入通道，bc会尝试添加到本地交易池
+	TxInChan() chan *defines.Transaction
+
+	// Discontinuous 用来判断区块链中是否有游离区块，没有的话，说明链完整而连续
+	Discontinuous() bool
+
+	// Display 展示区块链进度
+	Display() string
 }
 
 // TransactionPool 交易池接口，其内部实现必须提供UBTXP,TBTXP,UCTXP这三类交易池
-type TransactionPool interface {
-	GenBlock() *defines.Block
-	// AddTransaction 添加交易，如果交易校验不通过，返回错误
-	// 交易内容本身在bcc库层面不关心，由外部解释
-	AddTransaction(txbytes []byte) error
-}
+//type TransactionPool interface {
+//	GenBlock() *defines.Block
+//	// AddTransaction 添加交易，如果交易校验不通过，返回错误
+//	// 交易内容本身在bcc库层面不关心，由外部解释
+//	AddTransaction(txbytes []byte) error
+//}
 
 // Validator 本地验证器，负责验证账户/区块/交易/证明的有效性
 type Validator interface {

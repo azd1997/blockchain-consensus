@@ -10,15 +10,18 @@ import (
 	"github.com/azd1997/blockchain-consensus/defines"
 )
 
+// rangePitFunc 遍历Pit的函数
+type rangePitFunc func(peer *defines.PeerInfo) error
+
 // requestNeighborsFuncGenerator 根据当前pot状态机本地状态，生成用来请求邻居节点的函数
-func (p *Pot) requestNeighborsFuncGenerator() func(peer *defines.PeerInfo) error {
+func (p *Pot) requestNeighborsFuncGenerator() (rangePitFunc, error) {
 	selfPeerInfo, err := p.pit.Get(p.id)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	spib, err := selfPeerInfo.Encode()
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	rnf := func(peer *defines.PeerInfo) error {
@@ -38,7 +41,7 @@ func (p *Pot) requestNeighborsFuncGenerator() func(peer *defines.PeerInfo) error
 		}
 		return p.signAndSendMsg(msg)
 	}
-	return rnf
+	return rnf, nil
 }
 
 // requestLatestBlockFuncGenerator 根据当前pot状态机本地状态，生成用来请求最新区块的函数

@@ -6,6 +6,8 @@
 id = "id1111"
 # 不可为空。 none/peer/seed
 duty = "seed"
+# 和net配置中的addr一致
+addr = "127.0.0.1:8099"
 
 # 共识配置(必须), 不允许热重载
 [consensus]

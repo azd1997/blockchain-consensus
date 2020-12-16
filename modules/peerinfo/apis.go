@@ -22,8 +22,12 @@ var pit *PeerInfoTable
 
 // Init 初始化节点信息表
 // 在使用本文件其他API之前，必须调用Init初始化pit
-func Init(kv requires.Store) error {
-	pit = NewPeerInfoTable(kv)
+func Init(id string, kv requires.Store) error {
+	var err error
+	pit, err := NewPeerInfoTable(id, kv)
+	if err != nil {
+		return err
+	}
 	return pit.Init()
 }
 
