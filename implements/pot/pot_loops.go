@@ -63,22 +63,22 @@ func (p *Pot) stateMachineLoop() {
 					// 汇总已收集的证明消息，决出胜者，判断自己是否出块，接下去等待胜者区块和seed广播的胜者证明
 					p.endPot(moment)
 				} else if moment.Type == MomentType_PotStart { // 不可能出现的错误
-					p.Errorf("stateMachineLoop: Moment(%s) comes at StateInPot\n", moment)
+					p.Errorf("stateMachineLoop: Moment(%s) comes at StateInPot", moment)
 				}
 
 			case StateType_PostPot:
 				if moment.Type == MomentType_PotStart { // 正常情况应该是PotOver时刻到来
 					p.setState(StateType_InPot)
-					p.Infof("switch state from %s to %s\n", StateType_PostPot, StateType_InPot)
+					p.Infof("switch state from %s to %s", StateType_PostPot, StateType_InPot)
 					// 决定出新区块
 					p.decide(moment)
 					// 汇总已收集的证明消息，决出胜者，判断自己是否出块，接下去等待胜者区块和seed广播的胜者证明
 					p.startPot(moment)
 				} else if moment.Type == MomentType_PotOver { // 不可能出现的错误
-					p.Errorf("stateMachineLoop: Moment(%s) comes at StatePostPot\n", moment)
+					p.Errorf("stateMachineLoop: Moment(%s) comes at StatePostPot", moment)
 				}
 			default:
-				p.Fatalf("stateMachineLoop: Moment(%s) comes at UnknownState(%s)\n", moment, state.String())
+				p.Fatalf("stateMachineLoop: Moment(%s) comes at UnknownState(%s)", moment, state.String())
 
 				//case StateType_NotReady:
 				//	// 没准备好，啥也不干，等区块链同步
@@ -139,12 +139,12 @@ func (p *Pot) msgHandleLoop() {
 	for {
 		select {
 		case <-p.done:
-			p.Infof("msgHandleLoop: return ...\n")
+			p.Infof("msgHandleLoop: return ...")
 			return
 		case msg := <-p.msgin:
 			err = p.handleMsg(msg)
 			if err != nil {
-				p.Errorf("msgHandleLoop: handle msg(%s) fail: msg=%s,err=%s\n", msg.Desc, msg, err)
+				p.Errorf("msgHandleLoop: handle msg(%s) fail: msg=%s,err=%s", msg.Desc, msg, err)
 			}
 		case tx := <-p.localTxIn:
 			// 存到本地
@@ -152,7 +152,7 @@ func (p *Pot) msgHandleLoop() {
 			// 广播
 			err = p.broadcastTx(tx)
 			if err != nil {
-				p.Errorf("msgHandleLoop: broadcast localtx(%s) fail: tx=%v, err=%s\n", tx.ShortName(), tx, err)
+				p.Errorf("msgHandleLoop: broadcast localtx(%s) fail: tx=%v, err=%s", tx.ShortName(), tx, err)
 			}
 		}
 	}

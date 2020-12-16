@@ -26,6 +26,7 @@ type Block struct {
 	PrevHash  []byte
 	Merkle    []byte
 	Txs       []*Transaction
+	Description string
 	Sig       []byte
 }
 

@@ -14,10 +14,13 @@ import "github.com/azd1997/blockchain-consensus/defines"
 //  3. 重置proofs
 func (p *Pot) startPot(moment Moment) {
 	if p.duty == defines.PeerDuty_Peer {
+		p.Info("start pot competetion. broadcast self proof")
 		// 构造新区块并广播其证明，同时附带自身进度
 		if err := p.broadcastSelfProof(); err != nil {
 			p.Errorf("start pot fail: %s", err)
 		}
+	} else if p.duty == defines.PeerDuty_Seed {
+		p.Info("start pot competetion. witness")
 	}
 	// 所有角色还需要广播自身进度
 }
@@ -28,15 +31,19 @@ func (p *Pot) endPot(moment Moment) {
 	selfJudgeWinnerProof := p.proofs.JudgeWinner(moment)
 	if selfJudgeWinnerProof == nil {	// proofs为空，则说明此时还没有共识节点加入进来
 		// do nothing
+		p.Info("end pot competetion. judge winner, no winner")
 	} else if selfJudgeWinnerProof.Id == p.id { // 自己是胜者
+		p.Infof("end pot competetion. judge winner, i am winner(%v), broadcast new block(%s) now", selfJudgeWinnerProof, p.maybeNewBlock.ShortName())
 		p.broadcastNewBlock(p.maybeNewBlock)
 	} else { // 别人是胜者
 		// 等待胜者区块
+		p.Infof("end pot competetion. judge winner, wait winner(%v)", selfJudgeWinnerProof)
 	}
 }
 
 // decide 决定新区块
 func (p *Pot) decide(moment Moment) {
+	p.Info("decide new block now")
 	// 决定谁是胜者
 	decidedWinnerProof := p.proofs.DecideWinner(moment)
 	if decidedWinnerProof != nil {

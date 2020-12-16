@@ -39,6 +39,9 @@ func (p *Pot) requestNeighborsFuncGenerator() (rangePitFunc, error) {
 				Data: spib,
 			}},
 		}
+		if err := msg.WriteDesc("type", "req-neighbors"); err != nil {
+			return err
+		}
 		return p.signAndSendMsg(msg)
 	}
 	return rnf, nil
@@ -67,6 +70,9 @@ func (p *Pot) requestOneBlockFuncGenerator(index int64) func(peer *defines.PeerI
 				IndexStart: index,
 				IndexCount: 1,
 			}},
+		}
+		if err := msg.WriteDesc("type", "req-block"); err != nil {
+			return err
 		}
 		return p.signAndSendMsg(msg)
 	}

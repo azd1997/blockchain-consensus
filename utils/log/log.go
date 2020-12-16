@@ -21,7 +21,6 @@ type Logger struct {
 func NewLogger(module string, id string) *Logger {
 	if loggers[id] == nil {
 		panic("init global zap logger first")
-		return nil
 	}
 
 	prefix := fmt.Sprintf("\t[%s](%s)\t", module, id)

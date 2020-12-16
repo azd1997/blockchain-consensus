@@ -354,7 +354,7 @@ func (p *Pot) broadcastRequestLatestBlock() error {
 		if err := p.signAndSendMsg(msg); err != nil {
 			p.Errorf("broadcastRequestBlocks: to %s fail: %s\n", peer.Id, err)
 		} else {
-			p.Infof("broadcastRequestBlocks: to %s\n", peer.Id)
+			p.Debugf("broadcastRequestBlocks: to %s\n", peer.Id)
 			p.nWait++
 		}
 		return nil
@@ -377,24 +377,24 @@ func (p *Pot) wait(nWait int) error {
 	for {
 		select {
 		case <-p.done:
-			p.Infof("wait: done and return\n")
+			p.Debugf("wait: done and return\n")
 			return nil
 		case <-p.nWaitChan:
 			nWait--
 			cnt++
-			p.Infof("wait: nWait--\n")
+			p.Debugf("wait: nWait--\n")
 			// 等待结束
 			if nWait == 0 {
-				p.Infof("wait: wait finish and return\n")
+				p.Debugf("wait: wait finish and return\n")
 				return nil
 			}
 		case <-timeout.C:
 			// 超时需要判断两种情况：
 			if cnt == 0 { // 一个回复都没收到
-				p.Infof("wait: timeout, no response received\n")
+				p.Errorf("wait: timeout, no response received\n")
 				return errors.New("wait timeout and no response received")
 			}
-			p.Infof("wait: timeout, %d responses received, return\n", cnt)
+			p.Debugf("wait: timeout, %d responses received, return\n", cnt)
 			return nil
 		}
 	}
@@ -415,25 +415,25 @@ func (p *Pot) waitAndDecideOneBlock(blockIndex int64, nWait int) (*defines.Block
 	for {
 		select {
 		case <-p.done: // 程序被关闭
-			p.Infof("wait: done and return\n")
+			p.Debugf("wait: done and return\n")
 			return nil, nil
 		case b := <-p.nWaitBlockChan:
 			nWait--
 			cnt++
-			p.Infof("wait: nWait--\n")
+			p.Debugf("wait: nWait--\n")
 			p.udbt.Add(b) // 添加到未决区块表
 			// 等待结束
 			if nWait == 0 {
-				p.Infof("wait: wait finish and return\n")
+				p.Debugf("wait: wait finish and return\n")
 				return p.udbt.Major(), nil
 			}
 		case <-timeout.C:
 			// 超时需要判断两种情况：
 			if cnt == 0 { // 一个回复都没收到
-				p.Infof("wait: timeout, no response received\n")
+				p.Errorf("wait: timeout, no response received\n")
 				return nil, errors.New("wait timeout and no response received")
 			}
-			p.Infof("wait: timeout, %d responses received, return\n", cnt)
+			p.Debugf("wait: timeout, %d responses received, return\n", cnt)
 			return p.udbt.Major(), nil
 		}
 	}

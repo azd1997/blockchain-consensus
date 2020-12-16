@@ -7,6 +7,7 @@
 package pot
 
 import (
+	"fmt"
 	"bytes"
 	"sync"
 )
@@ -56,7 +57,9 @@ func (proofs *proofTable) AddProofRelayedBySeed(relayed *Proof) {
 // Judge是自己判定的
 func (proofs *proofTable) JudgeWinner(moment Moment) *Proof {
 	if moment.Type == MomentType_PotOver && moment.Time.After(proofs.start.Time) {
+		
 		proofs.Judged = proofs.winner
+		fmt.Println("JudgeWinner: ", proofs.Judged)
 		return proofs.Judged
 	}
 	return nil
