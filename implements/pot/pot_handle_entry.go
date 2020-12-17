@@ -79,12 +79,19 @@ func (p *Pot) handleEntryProof(from string, ent *defines.Entry) error {
 	if ent.BaseIndex != process.Index || !bytes.Equal(ent.Base, process.Hash) {
 		return errors.New("mismatched ent.Base or ent.BaseIndex")
 	}
+
+
 	// 如果证明信息有效，用以更新本地winner
 	if proof.Id == from { // 情况1
+		p.Debugf("AddProof: %s(%v)", from, proof)
 		p.proofs.Add(proof)
 	} else { // 情况2
+		p.Debugf("AddProofRelayedBySeed: %s(%v)", proof.Id, proof)
 		p.proofs.AddProofRelayedBySeed(proof)
 	}
+
+	p.Debugf("current proofs: %v", p.proofs)
+
 	return nil
 }
 

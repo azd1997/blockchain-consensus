@@ -9,12 +9,13 @@ package pot
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/azd1997/blockchain-consensus/defines"
 	_default "github.com/azd1997/blockchain-consensus/requires/default"
 	"github.com/azd1997/blockchain-consensus/test"
 	"github.com/azd1997/blockchain-consensus/utils/log"
-	"strconv"
-	"time"
 )
 
 const (
@@ -32,7 +33,7 @@ type Cluster struct {
 	clients map[string]*test.TxMaker
 }
 
-func StartCluster(nSeed int, nPeer int, debug bool) (*Cluster, error) {
+func StartCluster(nSeed int, nPeer int, debug bool, enableClients bool) (*Cluster, error) {
 	seeds, peers, seedsm, peersm := genIdsAndAddrs(nSeed, nPeer)
 
 	c := &Cluster{
@@ -62,19 +63,22 @@ func StartCluster(nSeed int, nPeer int, debug bool) (*Cluster, error) {
 		c.peers[id] = node
 	}
 
-	// 创建txmaker
-	for id := range peersm {
-		id := id
-		tos := make([]string, 0, len(peers))
-		for to := range peersm {
-			if id != to {
-				tos = append(tos, to)
+	if enableClients {
+		// 创建txmaker
+		for id := range peersm {
+			id := id
+			tos := make([]string, 0, len(peers))
+			for to := range peersm {
+				if id != to {
+					tos = append(tos, to)
+				}
 			}
+			tm := test.NewTxMaker(id, tos, c.peers[id].pot.LocalTxInChan())
+			c.clients[id] = tm
+			go tm.Start()
 		}
-		tm := test.NewTxMaker(id, tos, c.peers[id].pot.LocalTxInChan())
-		c.clients[id] = tm
-		go tm.Start()
 	}
+
 
 	return c, nil
 }

@@ -10,8 +10,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/azd1997/blockchain-consensus/utils/log"
+	"time"
 
+	"github.com/azd1997/blockchain-consensus/utils/log"
 	"github.com/azd1997/blockchain-consensus/defines"
 )
 
@@ -161,7 +162,7 @@ func (bc *BlockChain) GetBlocksByRange(start, count int64) ([]*defines.Block, er
 
 
 	resL, resR := int64(0), int64(0)
-	left, right := int64(1), int64(len(*bc.blocks)-1)
+	left, right := int64(1), bc.GetMaxIndex()
 	if start >= left && start <= right { // 正常情况
 		if count == 0 { // 表示数量上的模糊查询
 			//res = append(res, (*bc.blocks)[start:]...)
@@ -414,7 +415,7 @@ func (bc *BlockChain) CreateTheWorld() (genesis *defines.Block, err error) {
 		return nil, errors.New("non-empty blockchain")
 	}
 
-	genesis, err = defines.NewBlockAndSign(1, bc.id, nil, nil)
+	genesis, err = defines.NewBlockAndSign(1, bc.id, nil, nil, fmt.Sprintf("block from %s at %s", bc.id, time.Now().String()))
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +451,8 @@ func (bc *BlockChain) GenNextBlock() (*defines.Block, error) {
 	}
 
 	maxIndex := bc.GetMaxIndex()
-	nextb, err := defines.NewBlockAndSign(maxIndex+1, bc.id, (*bc.blocks)[maxIndex].SelfHash, txs)
+	latestBlock := bc.GetLatestBlock()
+	nextb, err := defines.NewBlockAndSign(maxIndex+1, bc.id, latestBlock.SelfHash, txs, fmt.Sprintf("block from %s at %s", bc.id, time.Now().String()))
 	if err != nil {
 		return nil, err
 	}
@@ -486,7 +488,7 @@ func (bc *BlockChain) addTx(tx *defines.Transaction) error {
 }
 
 func (bc *BlockChain) Discontinuous() bool {
-	return len(bc.discontinuous) > 0 && len(bc.chain) == 1
+	return !(len(bc.discontinuous) == 0 && len(bc.chain) == 1 && bc.GetMaxIndex() == bc.maxIndex)
 }
 
 // 获取最新的区块(这里的最新的指的是网络最新)

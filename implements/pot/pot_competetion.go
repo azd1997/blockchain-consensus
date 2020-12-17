@@ -45,21 +45,22 @@ func (p *Pot) endPot(moment Moment) {
 
 	// 通过proofs裁决winner
 	selfJudgeWinnerProof := p.proofs.JudgeWinner(moment)
+	p.Info(p.proofs.Display())
 	if selfJudgeWinnerProof == nil {	// proofs为空，则说明此时还没有共识节点加入进来
 		// do nothing
 		p.Info("end pot competetion. judge winner, no winner")
 	} else if selfJudgeWinnerProof.Id == p.id { // 自己是胜者
-		p.Infof("end pot competetion. judge winner, i am winner(%v), broadcast new block(%s) now", selfJudgeWinnerProof, p.maybeNewBlock.ShortName())
+		p.Infof("end pot competetion. judge winner, i am winner(%s), broadcast new block(%s) now", selfJudgeWinnerProof.Short(), p.maybeNewBlock.ShortName())
 		p.udbt.Add(p.maybeNewBlock)	// 将自己的新区块添加到未决区块表
 		p.broadcastNewBlock(p.maybeNewBlock)
 	} else { // 别人是胜者
 		if p.duty == defines.PeerDuty_Seed {	// 如果是种子节点，还要把种子节点自己判断的winner广播出去
 			// 等待胜者区块
-			p.Infof("end pot competetion. judge winner, wait winner(%v) and broadcast to all peers", selfJudgeWinnerProof)
+			p.Infof("end pot competetion. judge winner, wait winner(%s) and broadcast to all peers", selfJudgeWinnerProof.Short())
 			p.broadcastProof(selfJudgeWinnerProof, true)
 		} else {	// 其他的话只需要等待
 			// 等待胜者区块
-			p.Infof("end pot competetion. judge winner, wait winner(%v)", selfJudgeWinnerProof)
+			p.Infof("end pot competetion. judge winner, wait winner(%s)", selfJudgeWinnerProof.Short())
 		}
 	}
 }
@@ -72,7 +73,7 @@ func (p *Pot) decide(moment Moment) {
 	if decidedWinnerProof != nil {
 		// 从未决区块表中取出胜者
 		decidedWinnerBlock := p.udbt.Get(decidedWinnerProof.BlockHash)
-		p.Debugf("p.udbt: %v", p.udbt)
+		p.Info(p.udbt.Display())
 
 		// 这说明没收到胜者的区块。
 		if decidedWinnerBlock == nil {

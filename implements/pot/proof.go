@@ -7,6 +7,7 @@
 package pot
 
 import (
+	"fmt"
 	"bytes"
 	"encoding/gob"
 
@@ -22,6 +23,11 @@ type Proof struct {
 	BlockHash []byte // 自己构造的区块的哈希
 	Base      []byte // 基于的区块的哈希
 	BaseIndex int64  // 基于的区块的序号
+}
+
+func (p *Proof) Short() string {
+	str := fmt.Sprintf("%d-%s:%s(%d)", p.BaseIndex+1, p.Id, fmt.Sprintf("%x", p.BlockHash)[:6], p.TxsNum)
+	return str
 }
 
 // Encode 编码

@@ -99,7 +99,7 @@ func (b *Block) ShortName() string {
 ///////////////////////
 
 // NewBlock 构造新区块
-func NewBlockAndSign(index int64, id string, prevHash []byte, txs []*Transaction) (*Block, error) {
+func NewBlockAndSign(index int64, id string, prevHash []byte, txs []*Transaction, desc string) (*Block, error) {
 	b := &Block{
 		Index:     index,
 		Maker:     id,
@@ -108,6 +108,7 @@ func NewBlockAndSign(index int64, id string, prevHash []byte, txs []*Transaction
 		PrevHash:  prevHash,
 		Merkle:    nil,
 		Txs:       txs,
+		Description:desc,
 		Sig:       nil,
 	}
 	// 先生成merkle

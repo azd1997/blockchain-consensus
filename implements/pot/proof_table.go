@@ -7,10 +7,12 @@
 package pot
 
 import (
+	"sort"
 	"bytes"
 	"fmt"
-	"github.com/azd1997/blockchain-consensus/defines"
 	"sync"
+
+	"github.com/azd1997/blockchain-consensus/defines"
 )
 
 // 证明表
@@ -145,7 +147,7 @@ func (proofs *proofTable) Reset(moment Moment, latestBlock *defines.Block) {
 		proofs.HasLatestBlockNow = false
 	} else {
 		proofs.HasLatestBlockNow = true
-		proofs.baseIndex = latestBlock.Index + 1
+		proofs.baseIndex = latestBlock.Index
 		proofs.base = latestBlock.SelfHash
 	}
 
@@ -155,6 +157,24 @@ func (proofs *proofTable) Reset(moment Moment, latestBlock *defines.Block) {
 	proofs.Lock()
 	proofs.table = map[string]*Proof{}
 	proofs.Unlock()
+}
+
+func (proofs *proofTable) Display() string {
+	ps := make([]*Proof, 0, len(proofs.table))
+	for id := range proofs.table {
+		ps = append(ps, proofs.table[id])
+	}
+	sort.Slice(ps, func (i, j int) bool {
+		return ps[i].GreaterThan(ps[j])
+	})
+	
+	str := fmt.Sprintf("proofs(%d): {", proofs.baseIndex + 1)
+	for i:=0; i<len(ps); i++ {
+		str += ps[i].Short() + ", "
+	}
+	str += "}"
+
+	return str
 }
 
 // newProofTable 使用最新的区块去创建证明表
