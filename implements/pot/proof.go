@@ -11,7 +11,6 @@ import (
 	"encoding/gob"
 
 	"github.com/azd1997/blockchain-consensus/defines"
-	"github.com/azd1997/blockchain-consensus/utils/bufferpool"
 )
 
 // 这里将证明的含义作下说明：本质上节点构造区块是在PotOver时，这时将区块哈希和区块包含的有效交易数量作为证明
@@ -27,8 +26,7 @@ type Proof struct {
 
 // Encode 编码
 func (p *Proof) Encode() ([]byte, error) {
-	buf := bufferpool.Get()
-	defer bufferpool.Return(buf)
+	buf := new(bytes.Buffer)
 	err := gob.NewEncoder(buf).Encode(p)
 	if err != nil {
 		return nil, err
@@ -43,13 +41,26 @@ func (p *Proof) Decode(data []byte) error {
 }
 
 // GreaterThan 两个证明间的比较
+// 调用前确保p与ap的base一致
 func (p *Proof) GreaterThan(ap *Proof) bool {
-	// TODO
 	if ap == nil {
 		return true
 	}
 
-	return true
+	if p.TxsNum == ap.TxsNum {
+		if cmp := bytes.Compare(p.BlockHash, ap.BlockHash); cmp == 0 {
+			// 此时根据竞选的奇偶性来选择某一位id
+			if (p.BaseIndex + 1) % 2 == 0 {
+				return p.Id > ap.Id		// 确信Id不会相等
+			} else {
+				return p.Id < ap.Id
+			}
+		} else {
+			return cmp == 1
+		}
+	} else {
+		return p.TxsNum > ap.TxsNum
+	}
 }
 
 // Match 检查block和proof是否匹配

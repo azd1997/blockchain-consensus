@@ -42,7 +42,13 @@ func (p *Pot) requestNeighborsFuncGenerator() (rangePitFunc, error) {
 		if err := msg.WriteDesc("type", "req-neighbors"); err != nil {
 			return err
 		}
-		return p.signAndSendMsg(msg)
+		if err := p.signAndSendMsg(msg); err != nil {
+			p.Errorf("requestNeighbors: to %s fail: %v\n", peer.Id, err)
+			return err
+		} else {
+			p.Debugf("requestNeighbors: to %s\n", peer.Id)
+		}
+		return nil
 	}
 	return rnf, nil
 }
@@ -74,7 +80,13 @@ func (p *Pot) requestOneBlockFuncGenerator(index int64) func(peer *defines.PeerI
 		if err := msg.WriteDesc("type", "req-block"); err != nil {
 			return err
 		}
-		return p.signAndSendMsg(msg)
+		if err := p.signAndSendMsg(msg); err != nil {
+			p.Errorf("requestBlock: to %s fail: %v\n", peer.Id, err)
+			return err
+		} else {
+			p.Debugf("requestBlock: to %s\n", peer.Id)
+		}
+		return nil
 	}
 	return rnf
 }

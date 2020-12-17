@@ -8,6 +8,7 @@ package pot
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/azd1997/blockchain-consensus/defines"
 )
@@ -32,16 +33,32 @@ type undecidedBlock struct {
 // 该表的生命周期为一次收集期，之后将会重置以给下次使用
 type undecidedBlockTable struct {
 	undecidedIndex int64
+
+	//moment Moment
+
+	//baseBlock *defines.Block
+
 	table          map[string]*undecidedBlock // <hash_hex, v>
 }
 
 // Add 添加未决区块
 func (udbt *undecidedBlockTable) Add(b *defines.Block) {
+
+	if b == nil {
+		return
+	}
+
+	fmt.Printf("udbt add: ub(%s)=%v\n", b.ShortName(), b)
+
+	//if udbt.baseBlock != nil && b.Index != udbt.baseBlock.Index + 1 {
+	//	return
+	//}
+
 	if udbt.undecidedIndex > 0 && b.Index != udbt.undecidedIndex {
 		return
 	}
 
-	k := fmt.Sprintf("%x", b.SelfHash)
+	k := b.Key()
 	if udbt.table[k] == nil {
 		udbt.table[k] = &undecidedBlock{
 			count: 1,
@@ -55,7 +72,11 @@ func (udbt *undecidedBlockTable) Add(b *defines.Block) {
 // Get 根据区块的哈希查询区块
 func (udbt *undecidedBlockTable) Get(bhash []byte) *defines.Block {
 	k := fmt.Sprintf("%x", bhash)
-	return udbt.table[k].b
+	ub := udbt.table[k]
+	if ub == nil {
+		return nil
+	}
+	return ub.b
 }
 
 // Major 判定多数的区块
@@ -69,12 +90,35 @@ func (udbt *undecidedBlockTable) Major() *defines.Block {
 			maxk = k
 		}
 	}
+	if maxk  == "" {
+		return nil
+	}
 	return udbt.table[maxk].b
 }
 
-// Reset index指此次收集的未决区块索引，若为0，表示不确定; 若为负数，也是不确定
-// -1表示最新区块
-func (udbt *undecidedBlockTable) Reset(index int64) {
-	udbt.undecidedIndex = index
+// Reset latestBlock指目前本地有的最新的区块
+// 若latestBlock为nil，说明本地没有最新区块
+// 有的话，需要校验
+func (udbt *undecidedBlockTable) Reset(undecidedIndex int64) {
+	udbt.undecidedIndex = undecidedIndex
 	udbt.table = map[string]*undecidedBlock{}
+}
+
+// 展示当前情况
+func (udbt *undecidedBlockTable) Display() string {
+	var str string
+	str = fmt.Sprintf("udbt(%d): { ", udbt.undecidedIndex)
+	ubs := make([]*undecidedBlock, 0, len(udbt.table))
+	for k := range udbt.table {
+		ubs = append(ubs, udbt.table[k])
+	}
+	sort.Slice(ubs, func(i, j int) bool {
+		return ubs[i].count > ubs[j].count
+	})
+	for i:=0; i<len(ubs); i++ {
+		substr := fmt.Sprintf("%s(%s,%d) ", ubs[i].b.ShortName(), ubs[i].b.Maker, ubs[i].count)
+		str += substr
+	}
+	str += "}\n"
+	return str
 }

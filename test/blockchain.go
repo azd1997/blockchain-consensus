@@ -17,7 +17,7 @@ import (
 
 const (
 	Module_Bcl = "BCL"
-	initialBlocksLength = 10
+	//initialBlocksLength = 10
 )
 
 var (
@@ -38,7 +38,7 @@ func NewBlockChain(id string) *BlockChain {
 		return nil
 	}
 
-	firstSeg := make([]*defines.Block, 1)
+	firstSeg := make([]*defines.Block, 0)
 
 	return &BlockChain{
 		id:id,
@@ -62,6 +62,9 @@ func NewBlockChain(id string) *BlockChain {
 type BlockChain struct {
 	id string
 
+	// 该标志标记是否添加过最新区块
+	addnew bool
+
 	chain []*BlockSegment
 	//blocks map[string]*defines.Block
 
@@ -71,7 +74,10 @@ type BlockChain struct {
 	// 一旦产生了多个分段，也就是链还未连续，由于只信任每个分段的第1个区块(通过多数法选出的)
 	// 所以所有空缺的补全都必须从可信任的区块开始倒序填充
 
+	// maxIndex记录的是本地曾经达到的最大高度，在RLB阶段完成之后，maxIndex其实就是网络区块链的最大索引了
+	// 当本地区块链遇到错误需要删除一部分区块分段时，maxIndex并不回缩
 	maxIndex int64
+
 	// blocks是chain的第一个分段。使用blocks的前提是chain只有1个分段
 	blocks  *[]*defines.Block
 	indexes map[string]int64 // <hash, index>
@@ -97,11 +103,7 @@ func (bc *BlockChain) Display() string {
 	for i:=0; i<len(bc.chain); i++ {
 		seg := bc.chain[i]
 		segStr := fmt.Sprintf("Segment%d<%d-%d>:\t", i+1, seg.start, seg.end)
-		start := 0
-		if i == 0 {
-			start = 1
-		}
-		for j:=start; j<len(*seg.blocks); j++ {
+		for j:=0; j<len(*seg.blocks); j++ {
 			if j < len(*seg.blocks) - 1 {
 				segStr += fmt.Sprintf("%s ——> ", (*seg.blocks)[j].ShortName())
 			} else {
@@ -119,7 +121,10 @@ func (bc *BlockChain) ID() string {
 }
 
 func (bc *BlockChain) Init() error {
-	bc.Info("BlockChain: Init")
+	bc.Debug("BlockChain: Init. start collect tx loop")
+
+	go bc.collectTxLoop()
+
 	return nil
 }
 
@@ -127,29 +132,47 @@ func (bc *BlockChain) Inited() bool {
 	return true
 }
 
+// GetMaxIndex maxIndex不一定代表本地最高区块的索引，因此这里使用最新分段记录的值
 func (bc *BlockChain) GetMaxIndex() int64 {
-	return bc.maxIndex
+	segnum := len(bc.chain)
+	lastSeg := bc.chain[segnum-1]
+	localMaxIndex := lastSeg.end
+	return localMaxIndex
+}
+
+func (bc *BlockChain) GetBlockByIndex(index int64) (*defines.Block, error) {
+	// 检查所有分段，有则返回
+	for i:=0; i<len(bc.chain); i++ {
+		start, end := bc.chain[i].start, bc.chain[i].end
+		if start > 0 && end > 0 && index >= start && index <= end {
+			return (*(bc.chain[i].blocks))[index - start], nil
+		}
+	}
+	return nil, fmt.Errorf("bc is discontinuous now and block(%d) is missing, try again later", index)
 }
 
 func (bc *BlockChain) GetBlocksByRange(start, count int64) ([]*defines.Block, error) {
-	bc.Infof("BlockChain: GetBlocksByRange: start=%d, count=%d\n", start, count)
+	bc.Debugf("BlockChain: GetBlocksByRange: start=%d, count=%d\n", start, count)
 
-	if bc.Discontinuous() {
-		return nil, errors.New("bc is discontinuous now, try again later")
-	}
-	// bc连续时，blocks才代表区块链
+	//if bc.Discontinuous() {
+	//	return nil, errors.New("bc is discontinuous now, try again later")
+	//}
+	//// bc连续时，blocks才代表区块链
 
-	var res []*defines.Block
 
+	resL, resR := int64(0), int64(0)
 	left, right := int64(1), int64(len(*bc.blocks)-1)
 	if start >= left && start <= right { // 正常情况
 		if count == 0 { // 表示数量上的模糊查询
-			res = append(res, (*bc.blocks)[start:]...)
+			//res = append(res, (*bc.blocks)[start:]...)
+			resL, resR = start, right
 		} else if count > 0 {
 			if start+count-1 < right {
-				res = append(res, (*bc.blocks)[start:start+count]...)
+				//res = append(res, (*bc.blocks)[start:start+count]...)
+				resL, resR = start, start + count - 1
 			} else {
-				res = append(res, (*bc.blocks)[start:]...)
+				//res = append(res, (*bc.blocks)[start:]...)
+				resL, resR = start, right
 			}
 		} else {
 			return nil, errors.New("negative count")
@@ -157,12 +180,15 @@ func (bc *BlockChain) GetBlocksByRange(start, count int64) ([]*defines.Block, er
 	} else if start < 0 && (-start) <= right { // start反向有效
 		r := right + 1 + start
 		if count == 0 { // 表示数量上的模糊查询
-			res = append(res, (*bc.blocks)[:r+1]...)
+			//res = append(res, (*bc.blocks)[:r+1]...)
+			resL, resR = start, r
 		} else if count > 0 {
 			if r-count+1 > 0 {
-				res = append(res, (*bc.blocks)[r-count+1:r+1]...)
+				//res = append(res, (*bc.blocks)[r-count+1:r+1]...)
+				resL, resR = r-count+1, r
 			} else {
-				res = append(res, (*bc.blocks)[:r+1]...)
+				//res = append(res, (*bc.blocks)[:r+1]...)
+				resL, resR = start, r
 			}
 		} else {
 			return nil, errors.New("negative count")
@@ -171,46 +197,76 @@ func (bc *BlockChain) GetBlocksByRange(start, count int64) ([]*defines.Block, er
 		return nil, errors.New("invalid start")
 	}
 
+	bc.Debugf("resL=%d, resR=%d", resL, resR)
+
+	res := make([]*defines.Block, resR - resL + 1)
+	existErr := false
+	for i:=resL; i<=resR; i++ {
+		b, err := bc.GetBlockByIndex(i)
+		if err != nil {
+			existErr = true
+		}
+		res[i-resL] = b
+	}
+
+	if existErr {
+		return res, errors.New("bc is discontinuous now and some blocks are missing, try again later")
+	}
 	return res, nil
 }
 
 func (bc *BlockChain) GetBlocksByHashes(hashes [][]byte) ([]*defines.Block, error) {
-	bc.Infof("BlockChain: GetBlocksByHashes: hashes=%v\n", hashes)
+	bc.Debugf("BlockChain: GetBlocksByHashes: hashes=%v\n", hashes)
 
-	if bc.Discontinuous() {
-		return nil, errors.New("bc is discontinuous now, try again later")
-	}
-	// bc连续时，blocks才代表区块链
+	//if bc.Discontinuous() {
+	//	return nil, errors.New("bc is discontinuous now, try again later")
+	//}
+	//// bc连续时，blocks才代表区块链
 
 	res := make([]*defines.Block, len(hashes))
+	existErr := false
 	for i := 0; i < len(hashes); i++ {
-		k := fmt.Sprintf("%x", hashes[i])
-		idx := bc.indexes[k]
-		b := *((*bc.blocks)[idx])
-		res[i] = &b
+		//k := fmt.Sprintf("%x", hashes[i])
+		//idx := bc.indexes[k]
+		//b := *((*bc.blocks)[idx])
+		//res[i] = &b
+
+		b, err := bc.GetBlockByHash(hashes[i])
+		if err != nil {
+			existErr = true
+		}
+		res[i] = b
+	}
+
+	if existErr {
+		return nil, errors.New("bc is discontinuous now and some blocks are missing, try again later")
 	}
 	return res, nil
 }
 
 func (bc *BlockChain) GetBlockByHash(hash []byte) (*defines.Block, error) {
-	bc.Infof("BlockChain: GetBlocksByHash: hash=%v\n", hash)
+	bc.Debugf("BlockChain: GetBlocksByHash: hash=%v\n", hash)
 
-	if bc.Discontinuous() {
-		return nil, errors.New("bc is discontinuous now, try again later")
-	}
-	// bc连续时，blocks才代表区块链
+	//if bc.Discontinuous() {
+	//	return nil, errors.New("bc is discontinuous now, try again later")
+	//}
+	//// bc连续时，blocks才代表区块链
 
 	k := fmt.Sprintf("%x", hash)
 	idx := bc.indexes[k]
-	b := *((*bc.blocks)[idx])
+	//b := *((*bc.blocks)[idx])
 
-	return &b, nil
+	b, err := bc.GetBlockByIndex(idx)
+	if err != nil {
+		return nil, fmt.Errorf("bc is discontinuous now and block(%d, %s) is missing, try again later", idx, k)
+	}
+	return b, nil
 }
 
 // AddNewBlock 将最新的区块的添加到区块链中
 // 调用方如果Add返回错误ErrWrongChan，那么重新请求最新区块
 func (bc *BlockChain) AddNewBlock(nb *defines.Block) error {
-	bc.Infof("BlockChain: AddNewBlock: block=%v\n", nb)
+	bc.Debugf("BlockChain: AddNewBlock: block=%v\n", nb)
 
 	if nb.Index <= bc.maxIndex {
 		return nil
@@ -219,7 +275,6 @@ func (bc *BlockChain) AddNewBlock(nb *defines.Block) error {
 		segnum := len(bc.chain)
 		if segnum == 0 {
 			bc.Panic("blockchain should have at least one segment!")
-			return nil
 		}
 		latestSeg := bc.chain[segnum-1]
 		if latestSeg.start == 0 {
@@ -242,6 +297,9 @@ func (bc *BlockChain) AddNewBlock(nb *defines.Block) error {
 	// 添加哈希键的索引
 	bc.indexes[nb.Key()] = nb.Index
 
+	// 将addnew位置true
+	bc.addnew = true
+
 	// 每次添加新区块之后，都检查下是否可以填补空白
 	if err := bc.checkDiscontinuous(); err != nil {
 		return err
@@ -251,7 +309,7 @@ func (bc *BlockChain) AddNewBlock(nb *defines.Block) error {
 }
 
 func (bc *BlockChain) AddBlock(block *defines.Block) error {
-	bc.Infof("BlockChain: AddBlock: block=%v\n", block)
+	bc.Debugf("BlockChain: AddBlock: block=%v\n", block)
 
 	if block.Index == bc.maxIndex + 1 {
 		return bc.AddNewBlock(block)
@@ -350,9 +408,9 @@ func (bc *BlockChain) cleanTxPool(newb *defines.Block) {
 //}
 
 func (bc *BlockChain) CreateTheWorld() (genesis *defines.Block, err error) {
-	bc.Info("BlockChain: CreateTheWorld")
+	bc.Debug("BlockChain: CreateTheWorld")
 
-	if len(*bc.blocks) > 1 { // 说明已经有区块
+	if len(*bc.blocks) > 0 { // 说明已经有区块
 		return nil, errors.New("non-empty blockchain")
 	}
 
@@ -371,7 +429,7 @@ func (bc *BlockChain) CreateTheWorld() (genesis *defines.Block, err error) {
 }
 
 func (bc *BlockChain) GenNextBlock() (*defines.Block, error) {
-	bc.Infof("BlockChain: GenNextBlock: next=%d\n", bc.GetMaxIndex()+1)
+	bc.Debugf("BlockChain: GenNextBlock: next=%d\n", bc.GetMaxIndex()+1)
 
 	if bc.Discontinuous() {
 		return nil, errors.New("discontinuous blockchain, fill first")
@@ -406,13 +464,13 @@ func (bc *BlockChain) TxInChan() chan *defines.Transaction {
 
 func (bc *BlockChain) collectTxLoop() {
 	for tx := range bc.txin {
-		bc.Infof("collectTxLoop: recv a tx: %s\n", tx.Key())
+		bc.Debugf("collectTxLoop: recv a tx: %s\n", tx.Key())
 		bc.addTx(tx)
 	}
 }
 
 func (bc *BlockChain) addTx(tx *defines.Transaction) error {
-	bc.Infof("BlockChain: AddTransaction: tx=%v\n", tx)
+	bc.Debugf("BlockChain: AddTransaction: tx=%v\n", tx)
 
 	k := tx.Key()
 
@@ -429,4 +487,16 @@ func (bc *BlockChain) addTx(tx *defines.Transaction) error {
 
 func (bc *BlockChain) Discontinuous() bool {
 	return len(bc.discontinuous) > 0 && len(bc.chain) == 1
+}
+
+// 获取最新的区块(这里的最新的指的是网络最新)
+func (bc *BlockChain) GetLatestBlock() *defines.Block {
+	if !bc.addnew || bc.maxIndex > bc.GetMaxIndex() {
+		return nil
+	}
+
+	segnum := len(bc.chain)
+	lastSeg := bc.chain[segnum-1]
+	localMaxIndexBlock := (*lastSeg.blocks)[lastSeg.end - lastSeg.start]
+	return localMaxIndexBlock
 }

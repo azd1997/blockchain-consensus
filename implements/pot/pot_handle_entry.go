@@ -10,19 +10,21 @@ import (
 	"bytes"
 	"errors"
 	"github.com/azd1997/blockchain-consensus/defines"
+	"github.com/azd1997/blockchain-consensus/test"
 )
 
 // 处理EntryBlocks
 // 		TODO from以后会用于区块处理后对转发者(from)的处理
 func (p *Pot) handleEntryBlock(from string, ent *defines.Entry) error {
-	// 检查ent.BaseIndex和Base
-	process := p.processes.get(p.id)
-	if ent.BaseIndex < process.Index {
-		return nil
-	}
-	if ent.BaseIndex == process.Index && !bytes.Equal(ent.Base, process.Hash) {
-		return errors.New("mismatched ent.Base")
-	}
+	//// 检查ent.BaseIndex和Base
+	//process := p.processes.get(p.id)
+	//if ent.BaseIndex < process.Index {
+	//	return nil
+	//}
+	//if ent.BaseIndex == process.Index && !bytes.Equal(ent.Base, process.Hash) {
+	//	return errors.New("mismatched ent.Base")
+	//}
+
 	// 解码
 	block := new(defines.Block)
 	err := block.Decode(ent.Data)
@@ -50,7 +52,15 @@ func (p *Pot) handleEntryBlock(from string, ent *defines.Entry) error {
 	//}
 
 	// 尝试添加到区块链中
-	return p.bc.AddBlock(block)
+	err = p.bc.AddBlock(block)
+	if err != nil {
+		p.Errorf("add block(%s) fail: err=%s", block.ShortName(), err)
+		if err == test.ErrWrongChain {	// 切换状态
+			p.setState(StateType_PreInited_RequestLatestBlock)	// 切换到RLB阶段
+		}
+		return err
+	}
+	return nil
 }
 
 // 处理Proof
@@ -93,11 +103,14 @@ func (p *Pot) handleEntryNewBlock(from string, ent *defines.Entry) error {
 		return err
 	}
 
-	// 只更新p.waitingNewBlock
-	winnerProof := p.proofs.Decided
-	if winnerProof.Match(block) {
-		p.waitingNewBlock = block
-	}
+	// 添加到未决区块表中，等接下来的PotStart时刻决定
+	p.udbt.Add(block)
+
+	//// 只更新p.waitingNewBlock
+	//winnerProof := p.proofs.Decided
+	//if winnerProof.Match(block) {
+	//	p.waitingNewBlock = block
+	//}
 
 	return nil
 	//return p.bc.AddBlock(block) // 添加的操作在确定胜者区块时再加

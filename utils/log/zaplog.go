@@ -17,8 +17,18 @@ import (
 // 一般情况下都是使用全局单例，但是对于想要在内存中进行集群部署来说，需要有logger生成函数
 var loggers = map[string]*zap.SugaredLogger{} // <id, logger>
 
+//var (
+//	highPriority = zap.LevelEnablerFunc(func(level zapcore.Level) bool {
+//		return level >= zapcore.InfoLevel
+//	})
+//
+//	lowPriority = zap.LevelEnablerFunc(func(level zapcore.Level) bool {
+//		return level >= zapcore.DebugLevel
+//	})
+//)
+
 // InitGlobalLogger 初始化全局日志单例
-func InitGlobalLogger(id string, logFileName ...string) {
+func InitGlobalLogger(id string, debug bool, logFileName ...string) {
 	if loggers[id] != nil {
 		return
 	}
@@ -28,13 +38,20 @@ func InitGlobalLogger(id string, logFileName ...string) {
 
 	var allCore []zapcore.Core
 
+	var logLevel zapcore.LevelEnabler
+	if debug {
+		logLevel = zapcore.DebugLevel
+	} else {
+		logLevel = zapcore.InfoLevel
+	}
+
 	encoder := getEncoder()
 	consoleWriter := zapcore.Lock(os.Stdout)
-	consoleCore := zapcore.NewCore(encoder, consoleWriter, zapcore.DebugLevel)
+	consoleCore := zapcore.NewCore(encoder, consoleWriter, logLevel)
 
 	if len(logFileName) > 0 { // 只取第1个文件地址
 		fileWriter := getLogWriter(logFileName[0])
-		fileCore := zapcore.NewCore(encoder, fileWriter, zapcore.DebugLevel)
+		fileCore := zapcore.NewCore(encoder, fileWriter, logLevel)
 		allCore = append(allCore, fileCore)
 	}
 

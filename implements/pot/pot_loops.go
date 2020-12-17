@@ -36,26 +36,43 @@ func (p *Pot) stateMachineLoop() {
 					})
 				}
 			case StateType_PreInited_RequestLatestBlock: // nothing
+				// RLB阶段也应该重置proofs，见证pot竞争，接收最新区块
+				if moment.Type == MomentType_PotStart {
+					p.decide(moment)
+					p.startPot(moment)
+				} else if moment.Type == MomentType_PotOver {
+					p.endPot(moment)
+				}
+
 			case StateType_NotReady:
 				// 能够处理邻居消息,区块消息,最新区块消息
 
-				p.Debugf("current is ready? %v", !p.bc.Discontinuous())
+				p.Debugf("current is ready? %v", p.isSelfReady())
 
-				// 检查是否满足切换Ready的条件
-				if !p.bc.Discontinuous() && moment.Type == MomentType_PotStart {
+				if moment.Type == MomentType_PotStart {
 					p.setState(StateType_InPot)
 					p.Infof("switch state from %s to %s\n", StateType_NotReady, StateType_InPot)
+					p.decide(moment)
 					p.startPot(moment)
-				} else {
-					// 还没满足切换Ready状态的条件，暂时不能收集证明消息(有一定但没有全部判别能力)，
-					// 只能在pot竞赛结束后听从seed和winner
-					if moment.Type == MomentType_PotStart {
-						// 啥也不干，收集证明消息.   或者不收集？
-						p.proofs.Reset()
-					} else if moment.Type == MomentType_PotOver {
-						// 开始接收新区块和seed广播的winner
-					}
+				} else if moment.Type == MomentType_PotOver {
+					p.endPot(moment)
 				}
+
+				//// 检查是否满足切换Ready的条件
+				//if p.isSelfReady() && moment.Type == MomentType_PotStart {
+				//	p.setState(StateType_InPot)
+				//	p.Infof("switch state from %s to %s\n", StateType_NotReady, StateType_InPot)
+				//	p.startPot(moment)
+				//} else {
+				//	// 还没满足切换Ready状态的条件，暂时不能收集证明消息(有一定但没有全部判别能力)，
+				//	// 只能在pot竞赛结束后听从seed和winner
+				//	if moment.Type == MomentType_PotStart {
+				//		// 啥也不干，收集证明消息.   或者不收集？
+				//		p.proofs.Reset()
+				//	} else if moment.Type == MomentType_PotOver {
+				//		// 开始接收新区块和seed广播的winner
+				//	}
+				//}
 			case StateType_InPot:
 				if moment.Type == MomentType_PotOver { // 正常情况应该是PotOver时刻到来
 					p.setState(StateType_PostPot)

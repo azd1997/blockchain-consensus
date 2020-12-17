@@ -2,64 +2,24 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="a308decb-1282-4354-b05f-723fd7fa09eb" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/defines/block_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lab/pot/cluster.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lab/pot/cluster_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lab/pot/pot.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/lab/pot/pot_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_test.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/blockchain.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test/tx_maker.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/log/logger_generate.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/log/zaplog.go" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/log/zaplog_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/config.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/config.toml" beforeDir="false" afterPath="$PROJECT_DIR$/config/config.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/config_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/config_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/types.go" beforeDir="false" afterPath="$PROJECT_DIR$/config/types.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/consensus.go" beforeDir="false" afterPath="$PROJECT_DIR$/consensus.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/block.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/block.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/entry.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/entry.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/entry_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/entry_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/msg.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/msg.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/msg_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/msg_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/peer_info.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/peer_info.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/peer_info_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/peer_info_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/process.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/process.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/request.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/request.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defines/transaction.go" beforeDir="false" afterPath="$PROJECT_DIR$/defines/transaction.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/clock.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/clock.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/clock_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/clock_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/collection_pool.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/collection_pool.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/errors.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/errors.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_actions.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_actions.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_competetion.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_competetion.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_func_generator.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_func_generator.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_handle_entry.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_handle_entry.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_handle_msg.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_handle_msg.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot_handle_msg_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_handle_msg_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_handle_req.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_handle_req.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot_init.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_init.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_loops.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_loops.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot_loops_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_loops_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/pot_utils.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_utils.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/process_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/process_table.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/process_table_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/process_table_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/implements/pot/proof.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/proof.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/proof_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/proof_table.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/implements/pot/undecided_block_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/undecided_block_table.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/bnet/net.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/net.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/peerinfo/apis.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/peerinfo/apis.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/peerinfo/peer_info_table_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/peerinfo/peer_info_table_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node.go" beforeDir="false" afterPath="$PROJECT_DIR$/node.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lab/pot/cluster.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/pot/cluster.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lab/pot/cluster_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/pot/cluster_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lab/pot/pot_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/pot/pot_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/requires/requires.go" beforeDir="false" afterPath="$PROJECT_DIR$/requires/requires.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/log/log.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/log/log.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/log/log_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/log/log_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test/blockchain.go" beforeDir="false" afterPath="$PROJECT_DIR$/test/blockchain.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/log/zaplog.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/log/zaplog.go" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -175,10 +135,10 @@
     <recent_temporary>
       <list>
         <item itemvalue="Go Test.TestCluster in github.com/azd1997/blockchain-consensus/lab/pot" />
+        <item itemvalue="Go Test.TestMessage in github.com/azd1997/blockchain-consensus/defines" />
         <item itemvalue="Go Test.TestClock_disableTimeCorrect in github.com/azd1997/blockchain-consensus/implements/pot" />
         <item itemvalue="Go Test.TestEntry in github.com/azd1997/blockchain-consensus/defines" />
         <item itemvalue="Go Test.TestEntry_Decode in github.com/azd1997/blockchain-consensus/defines" />
-        <item itemvalue="Go Test.TestMessage in github.com/azd1997/blockchain-consensus/defines" />
       </list>
     </recent_temporary>
   </component>

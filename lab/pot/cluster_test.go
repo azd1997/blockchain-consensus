@@ -12,7 +12,7 @@ import (
 )
 
 func TestCluster(t *testing.T) {
-	c, err := StartCluster(1, 3)
+	c, err := StartCluster(1, 3, true)
 	if err != nil {
 		t.Error(err)
 	}
@@ -24,7 +24,7 @@ func TestCluster(t *testing.T) {
 func TestStartNode(t *testing.T) {
 	_, _, seedsm, peersm := genIdsAndAddrs(1, 3)
 	peer01 := "peer01"
-	_, err := StartNode(peer01, peersm[peer01], seedsm, peersm)
+	_, err := StartNode(peer01, peersm[peer01], seedsm, peersm, true)
 	if err != nil {
 		t.Error(err)
 	}

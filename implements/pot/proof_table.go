@@ -7,13 +7,18 @@
 package pot
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
+	"github.com/azd1997/blockchain-consensus/defines"
 	"sync"
 )
 
 // 证明表
 type proofTable struct {
+	// 如果有最新区块，那么在使用proofs需要校验最新区块
+	// 如果没有，则是在两种特殊情况下：1. RLB阶段； 2. 本地区块链发现自己遇到了错误的部分，丢弃，重新RLB
+	HasLatestBlockNow bool
+
 	baseIndex    int64             // 基于哪个区块开始的竞争
 	base         []byte            //
 	table        map[string]*Proof // <id, *Proof>
@@ -29,13 +34,22 @@ type proofTable struct {
 
 	Judged  *Proof // 自己判定的胜者
 	Decided *Proof // 每轮竞争确定的winner，综合自己判定和种子转发
+	//oldDecided *Proof				// 上一轮的决胜者
 }
 
 // Add 添加
 func (proofs *proofTable) Add(p *Proof) {
-	if p.BaseIndex != proofs.baseIndex || !bytes.Equal(p.Base, proofs.base) {
-		return // TODO: 是否返回错误，让上层回复来信方？
+
+	if p == nil {
+		return
 	}
+
+	if proofs.HasLatestBlockNow {
+		if p.BaseIndex != proofs.baseIndex || !bytes.Equal(p.Base, proofs.base) {
+			return // TODO: 是否返回错误，让上层回复来信方？
+		}
+	}	// 当前没有最新区块就不做此检查
+
 
 	proofs.Lock()
 	proofs.table[p.Id] = p
@@ -57,9 +71,15 @@ func (proofs *proofTable) AddProofRelayedBySeed(relayed *Proof) {
 // Judge是自己判定的
 func (proofs *proofTable) JudgeWinner(moment Moment) *Proof {
 	if moment.Type == MomentType_PotOver && moment.Time.After(proofs.start.Time) {
-		
+
+		proofs.end = moment
+
 		proofs.Judged = proofs.winner
-		fmt.Println("JudgeWinner: ", proofs.Judged)
+
+		if proofs.Judged != nil {
+			fmt.Printf("JudgeWinner: winner(%s)(%d, %x)", proofs.Judged.Id, proofs.Judged.TxsNum, proofs.Judged.BlockHash)
+		}
+
 		return proofs.Judged
 	}
 	return nil
@@ -68,6 +88,7 @@ func (proofs *proofTable) JudgeWinner(moment Moment) *Proof {
 // DecideWinner 决定winner
 // 必须在PotStart时刻调用
 // Decide 是在收到种子们的决定之后再综合决定新区块是哪个
+// 调用完Decide之后必须检查decided block
 func (proofs *proofTable) DecideWinner(moment Moment) *Proof {
 	// 是PotStart时刻并且比本轮开始时的PotStart大
 	if moment.Type == MomentType_PotStart && moment.Time.After(proofs.start.Time) {
@@ -93,19 +114,44 @@ func (proofs *proofTable) DecideWinner(moment Moment) *Proof {
 		} else {
 			proofs.Decided = selfJudgeWinnerProof
 		}
+
 		return proofs.Decided
 	}
 	return nil
 }
 
 // Reset 重置
-func (proofs *proofTable) Reset() {
-	if proofs.winner == nil {
-		return // 重置失败
+// 传入的latestBlock应该是bc的最新区块
+func (proofs *proofTable) Reset(moment Moment, latestBlock *defines.Block) {
+
+	if !moment.Time.After(proofs.end.Time) {
+		return
 	}
-	proofs.baseIndex = proofs.winner.BaseIndex + 1
-	proofs.base = proofs.winner.BlockHash
+	proofs.start = moment
+
+	// 这种做法被取消，是因为这里只做了决定谁的区块被选择，但是这个所谓的decided可能没收到，也可能区块内容本身无效
+	// 所以要考虑重新pot
+	//if proofs.Decided != nil {	// 这代表上一轮竞赛自己有参与或见证，得到了最新区块
+	//	proofs.baseIndex = proofs.Decided.BaseIndex + 1
+	//	proofs.base = proofs.Decided.BlockHash
+	//	proofs.HasLatestBlockNow = true
+	//} else {	// 本地第一次使用proofTable，没有winner
+	//	// 再看本地是否有最新区块。事实上对于“最新区块”而言，一定是先有pot.winner，再有最新区块。
+	//	// 所以如果pot.winner == nil，那么其实本地也没有真正的最新区块
+	//	proofs.HasLatestBlockNow = false
+	//}
+
+	if latestBlock == nil {		// 这说明本地不知道最新的区块是什么
+		proofs.HasLatestBlockNow = false
+	} else {
+		proofs.HasLatestBlockNow = true
+		proofs.baseIndex = latestBlock.Index + 1
+		proofs.base = latestBlock.SelfHash
+	}
+
 	proofs.winner = nil
+	proofs.Decided = nil
+	proofs.Judged = nil
 	proofs.Lock()
 	proofs.table = map[string]*Proof{}
 	proofs.Unlock()

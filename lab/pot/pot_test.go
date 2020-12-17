@@ -21,7 +21,7 @@ func TestNode_PeerInit(t *testing.T) {
 	logdest := "./pot.log"
 
 	// 初始化日志单例
-	log.InitGlobalLogger(id, logdest)
+	log.InitGlobalLogger(id, true, logdest)
 	defer log.Sync()
 
 	ln, err := _default.ListenTCP(id, addr)
@@ -55,7 +55,7 @@ func TestNode_SeedInit(t *testing.T) {
 	logdest := "./pot-seed1.log"
 
 	// 初始化日志单例
-	log.InitGlobalLogger(id, logdest)
+	log.InitGlobalLogger(id, true, logdest)
 	defer log.Sync()
 
 	ln, err := _default.ListenTCP(id, addr)

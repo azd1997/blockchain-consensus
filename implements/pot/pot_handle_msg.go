@@ -163,7 +163,7 @@ func (p *Pot) handleMsgWhenPreInitedRNForAllDuty(msg *defines.Message) error {
 				if err := p.handleEntryNeighbor(msg.From, ent); err != nil {
 					p.Errorf("%s handle EntryType_Neighbor from (%s) fail: %s\n", p.DutyState(), msg.From, err)
 				} else {
-					p.Infof("%s handle EntryType_Neighbor from (%s) succ\n", p.DutyState(), msg.From)
+					p.Debugf("%s handle EntryType_Neighbor from (%s) succ\n", p.DutyState(), msg.From)
 				}
 			}
 		}
@@ -211,7 +211,7 @@ func (p *Pot) handleMsgWhenPreInitedRFBForAllDuty(msg *defines.Message) error {
 		}
 		if p.nWaitBlockChan != nil {
 			p.nWaitBlockChan <- firstBlock // 通知收到一个节点回传了1号区块
-			p.Infof("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
+			p.Debugf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
 		}
 		// 这个firstBlock由启动逻辑确定之后再写到本地
 		return nil
@@ -255,7 +255,7 @@ func (p *Pot) handleMsgWhenPreInitedRLBForAllDuty(msg *defines.Message) error {
 		}
 		if p.nWaitBlockChan != nil {
 			p.nWaitBlockChan <- latestBlock // 通知收到一个节点回传了最新区块
-			p.Infof("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
+			p.Debugf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
 		}
 		// 这个latestBlock由启动逻辑确定之后再写到本地
 		return nil
@@ -310,7 +310,7 @@ func (p *Pot) handleMsgWhenNotReadyForDutyNone(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -334,7 +334,7 @@ func (p *Pot) handleMsgWhenNotReadyForDutyNone(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
@@ -380,7 +380,7 @@ func (p *Pot) handleMsgWhenNotReadyForDutyPeer(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -404,7 +404,7 @@ func (p *Pot) handleMsgWhenNotReadyForDutyPeer(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
@@ -450,7 +450,7 @@ func (p *Pot) handleMsgWhenNotReadyForDutySeed(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -474,7 +474,7 @@ func (p *Pot) handleMsgWhenNotReadyForDutySeed(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
@@ -523,7 +523,7 @@ func (p *Pot) handleMsgWhenInPotForDutyNone(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -547,7 +547,7 @@ func (p *Pot) handleMsgWhenInPotForDutyNone(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
@@ -593,7 +593,7 @@ func (p *Pot) handleMsgWhenInPotForDutyPeer(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -617,7 +617,7 @@ func (p *Pot) handleMsgWhenInPotForDutyPeer(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
@@ -663,7 +663,7 @@ func (p *Pot) handleMsgWhenInPotForDutySeed(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -687,7 +687,7 @@ func (p *Pot) handleMsgWhenInPotForDutySeed(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
@@ -736,7 +736,7 @@ func (p *Pot) handleMsgWhenPostPotForDutyNone(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -760,7 +760,7 @@ func (p *Pot) handleMsgWhenPostPotForDutyNone(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
@@ -806,7 +806,7 @@ func (p *Pot) handleMsgWhenPostPotForDutyPeer(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -830,7 +830,7 @@ func (p *Pot) handleMsgWhenPostPotForDutyPeer(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
@@ -876,7 +876,7 @@ func (p *Pot) handleMsgWhenPostPotForDutySeed(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -900,7 +900,7 @@ func (p *Pot) handleMsgWhenPostPotForDutySeed(msg *defines.Message) error {
 			if err != nil {
 				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Infof("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
 			}
 		}
 

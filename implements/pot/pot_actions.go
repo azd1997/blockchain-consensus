@@ -67,7 +67,12 @@ func (p *Pot) broadcastTx(tx *defines.Transaction) error {
 			if err := msg.WriteDesc("type", "transaction"); err != nil {
 				return err
 			}
-			return p.signAndSendMsg(msg)
+			if err := p.signAndSendMsg(msg); err != nil {
+				p.Errorf("broadcastTx: to %s fail: %v\n", peer.Id, err)
+				return err
+			} else {
+				p.Debugf("broadcastTx: to %s\n", peer.Id)
+			}
 		}
 		return nil
 	}
@@ -78,59 +83,6 @@ func (p *Pot) broadcastTx(tx *defines.Transaction) error {
 	return nil
 }
 
-// 广播getNeighbors请求
-// toseeds true则向种子节点广播；否则向所有节点广播
-func (p *Pot) broadcastRequestNeighbors(toseeds bool) error {
-	p.nWait = 0
-
-	// 查询自身节点信息
-	self, err := p.pit.Get(p.id)
-	if err != nil {
-		return err
-	}
-	selfb, err := self.Encode()
-	if err != nil {
-		return err
-	}
-
-	// 构造请求
-	req := &defines.Request{
-		Type: defines.RequestType_Neighbors,
-		Data: selfb,
-	}
-	f := func(peer *defines.PeerInfo) error {
-		if peer.Id == p.id {
-			return nil
-		}
-
-		msg := &defines.Message{
-			Version: defines.CodeVersion,
-			Type:    defines.MessageType_Req,
-			From:    p.id,
-			To:      peer.Id,
-			Reqs:    []*defines.Request{req},
-		}
-		if err := msg.WriteDesc("type", "req-neighbor"); err != nil {
-			return err
-		}
-		err = p.signAndSendMsg(msg)
-		if err != nil {
-			p.Errorf("broadcastRequestNeighbors: to %s fail: %v\n", peer.Id, err)
-		} else {
-			p.Infof("broadcastRequestNeighbors: to %s\n", peer.Id)
-			p.nWait++
-		}
-
-		return nil
-	}
-
-	p.pit.RangeSeeds(f)
-	if !toseeds {
-		p.pit.RangePeers(f)
-	}
-	return nil
-}
-
 // 广播自己的证明
 func (p *Pot) broadcastSelfProof() error {
 	// 首先需要获取证明
@@ -138,7 +90,7 @@ func (p *Pot) broadcastSelfProof() error {
 	if err != nil {
 		return err
 	}
-	p.maybeNewBlock = nb
+	p.maybeNewBlock = nb	// 自己的区块设为可能的新区块
 
 	//process := p.processes.get(p.id)
 	//if process == nil {
@@ -154,6 +106,9 @@ func (p *Pot) broadcastSelfProof() error {
 		Base:      nb.PrevHash,
 		BaseIndex: nb.Index - 1,
 	}
+
+	// 添加到自己的proofs
+	p.proofs.Add(proof)
 
 	return p.broadcastProof(proof, false)
 }
@@ -184,7 +139,12 @@ func (p *Pot) broadcastProof(proof *Proof, onlypeers bool) error {
 			if err := msg.WriteDesc("type", "proof"); err != nil {
 				return err
 			}
-			return p.signAndSendMsg(msg)
+			if err := p.signAndSendMsg(msg); err != nil {
+				p.Errorf("broadcastProof: to %s fail: %v\n", peer.Id, err)
+				return err
+			} else {
+				p.Debugf("broadcastProof: to %s\n", peer.Id)
+			}
 		}
 		return nil
 	}
@@ -226,10 +186,68 @@ func (p *Pot) broadcastNewBlock(nb *defines.Block) error {
 			if err := msg.WriteDesc("type", "newblock"); err != nil {
 				return err
 			}
-			return p.signAndSendMsg(msg)
+			if err := p.signAndSendMsg(msg); err != nil {
+				p.Errorf("broadcastNewBlock: to %s fail: %v\n", peer.Id, err)
+				return err
+			} else {
+				p.Debugf("broadcastNewBlock: to %s\n", peer.Id)
+			}
 		}
 		return nil
 	})
+	return nil
+}
+
+// 广播getNeighbors请求
+// toseeds true则向种子节点广播；否则向所有节点广播
+func (p *Pot) broadcastRequestNeighbors(toseeds bool) error {
+	p.nWait = 0
+
+	// 查询自身节点信息
+	self, err := p.pit.Get(p.id)
+	if err != nil {
+		return err
+	}
+	selfb, err := self.Encode()
+	if err != nil {
+		return err
+	}
+
+	// 构造请求
+	req := &defines.Request{
+		Type: defines.RequestType_Neighbors,
+		Data: selfb,
+	}
+	f := func(peer *defines.PeerInfo) error {
+		if peer.Id == p.id {
+			return nil
+		}
+
+		msg := &defines.Message{
+			Version: defines.CodeVersion,
+			Type:    defines.MessageType_Req,
+			From:    p.id,
+			To:      peer.Id,
+			Reqs:    []*defines.Request{req},
+		}
+		if err := msg.WriteDesc("type", "req-neighbor"); err != nil {
+			return err
+		}
+		if err := p.signAndSendMsg(msg); err != nil {
+			p.Errorf("broadcastRequestNeighbors: to %s fail: %v\n", peer.Id, err)
+			return err
+		} else {
+			p.Debugf("broadcastRequestNeighbors: to %s\n", peer.Id)
+			p.nWait++
+		}
+
+		return nil
+	}
+
+	p.pit.RangeSeeds(f)
+	if !toseeds {
+		p.pit.RangePeers(f)
+	}
 	return nil
 }
 
@@ -256,11 +274,11 @@ func (p *Pot) broadcastRequestProcesses(toseeds bool) error {
 		if err := msg.WriteDesc("type", "process"); err != nil {
 			return err
 		}
-		err := p.signAndSendMsg(msg)
-		if err != nil {
+		if err := p.signAndSendMsg(msg); err != nil {
 			p.Errorf("broadcastRequestProcesses: to %s fail: %v\n", peer.Id, err)
+			return err
 		} else {
-			p.Infof("broadcastRequestProcesses: to %s\n", peer.Id)
+			p.Debugf("broadcastRequestProcesses: to %s\n", peer.Id)
 			p.nWait++
 		}
 
@@ -317,8 +335,9 @@ func (p *Pot) broadcastRequestBlocks(random3 bool) error {
 		}
 		if err := p.signAndSendMsg(msg); err != nil {
 			p.Errorf("broadcastRequestBlocks: to %s fail: %s\n", peer, err)
+			return err
 		} else {
-			p.Infof("broadcastRequestBlocks: to %s\n", peer)
+			p.Debugf("broadcastRequestBlocks: to %s\n", peer)
 			p.nWait++
 		}
 	}
@@ -353,6 +372,7 @@ func (p *Pot) broadcastRequestLatestBlock() error {
 		}
 		if err := p.signAndSendMsg(msg); err != nil {
 			p.Errorf("broadcastRequestBlocks: to %s fail: %s\n", peer.Id, err)
+			return err
 		} else {
 			p.Debugf("broadcastRequestBlocks: to %s\n", peer.Id)
 			p.nWait++

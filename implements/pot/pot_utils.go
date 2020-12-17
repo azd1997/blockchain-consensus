@@ -86,7 +86,8 @@ func (p *Pot) latest() bool {
 
 // 判断自身记录是否准备好（最新 + 完整）
 func (p *Pot) isSelfReady() bool {
-	return p.processes.isSelfReady() && !p.bc.Discontinuous()
+	// return p.processes.isSelfReady() && !p.bc.Discontinuous()
+	return !p.bc.Discontinuous()
 }
 
 // Epoch 查看当前处于哪一个纪元

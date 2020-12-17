@@ -30,6 +30,7 @@ type BlockChain interface {
 	GetBlocksByRange(start, count int64) ([]*defines.Block, error)
 	GetBlocksByHashes(hashes [][]byte) ([]*defines.Block, error)
 	GetBlockByHash(hash []byte) (*defines.Block, error)
+	GetLatestBlock() *defines.Block
 
 	// 用来添加当前网络中最新的区块
 	AddNewBlock(b *defines.Block) error

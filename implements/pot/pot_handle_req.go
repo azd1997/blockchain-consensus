@@ -37,10 +37,11 @@ func (p *Pot) handleRequestBlocks(from string, req *defines.Request) error {
 	}
 
 	if err != nil {
-		p.Errorf("handleRequestBlocks: get blocks from blockchain(p.bc) for %s fail: %s\n", from, err)
+		p.Errorf("handleRequestBlocks: get blocks from blockchain(p.bc) for %s fail: %s", from, err)
 		return err
 	}
-	p.Infof("handleRequestBlocks: get blocks from blockchain(p.bc) for %s \n", from)
+	p.Debugf("handleRequestBlocks: get blocks from blockchain(p.bc) for %s, blocks=%v", from, blocks)
+	p.Debugf("current BC: %s", p.bc.Display())
 	return p.responseBlocks(from, blocks...)
 }
 

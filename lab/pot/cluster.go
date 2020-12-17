@@ -32,7 +32,7 @@ type Cluster struct {
 	clients map[string]*test.TxMaker
 }
 
-func StartCluster(nSeed int, nPeer int) (*Cluster, error) {
+func StartCluster(nSeed int, nPeer int, debug bool) (*Cluster, error) {
 	seeds, peers, seedsm, peersm := genIdsAndAddrs(nSeed, nPeer)
 
 	c := &Cluster{
@@ -44,7 +44,7 @@ func StartCluster(nSeed int, nPeer int) (*Cluster, error) {
 
 	for _, idaddr := range seeds {
 		id, addr := idaddr[0], idaddr[1]
-		node, err := StartNode(id, addr, seedsm, peersm)
+		node, err := StartNode(id, addr, seedsm, peersm, debug)
 		if err != nil {
 			return nil, err
 		}
@@ -55,7 +55,7 @@ func StartCluster(nSeed int, nPeer int) (*Cluster, error) {
 
 	for _, idaddr := range peers {
 		id, addr := idaddr[0], idaddr[1]
-		node, err := StartNode(id, addr, seedsm, peersm)
+		node, err := StartNode(id, addr, seedsm, peersm, debug)
 		if err != nil {
 			return nil, err
 		}
@@ -79,12 +79,12 @@ func StartCluster(nSeed int, nPeer int) (*Cluster, error) {
 	return c, nil
 }
 
-func StartNode(id, addr string, seeds, peers map[string]string) (*Node, error) {
+func StartNode(id, addr string, seeds, peers map[string]string, debug bool) (*Node, error) {
 
 	logdest := fmt.Sprintf(logDestFormat, id)
 
 	// 初始化日志单例
-	log.InitGlobalLogger(id, logdest)
+	log.InitGlobalLogger(id, debug, logdest)
 
 	ln, err := _default.ListenTCP(id, addr)
 	if err != nil {
