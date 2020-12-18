@@ -264,14 +264,14 @@ func (pit *PeerInfoTable) mergeLoop() {
 		select {
 		case <-ticker:
 			if err = pit.merge(); err != nil {
-				pit.Errorf("PeerInfoTable merge into kvstore fail: %s\n", err)
+				pit.Errorf("PeerInfoTable merge into kvstore fail: %s", err)
 			}
-			pit.Infof("PeerInfoTable merge into kvstore succ\n")
+			pit.Infof("PeerInfoTable merge into kvstore succ")
 		case <-pit.done:
 			if err = pit.merge(); err != nil {
-				pit.Errorf("PeerInfoTable merge into kvstore fail: %s\n", err)
+				pit.Errorf("PeerInfoTable merge into kvstore fail: %s", err)
 			}
-			pit.Infof("PeerInfoTable merge into kvstore succ\n")
+			pit.Infof("PeerInfoTable merge into kvstore succ")
 			return
 		}
 	}
@@ -299,7 +299,7 @@ func (pit *PeerInfoTable) Get(id string) (*defines.PeerInfo, error) {
 		return pi, nil
 	}
 	if ok2 && dpi.op == OpSet {
-		pit.Debugf("PeerInfoTable Get: {id:%s, PeerInfo:%s}\n", id, dpi.info.String())
+		pit.Debugf("PeerInfoTable Get: {id:%s, PeerInfo:%s}", id, dpi.info.String())
 		return dpi.info, nil
 	}
 	return nil, errors.New("unknown error")
@@ -339,7 +339,7 @@ func (pit *PeerInfoTable) Set(info *defines.PeerInfo) error {
 	}
 	pit.dirtyLock.Unlock()
 
-	pit.Debugf("PeerInfoTable Set: {id:%s, PeerInfo:%s}\n", id, info.String())
+	pit.Debugf("PeerInfoTable Set: {id:%s, PeerInfo:%s}", id, info.String())
 	return nil
 }
 
@@ -393,7 +393,7 @@ func (pit *PeerInfoTable) Del(id string) error {
 	pit.dirtyLock.Unlock()
 	pit.nPeerDecr() // 计数减1
 
-	pit.Debugf("PeerInfoTable Del: {id:%s}\n", id)
+	pit.Debugf("PeerInfoTable Del: {id:%s}", id)
 	return nil
 }
 
@@ -460,7 +460,7 @@ func (pit *PeerInfoTable) RangePeers(f func(peer *defines.PeerInfo) error) (
 	total int, errs map[string]error) {
 
 	if f == nil {
-		pit.Fatalf("PeerInfoTable RangePeers fail: nil func\n")
+		pit.Fatalf("PeerInfoTable RangePeers fail: nil func")
 	}
 
 	errs = make(map[string]error)
@@ -480,7 +480,7 @@ func (pit *PeerInfoTable) RangeSeeds(f func(peer *defines.PeerInfo) error) (
 	total int, errs map[string]error) {
 
 	if f == nil {
-		pit.Fatalf("PeerInfoTable RangeSeeds fail: nil func\n")
+		pit.Fatalf("PeerInfoTable RangeSeeds fail: nil func")
 	}
 
 	errs = make(map[string]error)

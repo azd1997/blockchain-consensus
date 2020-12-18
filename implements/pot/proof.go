@@ -7,9 +7,11 @@
 package pot
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"bytes"
 	"encoding/gob"
+	"github.com/azd1997/blockchain-consensus/utils/binary"
 
 	"github.com/azd1997/blockchain-consensus/defines"
 )
@@ -55,12 +57,19 @@ func (p *Proof) GreaterThan(ap *Proof) bool {
 
 	if p.TxsNum == ap.TxsNum {
 		if cmp := bytes.Compare(p.BlockHash, ap.BlockHash); cmp == 0 {
-			// 此时根据竞选的奇偶性来选择某一位id
-			if (p.BaseIndex + 1) % 2 == 0 {
-				return p.Id > ap.Id		// 确信Id不会相等
-			} else {
-				return p.Id < ap.Id
-			}
+
+			saltedP := new(bytes.Buffer)
+			binary.Write(saltedP, binary.BigEndian, p.Id)
+			binary.Write(saltedP, binary.BigEndian, int64(p.BaseIndex+1))
+			saltedPHash := sha256.Sum256(saltedP.Bytes())
+
+			saltedAp := new(bytes.Buffer)
+			binary.Write(saltedAp, binary.BigEndian, ap.Id)
+			binary.Write(saltedAp, binary.BigEndian, int64(ap.BaseIndex+1))
+			saltedApHash := sha256.Sum256(saltedAp.Bytes())
+
+			return bytes.Compare(saltedPHash[:], saltedApHash[:]) > 0	// 哈希碰撞的概率太小，不考虑了
+
 		} else {
 			return cmp == 1
 		}

@@ -210,7 +210,7 @@ func NewNet(opt *Option) (*Net, error) {
 //		4. 执行启动任务（如果有）
 func (n *Net) Init() error {
 
-	n.Infof("Init: id(%s), addr(%s): start\n", n.id, n.addr)
+	n.Infof("Init: id(%s), addr(%s): start", n.id, n.addr)
 
 	// 启动监听循环
 	go n.listenLoop()
@@ -225,7 +225,7 @@ func (n *Net) Init() error {
 		// 建立连接
 		_, err := n.connect(peer.Id)
 		if err != nil {
-			n.Errorf("Init: connect to peer (%s,%s) fail: %s\n", peer.Id, peer.Addr, err)
+			n.Errorf("Init: connect to peer (%s,%s) fail: %s", peer.Id, peer.Addr, err)
 			return err
 		}
 		return nil
@@ -238,17 +238,17 @@ func (n *Net) Init() error {
 
 	// 如果已经设置CustomInitFunc，那么执行
 	if n.customInitFunc != nil {
-		n.Infof("Init: CustomInitFunc: ready\n")
+		n.Infof("Init: CustomInitFunc: ready")
 		err := n.customInitFunc(n)
 		if err != nil {
 			// 这里如果出错不会退出，而是打日志
-			n.Errorf("Init: CustomInitFunc: %s\n", err)
+			n.Errorf("Init: CustomInitFunc: %s", err)
 		}
-		n.Infof("Init: CustomInitFunc: finish\n")
+		n.Infof("Init: CustomInitFunc: finish")
 	}
 
 	n.inited = true
-	n.Infof("Init: id(%s), addr(%s): finish\n", n.id, n.addr)
+	n.Infof("Init: id(%s), addr(%s): finish", n.id, n.addr)
 	return nil
 }
 
@@ -398,12 +398,12 @@ func (n *Net) msgHandleLoop() {
 	for {
 		select {
 		case <-n.done:
-			n.Infof("msgHandleLoop: returned...\n")
+			n.Infof("msgHandleLoop: returned...")
 			return
 		case msg := <-n.msgout:
 			err = n.customMsgHandleFunc(n, msg)
 			if err != nil {
-				n.Errorf("msgHandleLoop: handle msg: {msg:%v, err:%s}\n", msg, err)
+				n.Errorf("msgHandleLoop: handle msg: {msg:%v, err:%s}", msg, err)
 			}
 		}
 	}
@@ -415,22 +415,22 @@ func (n *Net) msgSendLoop() {
 	for {
 		select {
 		case <-n.done:
-			n.Infof("msgSendLoop: returned...\n")
+			n.Infof("msgSendLoop: returned...")
 			return
 		case msg := <-n.msgin:
 			// 检查
 			if err := msg.Check(); err != nil {
-				n.Errorf("msgSendLoop: recv invalid msg(%s): msg=%v, err=%s\n", msg.Msg.Desc, msg.Msg, err)
+				n.Errorf("msgSendLoop: recv invalid msg(%s): msg=%v, err=%s", msg.Msg.Desc, msg.Msg, err)
 				continue
 			} else {
 				//n.Infof("msgSendLoop: recv msg(%v) from local\n", msg)
 			}
 			// 发送
 			if err := n.send(msg.Msg.To, msg.Msg); err != nil {
-				n.Errorf("msgSendLoop: send msg(%s) fail: msg=%v, err=%s\n", msg.Msg.Desc, msg.Msg, err)
+				n.Errorf("msgSendLoop: send msg(%s) fail: msg=%v, err=%s", msg.Msg.Desc, msg.Msg, err)
 				msg.Err <- err // 回传发送时错误信息
 			} else {
-				n.Debugf("msgSendLoop: send msg(%s) succ: msg=%v\n", msg.Msg.Desc, msg.Msg)
+				n.Debugf("msgSendLoop: send msg(%s) succ: msg=%v", msg.Msg.Desc, msg.Msg)
 				msg.Err <- nil
 			}
 		}
@@ -443,13 +443,13 @@ func (n *Net) listenLoop() {
 	for {
 		select {
 		case <-n.done:
-			n.Infof("listenLoop: returned...\n")
+			n.Infof("listenLoop: returned...")
 			return
 		default:
 			// 接受连接
 			conn, err := n.ln.Accept()
 			if err != nil {
-				n.Errorf("listenLoop: accept fail: %s\n", err)
+				n.Errorf("listenLoop: accept fail: %s", err)
 				continue
 			}
 			// 启动连接，循环接收消息

@@ -36,18 +36,20 @@ func (tm *TxMaker) Start() {
 	for {
 		select {
 		case <-tick:
+			// 随机选择一部分对象
 			to := tm.tos[rand.Intn(len(tm.tos))]
+			// 随机交易金额
 			amount := rand.Intn(100)
 			description := fmt.Sprintf("this is a tx from %s to %s", tm.id, to)
 			tx, err := defines.NewTransactionAndSign(tm.id, to, int64(amount), nil, description)
 			if err != nil {
-				fmt.Printf("TxMaker make tx fail: %s\n", err)
+				fmt.Printf("TxMaker(%s) make tx fail: %s\n", tm.id, err)
 			}
 
 			// 随机拖延一段时间
 			time.Sleep(time.Duration(rand.Intn(3)) * time.Millisecond)
 
-			fmt.Printf("TxMaker make tx succ. from: %s, to: %s\n", tm.id, to)
+			fmt.Printf("TxMaker(%s) make tx succ. from: %s, to: %s\n", tm.id, tm.id, to)
 			tm.txout <- tx
 		}
 	}

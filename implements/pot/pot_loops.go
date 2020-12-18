@@ -17,11 +17,10 @@ func (p *Pot) stateMachineLoop() {
 	for {
 		select {
 		case <-p.done:
-			p.Infof("stateMachineLoop: return ...\n")
+			p.Infof("stateMachineLoop: return ...")
 			return
 		case moment := <-p.clock.Tick:
-			p.Infof("stateMachineLoop: clock tick: %s\n", moment.String())
-			p.Info(p.bc.Display())
+			p.Infof("stateMachineLoop: clock tick: %s", moment.String())
 
 			// 根据当前状态来处理此滴答消息
 			state := p.getState()
@@ -51,7 +50,7 @@ func (p *Pot) stateMachineLoop() {
 
 				if moment.Type == MomentType_PotStart {
 					p.setState(StateType_InPot)
-					p.Infof("switch state from %s to %s\n", StateType_NotReady, StateType_InPot)
+					p.Infof("switch state from %s to %s", StateType_NotReady, StateType_InPot)
 					p.decide(moment)
 					p.startPot(moment)
 				} else if moment.Type == MomentType_PotOver {
@@ -76,7 +75,7 @@ func (p *Pot) stateMachineLoop() {
 			case StateType_InPot:
 				if moment.Type == MomentType_PotOver { // 正常情况应该是PotOver时刻到来
 					p.setState(StateType_PostPot)
-					p.Infof("switch state from %s to %s\n", StateType_InPot, StateType_PostPot)
+					p.Infof("switch state from %s to %s", StateType_InPot, StateType_PostPot)
 					// 汇总已收集的证明消息，决出胜者，判断自己是否出块，接下去等待胜者区块和seed广播的胜者证明
 					p.endPot(moment)
 				} else if moment.Type == MomentType_PotStart { // 不可能出现的错误
@@ -146,6 +145,8 @@ func (p *Pot) stateMachineLoop() {
 				//	// 发起竞争（广播证明消息）
 				//	p.broadcastSelfProof()
 			}
+
+			p.Info(p.bc.Display())
 		}
 	}
 }

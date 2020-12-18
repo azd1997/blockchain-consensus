@@ -35,7 +35,7 @@ func (p *Pot) handleMsg(msg *defines.Message) error {
 	case StateType_PostPot:
 		return p.handleMsgWhenPostPot(msg)
 	default:
-		return fmt.Errorf("unknown state(%d-%s)\n", state, state.String())
+		return fmt.Errorf("unknown state(%d-%s)", state, state.String())
 	}
 }
 
@@ -152,7 +152,7 @@ func (p *Pot) handleMsgWhenPreInitedRNForDutySeed(msg *defines.Message) error {
 func (p *Pot) handleMsgWhenPreInitedRNForAllDuty(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Neighbor]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Neighbor]", p.DutyState())
 	case defines.MessageType_Data:
 		count := 0
 		for _, ent := range msg.Entries {
@@ -161,9 +161,9 @@ func (p *Pot) handleMsgWhenPreInitedRNForAllDuty(msg *defines.Message) error {
 				count++
 				// 通用的handleEntryNeighbor，添加就完事
 				if err := p.handleEntryNeighbor(msg.From, ent); err != nil {
-					p.Errorf("%s handle EntryType_Neighbor from (%s) fail: %s\n", p.DutyState(), msg.From, err)
+					p.Errorf("%s handle EntryType_Neighbor from (%s) fail: %s", p.DutyState(), msg.From, err)
 				} else {
-					p.Debugf("%s handle EntryType_Neighbor from (%s) succ\n", p.DutyState(), msg.From)
+					p.Debugf("%s handle EntryType_Neighbor from (%s) succ", p.DutyState(), msg.From)
 				}
 			}
 		}
@@ -172,9 +172,9 @@ func (p *Pot) handleMsgWhenPreInitedRNForAllDuty(msg *defines.Message) error {
 		}
 		return nil
 	case defines.MessageType_Req:
-		return fmt.Errorf("%s can only handle [EntryType_Neighbor]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Neighbor]", p.DutyState())
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 
@@ -197,12 +197,12 @@ func (p *Pot) handleMsgWhenPreInitedRFBForDutySeed(msg *defines.Message) error {
 func (p *Pot) handleMsgWhenPreInitedRFBForAllDuty(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	case defines.MessageType_Data:
 		count := len(msg.Entries)
 		// 等待的是1号区块，其baseindex=0
 		if count != 1 || msg.Entries[0].Type != defines.EntryType_Block || msg.Entries[0].BaseIndex > 0 {
-			return fmt.Errorf("%s received a unexpected msg from %s\n", p.DutyState(), msg.From)
+			return fmt.Errorf("%s received a unexpected msg from %s", p.DutyState(), msg.From)
 		}
 		firstBlock := new(defines.Block)
 		err := firstBlock.Decode(msg.Entries[0].Data)
@@ -211,14 +211,14 @@ func (p *Pot) handleMsgWhenPreInitedRFBForAllDuty(msg *defines.Message) error {
 		}
 		if p.nWaitBlockChan != nil {
 			p.nWaitBlockChan <- firstBlock // 通知收到一个节点回传了1号区块
-			p.Debugf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
+			p.Debugf("%s handle EntryType_Block from (%s) succ", p.DutyState(), msg.From)
 		}
 		// 这个firstBlock由启动逻辑确定之后再写到本地
 		return nil
 	case defines.MessageType_Req:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 
@@ -241,12 +241,12 @@ func (p *Pot) handleMsgWhenPreInitedRLBForDutySeed(msg *defines.Message) error {
 func (p *Pot) handleMsgWhenPreInitedRLBForAllDuty(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	case defines.MessageType_Data:
 		count := len(msg.Entries)
 		// 等待的是最新区块，其序号未知
 		if count != 1 || msg.Entries[0].Type != defines.EntryType_Block {
-			return fmt.Errorf("%s received a unexpected msg from %s\n", p.DutyState(), msg.From)
+			return fmt.Errorf("%s received a unexpected msg from %s", p.DutyState(), msg.From)
 		}
 		latestBlock := new(defines.Block)
 		err := latestBlock.Decode(msg.Entries[0].Data)
@@ -255,14 +255,14 @@ func (p *Pot) handleMsgWhenPreInitedRLBForAllDuty(msg *defines.Message) error {
 		}
 		if p.nWaitBlockChan != nil {
 			p.nWaitBlockChan <- latestBlock // 通知收到一个节点回传了最新区块
-			p.Debugf("%s handle EntryType_Block from (%s) succ\n", p.DutyState(), msg.From)
+			p.Debugf("%s handle EntryType_Block from (%s) succ", p.DutyState(), msg.From)
 		}
 		// 这个latestBlock由启动逻辑确定之后再写到本地
 		return nil
 	case defines.MessageType_Req:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 
@@ -277,7 +277,7 @@ func (p *Pot) handleMsgWhenPreInitedRLBForAllDuty(msg *defines.Message) error {
 func (p *Pot) handleMsgWhenNotReadyForDutyNone(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	case defines.MessageType_Data:
 
 		// 种子在NotReady阶段能够处理的Data类消息
@@ -304,13 +304,13 @@ func (p *Pot) handleMsgWhenNotReadyForDutyNone(msg *defines.Message) error {
 			case defines.EntryType_Process:
 				err = p.handleEntryProcess(msg.From, ent)
 			default:
-				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+				p.Errorf("%s met unknown entry type(%v)", p.DutyState(), ent.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -328,26 +328,26 @@ func (p *Pot) handleMsgWhenNotReadyForDutyNone(msg *defines.Message) error {
 			case defines.RequestType_Processes:
 				err = p.handleRequestProcesses(msg.From, req)
 			default:
-				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+				p.Errorf("%s met unknown req type(%v)", p.DutyState(), req.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
 		return nil
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 
 func (p *Pot) handleMsgWhenNotReadyForDutyPeer(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	case defines.MessageType_Data:
 
 		// 种子在NotReady阶段能够处理的Data类消息
@@ -374,13 +374,13 @@ func (p *Pot) handleMsgWhenNotReadyForDutyPeer(msg *defines.Message) error {
 			case defines.EntryType_Process:
 				err = p.handleEntryProcess(msg.From, ent)
 			default:
-				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+				p.Errorf("%s met unknown entry type(%v)", p.DutyState(), ent.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -398,26 +398,26 @@ func (p *Pot) handleMsgWhenNotReadyForDutyPeer(msg *defines.Message) error {
 			case defines.RequestType_Processes:
 				err = p.handleRequestProcesses(msg.From, req)
 			default:
-				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+				p.Errorf("%s met unknown req type(%v)", p.DutyState(), req.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
 		return nil
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 
 func (p *Pot) handleMsgWhenNotReadyForDutySeed(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	case defines.MessageType_Data:
 
 		// 种子在NotReady阶段能够处理的Data类消息
@@ -444,13 +444,13 @@ func (p *Pot) handleMsgWhenNotReadyForDutySeed(msg *defines.Message) error {
 			case defines.EntryType_Process:
 				err = p.handleEntryProcess(msg.From, ent)
 			default:
-				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+				p.Errorf("%s met unknown entry type(%v)", p.DutyState(), ent.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -468,19 +468,19 @@ func (p *Pot) handleMsgWhenNotReadyForDutySeed(msg *defines.Message) error {
 			case defines.RequestType_Processes:
 				err = p.handleRequestProcesses(msg.From, req)
 			default:
-				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+				p.Errorf("%s met unknown req type(%v)", p.DutyState(), req.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
 		return nil
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 
@@ -490,7 +490,7 @@ func (p *Pot) handleMsgWhenNotReadyForDutySeed(msg *defines.Message) error {
 func (p *Pot) handleMsgWhenInPotForDutyNone(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	case defines.MessageType_Data:
 
 		// 种子在NotReady阶段能够处理的Data类消息
@@ -517,13 +517,13 @@ func (p *Pot) handleMsgWhenInPotForDutyNone(msg *defines.Message) error {
 			case defines.EntryType_Process:
 				err = p.handleEntryProcess(msg.From, ent)
 			default:
-				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+				p.Errorf("%s met unknown entry type(%v)", p.DutyState(), ent.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -541,26 +541,26 @@ func (p *Pot) handleMsgWhenInPotForDutyNone(msg *defines.Message) error {
 			case defines.RequestType_Processes:
 				err = p.handleRequestProcesses(msg.From, req)
 			default:
-				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+				p.Errorf("%s met unknown req type(%v)", p.DutyState(), req.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
 		return nil
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 
 func (p *Pot) handleMsgWhenInPotForDutyPeer(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	case defines.MessageType_Data:
 
 		// 种子在NotReady阶段能够处理的Data类消息
@@ -587,13 +587,13 @@ func (p *Pot) handleMsgWhenInPotForDutyPeer(msg *defines.Message) error {
 			case defines.EntryType_Process:
 				err = p.handleEntryProcess(msg.From, ent)
 			default:
-				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+				p.Errorf("%s met unknown entry type(%v)", p.DutyState(), ent.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -611,26 +611,26 @@ func (p *Pot) handleMsgWhenInPotForDutyPeer(msg *defines.Message) error {
 			case defines.RequestType_Processes:
 				err = p.handleRequestProcesses(msg.From, req)
 			default:
-				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+				p.Errorf("%s met unknown req type(%v)", p.DutyState(), req.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
 		return nil
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 
 func (p *Pot) handleMsgWhenInPotForDutySeed(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	case defines.MessageType_Data:
 
 		// 种子在NotReady阶段能够处理的Data类消息
@@ -657,13 +657,13 @@ func (p *Pot) handleMsgWhenInPotForDutySeed(msg *defines.Message) error {
 			case defines.EntryType_Process:
 				err = p.handleEntryProcess(msg.From, ent)
 			default:
-				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+				p.Errorf("%s met unknown entry type(%v)", p.DutyState(), ent.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -681,19 +681,19 @@ func (p *Pot) handleMsgWhenInPotForDutySeed(msg *defines.Message) error {
 			case defines.RequestType_Processes:
 				err = p.handleRequestProcesses(msg.From, req)
 			default:
-				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+				p.Errorf("%s met unknown req type(%v)", p.DutyState(), req.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
 		return nil
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 
@@ -703,7 +703,7 @@ func (p *Pot) handleMsgWhenInPotForDutySeed(msg *defines.Message) error {
 func (p *Pot) handleMsgWhenPostPotForDutyNone(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	case defines.MessageType_Data:
 
 		// 种子在NotReady阶段能够处理的Data类消息
@@ -730,13 +730,13 @@ func (p *Pot) handleMsgWhenPostPotForDutyNone(msg *defines.Message) error {
 			case defines.EntryType_Process:
 				err = p.handleEntryProcess(msg.From, ent)
 			default:
-				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+				p.Errorf("%s met unknown entry type(%v)", p.DutyState(), ent.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -754,26 +754,26 @@ func (p *Pot) handleMsgWhenPostPotForDutyNone(msg *defines.Message) error {
 			case defines.RequestType_Processes:
 				err = p.handleRequestProcesses(msg.From, req)
 			default:
-				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+				p.Errorf("%s met unknown req type(%v)", p.DutyState(), req.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
 		return nil
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 
 func (p *Pot) handleMsgWhenPostPotForDutyPeer(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	case defines.MessageType_Data:
 
 		// 种子在NotReady阶段能够处理的Data类消息
@@ -800,13 +800,13 @@ func (p *Pot) handleMsgWhenPostPotForDutyPeer(msg *defines.Message) error {
 			case defines.EntryType_Process:
 				err = p.handleEntryProcess(msg.From, ent)
 			default:
-				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+				p.Errorf("%s met unknown entry type(%v)", p.DutyState(), ent.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -824,26 +824,26 @@ func (p *Pot) handleMsgWhenPostPotForDutyPeer(msg *defines.Message) error {
 			case defines.RequestType_Processes:
 				err = p.handleRequestProcesses(msg.From, req)
 			default:
-				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+				p.Errorf("%s met unknown req type(%v)", p.DutyState(), req.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
 		return nil
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 
 func (p *Pot) handleMsgWhenPostPotForDutySeed(msg *defines.Message) error {
 	switch msg.Type {
 	case defines.MessageType_None:
-		return fmt.Errorf("%s can only handle [EntryType_Block]\n", p.DutyState())
+		return fmt.Errorf("%s can only handle [EntryType_Block]", p.DutyState())
 	case defines.MessageType_Data:
 
 		// 种子在NotReady阶段能够处理的Data类消息
@@ -870,13 +870,13 @@ func (p *Pot) handleMsgWhenPostPotForDutySeed(msg *defines.Message) error {
 			case defines.EntryType_Process:
 				err = p.handleEntryProcess(msg.From, ent)
 			default:
-				p.Errorf("%s met unknown entry type(%v)\n", p.DutyState(), ent.Type)
+				p.Errorf("%s met unknown entry type(%v)", p.DutyState(), ent.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), ent.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), ent.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), ent.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), ent.Type, msg.From)
 			}
 		}
 
@@ -894,19 +894,19 @@ func (p *Pot) handleMsgWhenPostPotForDutySeed(msg *defines.Message) error {
 			case defines.RequestType_Processes:
 				err = p.handleRequestProcesses(msg.From, req)
 			default:
-				p.Errorf("%s met unknown req type(%v)\n", p.DutyState(), req.Type)
+				p.Errorf("%s met unknown req type(%v)", p.DutyState(), req.Type)
 			}
 
 			if err != nil {
-				p.Errorf("%s handle %s from (%s) fail: %s\n", p.DutyState(), req.Type, msg.From, err)
+				p.Errorf("%s handle %s from (%s) fail: %s", p.DutyState(), req.Type, msg.From, err)
 			} else {
-				p.Debugf("%s handle %s from (%s) succ\n", p.DutyState(), req.Type, msg.From)
+				p.Debugf("%s handle %s from (%s) succ", p.DutyState(), req.Type, msg.From)
 			}
 		}
 
 		return nil
 	default:
-		return fmt.Errorf("%s met unknown msg type(%v)\n", p.DutyState(), msg.Type)
+		return fmt.Errorf("%s met unknown msg type(%v)", p.DutyState(), msg.Type)
 	}
 }
 

@@ -48,15 +48,15 @@ func (udbt *undecidedBlockTable) Add(b *defines.Block) {
 		return
 	}
 
-	fmt.Printf("udbt add: ub(%s)=%v\n", b.ShortName(), b)
+	//fmt.Printf("udbt add: ub(%s)=%v\n", b.ShortName(), b)
 
 	//if udbt.baseBlock != nil && b.Index != udbt.baseBlock.Index + 1 {
 	//	return
 	//}
 
-	if udbt.undecidedIndex > 0 && b.Index != udbt.undecidedIndex {
-		return
-	}
+	//if udbt.undecidedIndex > 0 && b.Index != udbt.undecidedIndex {
+	//	return
+	//}
 
 	k := b.Key()
 	if udbt.table[k] == nil {
@@ -119,6 +119,6 @@ func (udbt *undecidedBlockTable) Display() string {
 		substr := fmt.Sprintf("%s(%s,%d) ", ubs[i].b.ShortName(), ubs[i].b.Maker, ubs[i].count)
 		str += substr
 	}
-	str += "}\n"
+	str += "}"
 	return str
 }

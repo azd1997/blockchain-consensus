@@ -7,9 +7,8 @@
 package pot
 
 import (
-	"sort"
-	"bytes"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/azd1997/blockchain-consensus/defines"
@@ -46,11 +45,11 @@ func (proofs *proofTable) Add(p *Proof) {
 		return
 	}
 
-	if proofs.HasLatestBlockNow {
-		if p.BaseIndex != proofs.baseIndex || !bytes.Equal(p.Base, proofs.base) {
-			return // TODO: 是否返回错误，让上层回复来信方？
-		}
-	}	// 当前没有最新区块就不做此检查
+	//if proofs.HasLatestBlockNow {
+	//	if p.BaseIndex != proofs.baseIndex || !bytes.Equal(p.Base, proofs.base) {
+	//		return // TODO: 是否返回错误，让上层回复来信方？
+	//	}
+	//}	// 当前没有最新区块就不做此检查
 
 
 	proofs.Lock()
@@ -79,7 +78,7 @@ func (proofs *proofTable) JudgeWinner(moment Moment) *Proof {
 		proofs.Judged = proofs.winner
 
 		if proofs.Judged != nil {
-			fmt.Printf("JudgeWinner: winner(%s)(%d, %x)", proofs.Judged.Id, proofs.Judged.TxsNum, proofs.Judged.BlockHash)
+			fmt.Printf("JudgeWinner: winner(%s)(%d, %x)\n", proofs.Judged.Id, proofs.Judged.TxsNum, proofs.Judged.BlockHash)
 		}
 
 		return proofs.Judged

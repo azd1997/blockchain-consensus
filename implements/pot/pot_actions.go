@@ -68,10 +68,10 @@ func (p *Pot) broadcastTx(tx *defines.Transaction) error {
 				return err
 			}
 			if err := p.signAndSendMsg(msg); err != nil {
-				p.Errorf("broadcastTx: to %s fail: %v\n", peer.Id, err)
+				p.Errorf("broadcastTx: to %s fail: %v", peer.Id, err)
 				return err
 			} else {
-				p.Debugf("broadcastTx: to %s\n", peer.Id)
+				p.Debugf("broadcastTx: to %s", peer.Id)
 			}
 		}
 		return nil
@@ -140,10 +140,10 @@ func (p *Pot) broadcastProof(proof *Proof, onlypeers bool) error {
 				return err
 			}
 			if err := p.signAndSendMsg(msg); err != nil {
-				p.Errorf("broadcastProof: to %s fail: %v\n", peer.Id, err)
+				p.Errorf("broadcastProof: to %s fail: %v", peer.Id, err)
 				return err
 			} else {
-				p.Debugf("broadcastProof: to %s\n", peer.Id)
+				p.Debugf("broadcastProof: to %s", peer.Id)
 			}
 		}
 		return nil
@@ -174,7 +174,7 @@ func (p *Pot) broadcastNewBlock(nb *defines.Block) error {
 	}
 
 	// 广播
-	p.pit.RangePeers(func(peer *defines.PeerInfo) error {
+	f := func(peer *defines.PeerInfo) error {
 		if peer.Id != p.id {
 			msg := &defines.Message{
 				Version: defines.CodeVersion,
@@ -187,14 +187,16 @@ func (p *Pot) broadcastNewBlock(nb *defines.Block) error {
 				return err
 			}
 			if err := p.signAndSendMsg(msg); err != nil {
-				p.Errorf("broadcastNewBlock: to %s fail: %v\n", peer.Id, err)
+				p.Errorf("broadcastNewBlock: to %s fail: %v", peer.Id, err)
 				return err
 			} else {
-				p.Debugf("broadcastNewBlock: to %s\n", peer.Id)
+				p.Debugf("broadcastNewBlock: to %s", peer.Id)
 			}
 		}
 		return nil
-	})
+	}
+	p.pit.RangePeers(f)
+	p.pit.RangeSeeds(f)
 	return nil
 }
 
@@ -234,10 +236,10 @@ func (p *Pot) broadcastRequestNeighbors(toseeds bool) error {
 			return err
 		}
 		if err := p.signAndSendMsg(msg); err != nil {
-			p.Errorf("broadcastRequestNeighbors: to %s fail: %v\n", peer.Id, err)
+			p.Errorf("broadcastRequestNeighbors: to %s fail: %v", peer.Id, err)
 			return err
 		} else {
-			p.Debugf("broadcastRequestNeighbors: to %s\n", peer.Id)
+			p.Debugf("broadcastRequestNeighbors: to %s", peer.Id)
 			p.nWait++
 		}
 
@@ -275,10 +277,10 @@ func (p *Pot) broadcastRequestProcesses(toseeds bool) error {
 			return err
 		}
 		if err := p.signAndSendMsg(msg); err != nil {
-			p.Errorf("broadcastRequestProcesses: to %s fail: %v\n", peer.Id, err)
+			p.Errorf("broadcastRequestProcesses: to %s fail: %v", peer.Id, err)
 			return err
 		} else {
-			p.Debugf("broadcastRequestProcesses: to %s\n", peer.Id)
+			p.Debugf("broadcastRequestProcesses: to %s", peer.Id)
 			p.nWait++
 		}
 
@@ -334,10 +336,10 @@ func (p *Pot) broadcastRequestBlocks(random3 bool) error {
 			return err
 		}
 		if err := p.signAndSendMsg(msg); err != nil {
-			p.Errorf("broadcastRequestBlocks: to %s fail: %s\n", peer, err)
+			p.Errorf("broadcastRequestBlocks: to %s fail: %s", peer, err)
 			return err
 		} else {
-			p.Debugf("broadcastRequestBlocks: to %s\n", peer)
+			p.Debugf("broadcastRequestBlocks: to %s", peer)
 			p.nWait++
 		}
 	}
@@ -371,10 +373,10 @@ func (p *Pot) broadcastRequestLatestBlock() error {
 			return err
 		}
 		if err := p.signAndSendMsg(msg); err != nil {
-			p.Errorf("broadcastRequestBlocks: to %s fail: %s\n", peer.Id, err)
+			p.Errorf("broadcastRequestBlocks: to %s fail: %s", peer.Id, err)
 			return err
 		} else {
-			p.Debugf("broadcastRequestBlocks: to %s\n", peer.Id)
+			p.Debugf("broadcastRequestBlocks: to %s", peer.Id)
 			p.nWait++
 		}
 		return nil
@@ -397,24 +399,24 @@ func (p *Pot) wait(nWait int) error {
 	for {
 		select {
 		case <-p.done:
-			p.Debugf("wait: done and return\n")
+			p.Debugf("wait: done and return")
 			return nil
 		case <-p.nWaitChan:
 			nWait--
 			cnt++
-			p.Debugf("wait: nWait--\n")
+			p.Debugf("wait: nWait--")
 			// 等待结束
 			if nWait == 0 {
-				p.Debugf("wait: wait finish and return\n")
+				p.Debugf("wait: wait finish and return")
 				return nil
 			}
 		case <-timeout.C:
 			// 超时需要判断两种情况：
 			if cnt == 0 { // 一个回复都没收到
-				p.Errorf("wait: timeout, no response received\n")
+				p.Errorf("wait: timeout, no response received")
 				return errors.New("wait timeout and no response received")
 			}
-			p.Debugf("wait: timeout, %d responses received, return\n", cnt)
+			p.Debugf("wait: timeout, %d responses received, return", cnt)
 			return nil
 		}
 	}
@@ -435,25 +437,25 @@ func (p *Pot) waitAndDecideOneBlock(blockIndex int64, nWait int) (*defines.Block
 	for {
 		select {
 		case <-p.done: // 程序被关闭
-			p.Debugf("wait: done and return\n")
+			p.Debugf("wait: done and return")
 			return nil, nil
 		case b := <-p.nWaitBlockChan:
 			nWait--
 			cnt++
-			p.Debugf("wait: nWait--\n")
+			p.Debugf("wait: nWait--")
 			p.udbt.Add(b) // 添加到未决区块表
 			// 等待结束
 			if nWait == 0 {
-				p.Debugf("wait: wait finish and return\n")
+				p.Debugf("wait: wait finish and return")
 				return p.udbt.Major(), nil
 			}
 		case <-timeout.C:
 			// 超时需要判断两种情况：
 			if cnt == 0 { // 一个回复都没收到
-				p.Errorf("wait: timeout, no response received\n")
+				p.Errorf("wait: timeout, no response received")
 				return nil, errors.New("wait timeout and no response received")
 			}
-			p.Debugf("wait: timeout, %d responses received, return\n", cnt)
+			p.Debugf("wait: timeout, %d responses received, return", cnt)
 			return p.udbt.Major(), nil
 		}
 	}

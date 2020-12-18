@@ -33,7 +33,7 @@ type Cluster struct {
 	clients map[string]*test.TxMaker
 }
 
-func StartCluster(nSeed int, nPeer int, debug bool, enableClients bool) (*Cluster, error) {
+func StartCluster(nSeed int, nPeer int, debug bool, addCaller bool, enableClients bool) (*Cluster, error) {
 	seeds, peers, seedsm, peersm := genIdsAndAddrs(nSeed, nPeer)
 
 	c := &Cluster{
@@ -45,7 +45,7 @@ func StartCluster(nSeed int, nPeer int, debug bool, enableClients bool) (*Cluste
 
 	for _, idaddr := range seeds {
 		id, addr := idaddr[0], idaddr[1]
-		node, err := StartNode(id, addr, seedsm, peersm, debug)
+		node, err := StartNode(id, addr, seedsm, peersm, debug, addCaller)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +56,7 @@ func StartCluster(nSeed int, nPeer int, debug bool, enableClients bool) (*Cluste
 
 	for _, idaddr := range peers {
 		id, addr := idaddr[0], idaddr[1]
-		node, err := StartNode(id, addr, seedsm, peersm, debug)
+		node, err := StartNode(id, addr, seedsm, peersm, debug, addCaller)
 		if err != nil {
 			return nil, err
 		}
@@ -83,12 +83,12 @@ func StartCluster(nSeed int, nPeer int, debug bool, enableClients bool) (*Cluste
 	return c, nil
 }
 
-func StartNode(id, addr string, seeds, peers map[string]string, debug bool) (*Node, error) {
+func StartNode(id, addr string, seeds, peers map[string]string, debug bool, addCaller bool) (*Node, error) {
 
 	logdest := fmt.Sprintf(logDestFormat, id)
 
 	// 初始化日志单例
-	log.InitGlobalLogger(id, debug, logdest)
+	log.InitGlobalLogger(id, debug, addCaller, logdest)
 
 	ln, err := _default.ListenTCP(id, addr)
 	if err != nil {

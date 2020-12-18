@@ -46,6 +46,7 @@ func (p *Pot) endPot(moment Moment) {
 	// 通过proofs裁决winner
 	selfJudgeWinnerProof := p.proofs.JudgeWinner(moment)
 	p.Info(p.proofs.Display())
+	//p.Info(p.udbt.Display())
 	if selfJudgeWinnerProof == nil {	// proofs为空，则说明此时还没有共识节点加入进来
 		// do nothing
 		p.Info("end pot competetion. judge winner, no winner")

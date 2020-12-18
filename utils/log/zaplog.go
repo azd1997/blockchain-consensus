@@ -28,7 +28,7 @@ var loggers = map[string]*zap.SugaredLogger{} // <id, logger>
 //)
 
 // InitGlobalLogger 初始化全局日志单例
-func InitGlobalLogger(id string, debug bool, logFileName ...string) {
+func InitGlobalLogger(id string, debug bool, addCaller bool, logFileName ...string) {
 	if loggers[id] != nil {
 		return
 	}
@@ -59,8 +59,14 @@ func InitGlobalLogger(id string, debug bool, logFileName ...string) {
 
 	core := zapcore.NewTee(allCore...)
 
-	// 由于我们不直接使用sugarLogger，而是再包装一次，所以caller要再skip一次
-	logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
+	var logger *zap.Logger
+	if addCaller {
+		// 由于我们不直接使用sugarLogger，而是再包装一次，所以caller要再skip一次
+		logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
+	} else {
+		logger = zap.New(core)
+	}
+
 	loggers[id] = logger.Sugar()
 }
 

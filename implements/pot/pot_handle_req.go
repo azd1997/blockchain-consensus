@@ -59,7 +59,7 @@ func (p *Pot) handleRequestNeighbors(from string, req *defines.Request) error {
 	p.pit.RangePeers(func(peer *defines.PeerInfo) error {
 		b, err := peer.Encode()
 		if err != nil {
-			p.Errorf("handleRequestNeighbors: encode peerinfo(%v) fail: %s\n", *peer, err)
+			p.Errorf("handleRequestNeighbors: encode peerinfo(%v) fail: %s", *peer, err)
 			return err
 		}
 		entries = append(entries, &defines.Entry{
@@ -117,7 +117,7 @@ func (p *Pot) handleRequestProcesses(from string, req *defines.Request) error {
 	p.pit.RangePeers(func(peer *defines.PeerInfo) error {
 		b, err := peer.Encode()
 		if err != nil {
-			p.Errorf("handleRequestNeighbors: encode peerinfo(%v) fail: %s\n", *peer, err)
+			p.Errorf("handleRequestNeighbors: encode peerinfo(%v) fail: %s", *peer, err)
 			return err
 		}
 		entries = append(entries, &defines.Entry{
