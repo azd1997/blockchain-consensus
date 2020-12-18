@@ -1,27 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="a308decb-1282-4354-b05f-723fd7fa09eb" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/implements/pot/proof_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot_actions.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_actions.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot_competetion.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_competetion.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot_func_generator.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_func_generator.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot_handle_msg.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_handle_msg.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot_handle_req.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_handle_req.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/pot_loops.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/pot_loops.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/proof.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/proof.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/proof_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/proof_table.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/implements/pot/undecided_block_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/implements/pot/undecided_block_table.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lab/pot/cluster.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/pot/cluster.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lab/pot/cluster_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/pot/cluster_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/lab/pot/pot_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/lab/pot/pot_test.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/bnet/net.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/bnet/net.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" beforeDir="false" afterPath="$PROJECT_DIR$/modules/peerinfo/peer_info_table.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/blockchain.go" beforeDir="false" afterPath="$PROJECT_DIR$/test/blockchain.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test/tx_maker.go" beforeDir="false" afterPath="$PROJECT_DIR$/test/tx_maker.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/log/zaplog.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/log/zaplog.go" afterDir="false" />
-    </list>
+    <list default="true" id="a308decb-1282-4354-b05f-723fd7fa09eb" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
