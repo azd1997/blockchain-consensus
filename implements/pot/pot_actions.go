@@ -8,6 +8,7 @@ package pot
 
 import (
 	"errors"
+	"io"
 	"time"
 
 	"github.com/azd1997/blockchain-consensus/defines"
@@ -320,6 +321,88 @@ func (p *Pot) broadcastRequestBlocks(random3 bool) error {
 	} else {
 		peers = append(peers, p.processes.nLatestPeers(0)...)
 	}
+
+	for _, peer := range peers {
+		if peer == p.id {
+			continue
+		}
+		msg := &defines.Message{
+			Version: defines.CodeVersion,
+			Type:    defines.MessageType_Req,
+			From:    p.id,
+			To:      peer,
+			Reqs:    []*defines.Request{req},
+		}
+		if err := msg.WriteDesc("type", "req-blocks"); err != nil {
+			return err
+		}
+		if err := p.signAndSendMsg(msg); err != nil {
+			p.Errorf("broadcastRequestBlocks: to %s fail: %s", peer, err)
+			return err
+		} else {
+			p.Debugf("broadcastRequestBlocks: to %s", peer)
+			p.nWait++
+		}
+	}
+
+	return nil
+}
+
+// 广播请求区块
+// start, end 为请求的区块的index区间。 start为0则不使用index索引
+// hashes 请求的区块的哈希。 hashes为nil或长度为0，则不使用哈希查找
+// nPeers, nSeeds 对请求的peer和seed数量做限制. <0则不生效
+// ids 手动指定向哪些节点请求
+func (p *Pot) requestBlocks(start, end int64, hashes [][]byte, nPeers, nSeeds int, ids ...string) error {
+
+	process := p.processes.get(p.id)
+	req := &defines.Request{
+		Type:       defines.RequestType_Blocks,
+		IndexStart: process.Index + 1, // 自己的进度+1
+		IndexCount: 0,                 // 0表示响应端要回复所有
+	}
+
+	// 构造请求
+	req := &defines.Request{
+		Type:       defines.RequestType_Blocks,
+		IndexStart: process.Index + 1, // 自己的进度+1
+		IndexCount: 0,                 // 0表示响应端要回复所有
+	}
+
+	// 收集要广播的节点：seeds + 若干peer
+	tos := make(map[string]struct{})
+	seeds := p.pit.Seeds()
+	if nSeeds < 0 || nSeeds > len(seeds) {
+		nSeeds = len(seeds)
+	}
+	for id := range seeds {
+		if nSeeds > 0 {
+			tos[id] = struct{}{}
+			nSeeds--
+		} else {
+			break
+		}
+	}
+	peers := p.pit.Peers()
+	if nPeers < 0 || nPeers > len(peers) {
+		nPeers = len(peers)
+	}
+	for id := range peers {
+		if nPeers > 0 {
+			tos[id] = struct{}{}
+			nSeeds--
+		} else {
+			break
+		}
+	}
+	//
+	if n := len(ids); n > 0 {
+		for i:=0; i<n; i++ {
+			tos[ids[i]] = struct{}{}
+		}
+	}
+
+
 
 	for _, peer := range peers {
 		if peer == p.id {

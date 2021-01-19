@@ -334,6 +334,12 @@ func (p *Pot) initForPeerReStart() error {
 	// 6. 设置当前状态
 	p.setState(StateType_NotReady)
 
+	// 请求缺失的区块（如果有缺失的话）
+	start, end := localMaxBlock[0].Index + 1, latestBlock.Index - 1
+	if end >= start {
+
+	}
+
 	return nil
 }
 
