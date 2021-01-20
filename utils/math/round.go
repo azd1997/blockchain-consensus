@@ -8,6 +8,7 @@ package math
 
 import (
 	"math"
+	"time"
 )
 
 // RoundToInt 将小数圆整为上下最接近的整数
@@ -21,5 +22,6 @@ func RoundToInt(x float64) int {
 }
 
 func RoundTickNo(bnTime, b1Time int64, tickms int) int {
-	(curBlock.Timestamp - b1.Timestamp) / (500 * int64(time.Millisecond))
+	n := float64(bnTime - b1Time) / float64(int64(tickms) * int64(time.Millisecond))	// ns
+	return RoundToInt(n)
 }

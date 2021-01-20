@@ -75,6 +75,7 @@ func (p *Pot) initForSeedFirstStart() error {
 		if err != nil {
 			p.Fatalf("initForSeedFirstStart: create genesis block fail: %s\n", err)
 		}
+		p.b1Time = genesis.Timestamp
 		// 启动时钟
 		p.clock.Start(genesis)
 		// 更新自己进度
@@ -123,6 +124,7 @@ func (p *Pot) initForSeedFirstStart() error {
 	if err != nil {
 		return err
 	}
+	p.b1Time = firstBlock.Timestamp
 	// 初始化时钟
 	p.clock.Start(firstBlock)
 	// 将第一个区块加入到本地。这里对于1号区块的添加是使用AddNewBlock，特殊处理
@@ -201,6 +203,12 @@ func (p *Pot) initForSeedReStart() error {
 	}
 	p.clock.Start(localMaxBlock[0])
 
+	firstBlock, err := p.bc.GetBlocksByRange(1, 1)
+	if err != nil {
+		return err
+	}
+	p.b1Time = firstBlock[0].Timestamp
+
 	// 3. 等待一段时间，到达PotStart时刻
 	<-p.potStartBeforeReady
 
@@ -250,6 +258,7 @@ func (p *Pot) initForPeerFirstStart() error {
 	if err != nil {
 		return err
 	}
+	p.b1Time = firstBlock.Timestamp
 	// 初始化时钟
 	p.clock.Start(firstBlock)
 	if err := p.bc.AddNewBlock(firstBlock); err != nil {
@@ -304,6 +313,12 @@ func (p *Pot) initForPeerReStart() error {
 		return err
 	}
 	p.clock.Start(localMaxBlock[0])
+
+	firstBlock, err := p.bc.GetBlocksByRange(1, 1)
+	if err != nil {
+		return err
+	}
+	p.b1Time = firstBlock[0].Timestamp
 
 	// 3. 等待一段时间，到达PotStart时刻
 	<-p.potStartBeforeReady

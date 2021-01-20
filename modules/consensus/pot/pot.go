@@ -14,6 +14,7 @@ import (
 	"github.com/azd1997/blockchain-consensus/modules/bnet"
 	"github.com/azd1997/blockchain-consensus/modules/peerinfo"
 	"github.com/azd1997/blockchain-consensus/requires"
+	"github.com/azd1997/blockchain-consensus/utils/math"
 	"sync"
 )
 
@@ -76,6 +77,9 @@ type Pot struct {
 
 	// potStartBeforeReady 用于启动时
 	potStartBeforeReady chan Moment
+
+	// b1Time	记录b1构造时间 ns
+	b1Time int64
 
 	// proofs表可能会因为某些节点出现恶意行为而将其删除
 	//proofs          map[string]*Proof // 收集的其他共识节点的证明进度
@@ -279,7 +283,8 @@ func (p *Pot) StateMachineLoop() {
 			p.Infof("stateMachineLoop: return ...")
 			return
 		case moment := <-p.clock.Tick:
-			p.Infof("stateMachineLoop: clock tick: %s", moment.String())
+			p.Infof("[t%d] stateMachineLoop: clock tick: %s",
+				math.RoundTickNo(moment.Time.UnixNano(), p.b1Time, TickMs), moment.String())
 
 			// 根据当前状态来处理此滴答消息
 			state := p.getState()

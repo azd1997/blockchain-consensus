@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/azd1997/blockchain-consensus/utils/math"
 	"sync"
 	"time"
 
@@ -114,12 +115,12 @@ func (bc *BlockChain) Display() string {
 		for j := 0; j < len(*seg.blocks); j++ {
 
 			curBlock := (*seg.blocks)[j]
-			curTickNo := (curBlock.Timestamp - b1.Timestamp) / (500 * int64(time.Millisecond))
+			curTickNo := math.RoundTickNo(curBlock.Timestamp, b1.Timestamp, 500)
 
 			if j < len(*seg.blocks)-1 {
-				segStr += fmt.Sprintf("(%d,%d,%s)%s ——> ", (*seg.blocks)[j].Index, (*seg.blocks)[j].Maker, (*seg.blocks)[j].ShortName())
+				segStr += fmt.Sprintf("(t%d,b%d,%s)%s ——> ", curTickNo, curBlock.Index, curBlock.Maker, curBlock.ShortName())
 			} else {
-				segStr += fmt.Sprintf("(%d,%d,%s)%s\n", (*seg.blocks)[j].Index, (*seg.blocks)[j].Maker, (*seg.blocks)[j].ShortName())
+				segStr += fmt.Sprintf("(t%d,b%d,%s)%s\n", curTickNo, curBlock.Index, curBlock.Maker, curBlock.ShortName())
 			}
 		}
 		display += segStr
