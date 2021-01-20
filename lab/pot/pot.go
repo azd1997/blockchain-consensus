@@ -8,8 +8,9 @@ package pot
 
 import (
 	"github.com/azd1997/blockchain-consensus/defines"
-	"github.com/azd1997/blockchain-consensus/implements/pot"
 	"github.com/azd1997/blockchain-consensus/modules/bnet"
+	"github.com/azd1997/blockchain-consensus/modules/consensus"
+	"github.com/azd1997/blockchain-consensus/modules/ledger"
 	"github.com/azd1997/blockchain-consensus/modules/peerinfo"
 	"github.com/azd1997/blockchain-consensus/requires"
 )
@@ -65,13 +66,13 @@ type Node struct {
 	bc requires.BlockChain
 
 	// 节点信息表
-	pit *peerinfo.PeerInfoTable
+	pit peerinfo.Pit
 
 	// 共识状态机
-	pot *pot.Pot
+	pot consensus.Consensus
 
 	// 网络模块
-	net *bnet.Net
+	net bnet.BNet
 
 	// 日志输出目的地
 	LogDest string
@@ -80,9 +81,7 @@ type Node struct {
 // NewNode 构建Node
 func NewNode(
 	id string, duty defines.PeerDuty, // 账户配置
-	ln requires.Listener, dialer requires.Dialer, // 网络配置
-	kv requires.Store, bc requires.BlockChain, // 外部依赖
-	logdest string, // 日志输出路径
+	addr string,
 	seeds map[string]string, //预配置的种子节点
 	peers map[string]string, // 预配置的共识节点
 ) (*Node, error) {
@@ -90,13 +89,22 @@ func NewNode(
 	node := &Node{
 		id:   id,
 		duty: duty,
-		addr: ln.LocalListenAddr().String(),
-		kv:   kv, // kv是外部准备好的
-		bc:   bc,
+		addr: addr,
 	}
 
+	// 构建bc
+	bc, err := ledger.NewLedger("simplechain", id)
+	if err != nil {
+		return nil, err
+	}
+	err = bc.Init()
+	if err != nil {
+		return nil, err
+	}
+	node.bc = bc
+
 	// 构建节点表
-	pit, err := peerinfo.NewPeerInfoTable(id, kv)
+	pit, err := peerinfo.NewPit("simplepit", id)
 	if err != nil {
 		return nil, err
 	}
@@ -118,69 +126,29 @@ func NewNode(
 	node.pit.AddPeers(peers)
 	node.pit.AddSeeds(seeds)
 
-	// 构建共识状态机
-	pm, err := pot.New(&pot.Option{
-		Id:   id,
-		Duty: duty,
-		Pit:  pit,
-		BC:   bc,
-	})
+	msgchan := make(chan []byte, 100)
+
+	// 构建网络模块
+	netmod, err := bnet.NewBNet(id, "udp", addr, msgchan)
 	if err != nil {
 		return nil, err
 	}
-	node.pot = pm
-	cssin, cssout := pm.MsgInChan(), pm.MsgOutChan()
-
-	// 构建网络模块
-	opt := &bnet.Option{
-		Id:       id,
-		Addr:     ln.LocalListenAddr().String(),
-		Listener: ln,
-		Dialer:   dialer,
-		MsgIn:    cssout,
-		MsgOut:   cssin,
-		Pit:      pit,
-	}
-	netmod, err := bnet.NewNet(opt)
+	err = netmod.Init()
 	if err != nil {
 		return nil, err
 	}
 	node.net = netmod
 
-	return node, nil
-}
-
-// Init 初始化
-func (s *Node) Init() error {
-	// 准备好PeerInfoTable
-	if !s.pit.Inited() {
-		err := s.pit.Init()
-		if err != nil {
-			return err
-		}
-	}
-
-	// 网络模块初始化
-	if !s.net.Inited() {
-		err := s.net.Init()
-		if err != nil {
-			return err
-		}
-	}
-
-	// 区块链初始化
-	if !s.bc.Inited() {
-		err := s.bc.Init()
-		if err != nil {
-			return err
-		}
-	}
-
-	// 共识模块初始化
-	err := s.pot.Init()
+	// 构建共识状态机
+	pm, err := consensus.NewConsensus("pot", id, duty, pit, bc, netmod, msgchan)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	err = pm.Init()
+	if err != nil {
+		return nil, err
+	}
+	node.pot = pm
 
-	return nil
+	return node, nil
 }

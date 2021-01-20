@@ -19,15 +19,15 @@ import (
 
 // Block 区块
 type Block struct {
-	Index     int64
-	Maker     string
-	Timestamp int64
-	SelfHash  []byte
-	PrevHash  []byte
-	Merkle    []byte
-	Txs       []*Transaction
+	Index       int64
+	Maker       string
+	Timestamp   int64
+	SelfHash    []byte
+	PrevHash    []byte
+	Merkle      []byte
+	Txs         []*Transaction
 	Description string
-	Sig       []byte
+	Sig         []byte
 }
 
 // Encode 编码
@@ -101,15 +101,15 @@ func (b *Block) ShortName() string {
 // NewBlock 构造新区块
 func NewBlockAndSign(index int64, id string, prevHash []byte, txs []*Transaction, desc string) (*Block, error) {
 	b := &Block{
-		Index:     index,
-		Maker:     id,
-		Timestamp: time.Now().UnixNano(),
-		SelfHash:  nil,
-		PrevHash:  prevHash,
-		Merkle:    nil,
-		Txs:       txs,
-		Description:desc,
-		Sig:       nil,
+		Index:       index,
+		Maker:       id,
+		Timestamp:   time.Now().UnixNano(),
+		SelfHash:    nil,
+		PrevHash:    prevHash,
+		Merkle:      nil,
+		Txs:         txs,
+		Description: desc,
+		Sig:         nil,
 	}
 	// 先生成merkle
 	if err := b.MerkleTxs(); err != nil {

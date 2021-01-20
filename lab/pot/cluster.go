@@ -13,9 +13,8 @@ import (
 	"time"
 
 	"github.com/azd1997/blockchain-consensus/defines"
-	_default "github.com/azd1997/blockchain-consensus/requires/default"
+	"github.com/azd1997/blockchain-consensus/log"
 	"github.com/azd1997/blockchain-consensus/test"
-	"github.com/azd1997/blockchain-consensus/utils/log"
 )
 
 const (
@@ -37,11 +36,10 @@ func StartCluster(nSeed int, nPeer int, debug bool, addCaller bool, enableClient
 	seeds, peers, seedsm, peersm := genIdsAndAddrs(nSeed, nPeer)
 
 	c := &Cluster{
-		seeds: map[string]*Node{},
-		peers: map[string]*Node{},
+		seeds:   map[string]*Node{},
+		peers:   map[string]*Node{},
 		clients: map[string]*test.TxMaker{},
 	}
-
 
 	for _, idaddr := range seeds {
 		id, addr := idaddr[0], idaddr[1]
@@ -79,7 +77,6 @@ func StartCluster(nSeed int, nPeer int, debug bool, addCaller bool, enableClient
 		}
 	}
 
-
 	return c, nil
 }
 
@@ -90,17 +87,6 @@ func StartNode(id, addr string, seeds, peers map[string]string, debug bool, addC
 	// 初始化日志单例
 	log.InitGlobalLogger(id, debug, addCaller, logdest)
 
-	ln, err := _default.ListenTCP(id, addr)
-	if err != nil {
-		return nil, err
-	}
-	d, err := _default.NewDialer(id, addr, 0)
-	if err != nil {
-		return nil, err
-	}
-	kv := test.NewStore()
-	bc := test.NewBlockChain(id)
-
 	var duty defines.PeerDuty
 	if id[:4] == "seed" {
 		duty = defines.PeerDuty_Seed
@@ -110,18 +96,11 @@ func StartNode(id, addr string, seeds, peers map[string]string, debug bool, addC
 		return nil, errors.New("unknown duty")
 	}
 
-	node, err := NewNode(id, duty,
-		ln, d, kv, bc, logdest,
+	node, err := NewNode(id, duty, addr,
 		seeds, peers)
 	if err != nil {
 		return nil, err
 	}
-
-	err = node.Init()
-	if err != nil {
-		return nil, err
-	}
-
 	return node, nil
 }
 

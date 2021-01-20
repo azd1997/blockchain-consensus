@@ -8,9 +8,7 @@ package pot
 
 import (
 	"github.com/azd1997/blockchain-consensus/defines"
-	_default "github.com/azd1997/blockchain-consensus/requires/default"
-	"github.com/azd1997/blockchain-consensus/test"
-	"github.com/azd1997/blockchain-consensus/utils/log"
+	"github.com/azd1997/blockchain-consensus/log"
 	"testing"
 )
 
@@ -24,16 +22,8 @@ func TestNode_PeerInit(t *testing.T) {
 	log.InitGlobalLogger(id, true, true, logdest)
 	defer log.Sync()
 
-	ln, err := _default.ListenTCP(id, addr)
-	tError(t, err)
-	d, err := _default.NewDialer(id, addr, 0)
-	tError(t, err)
-
-	kv := test.NewStore()
-	bc := test.NewBlockChain(id)
-
 	node, err := NewNode(
-		id, duty, ln, d, kv, bc, logdest,
+		id, duty, addr,
 		map[string]string{
 			"seed1": "127.0.0.1:8991",
 		},
@@ -43,9 +33,7 @@ func TestNode_PeerInit(t *testing.T) {
 			"peer3": "127.0.0.1:7993",
 		})
 	tError(t, err)
-
-	err = node.Init()
-	tError(t, err)
+	node = node
 }
 
 func TestNode_SeedInit(t *testing.T) {
@@ -58,16 +46,8 @@ func TestNode_SeedInit(t *testing.T) {
 	log.InitGlobalLogger(id, true, true, logdest)
 	defer log.Sync()
 
-	ln, err := _default.ListenTCP(id, addr)
-	tError(t, err)
-	d, err := _default.NewDialer(id, addr, 0)
-	tError(t, err)
-
-	kv := test.NewStore()
-	bc := test.NewBlockChain(id)
-
 	node, err := NewNode(
-		id, duty, ln, d, kv, bc, logdest,
+		id, duty, addr,
 		map[string]string{
 			"seed1": "127.0.0.1:8991",
 		},
@@ -77,9 +57,7 @@ func TestNode_SeedInit(t *testing.T) {
 			"peer3": "127.0.0.1:7993",
 		})
 	tError(t, err)
-
-	err = node.Init()
-	tError(t, err)
+node = node
 }
 
 func tError(t *testing.T, err error) {

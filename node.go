@@ -8,10 +8,10 @@ package bcc
 
 import (
 	"github.com/azd1997/blockchain-consensus/defines"
-	"github.com/azd1997/blockchain-consensus/modules/bnet"
-	"github.com/azd1997/blockchain-consensus/modules/peerinfo"
+	"github.com/azd1997/blockchain-consensus/log"
+	"github.com/azd1997/blockchain-consensus/modules/bnet/btcp"
+	"github.com/azd1997/blockchain-consensus/modules/peerinfo/memorypit"
 	"github.com/azd1997/blockchain-consensus/requires"
-	"github.com/azd1997/blockchain-consensus/utils/log"
 )
 
 /*
@@ -65,13 +65,13 @@ type Node struct {
 	bc requires.BlockChain
 
 	// 节点信息表
-	pit *peerinfo.PeerInfoTable
+	pit *memorypit.PeerInfoTable
 
 	// 共识状态机
 	css Consensus
 
 	// 网络模块
-	net *bnet.Net
+	net *btcp.Net
 
 	// 日志输出目的地
 	LogDest log.LogDest
@@ -93,7 +93,7 @@ func NewNode(
 	}
 
 	// 构建节点表
-	pit := peerinfo.NewPeerInfoTable(kv)
+	pit := memorypit.NewPeerInfoTable(kv)
 	err := pit.Init()
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func NewNode(
 	cssin, cssout := css.InMsgChan(), css.OutMsgChan()
 
 	// 构建网络模块
-	opt := &bnet.Option{
+	opt := &btcp.Option{
 		Listener: ln,
 		Dialer:   dialer,
 		MsgIn:    cssout,
@@ -117,7 +117,7 @@ func NewNode(
 		LogDest:  logdest,
 		Pit:      pit,
 	}
-	netmod, err := bnet.NewNet(opt)
+	netmod, err := btcp.NewNet(opt)
 	if err != nil {
 		return nil, err
 	}

@@ -16,7 +16,7 @@ func TestBlock(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	b, err := NewBlockAndSign(1, "id", []byte("prevhash"), []*Transaction{tx})
+	b, err := NewBlockAndSign(1, "id", []byte("prevhash"), []*Transaction{tx}, "this is a block")
 	if err != nil {
 		t.Error(err)
 	}
