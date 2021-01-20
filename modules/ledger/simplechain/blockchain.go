@@ -102,14 +102,24 @@ type BlockChain struct {
 // Display 展示进度
 func (bc *BlockChain) Display() string {
 	display := fmt.Sprintf("\nBlockChain(%s)(maxIndex=%d):\n", bc.id, bc.maxIndex)
+
+	var b1 *defines.Block
+	if len(bc.chain)>0 && len(*(bc.chain[0]).blocks) > 0 {
+		b1 = (*(bc.chain[0]).blocks)[0]
+	}
+
 	for i := 0; i < len(bc.chain); i++ {
 		seg := bc.chain[i]
 		segStr := fmt.Sprintf("Segment%d<%d-%d>:\t", i+1, seg.start, seg.end)
 		for j := 0; j < len(*seg.blocks); j++ {
+
+			curBlock := (*seg.blocks)[j]
+			curTickNo := (curBlock.Timestamp - b1.Timestamp) / (500 * int64(time.Millisecond))
+
 			if j < len(*seg.blocks)-1 {
-				segStr += fmt.Sprintf("(%d,%s)%s ——> ", (*seg.blocks)[j].Index, (*seg.blocks)[j].Maker, (*seg.blocks)[j].ShortName())
+				segStr += fmt.Sprintf("(%d,%d,%s)%s ——> ", (*seg.blocks)[j].Index, (*seg.blocks)[j].Maker, (*seg.blocks)[j].ShortName())
 			} else {
-				segStr += fmt.Sprintf("(%d,%s)%s\n", (*seg.blocks)[j].Index, (*seg.blocks)[j].Maker, (*seg.blocks)[j].ShortName())
+				segStr += fmt.Sprintf("(%d,%d,%s)%s\n", (*seg.blocks)[j].Index, (*seg.blocks)[j].Maker, (*seg.blocks)[j].ShortName())
 			}
 		}
 		display += segStr
