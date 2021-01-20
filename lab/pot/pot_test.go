@@ -57,7 +57,7 @@ func TestNode_SeedInit(t *testing.T) {
 			"peer3": "127.0.0.1:7993",
 		})
 	tError(t, err)
-node = node
+	node = node
 }
 
 func tError(t *testing.T, err error) {

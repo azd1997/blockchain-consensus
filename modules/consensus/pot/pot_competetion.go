@@ -50,6 +50,10 @@ func (p *Pot) endPot(moment Moment) {
 	if selfJudgeWinnerProof == nil { // proofs为空，则说明此时还没有共识节点加入进来
 		// do nothing
 		p.Info("end pot competetion. judge winner, no winner")
+
+		// 对于seed而言，还需要将本地最新区块广播出去
+		p.broadcastNewBlock(p.bc.GetLatestBlock())
+
 	} else if selfJudgeWinnerProof.Id == p.id { // 自己是胜者
 		p.Infof("end pot competetion. judge winner, i am winner(%s), broadcast new block(%s) now", selfJudgeWinnerProof.Short(), p.maybeNewBlock.ShortName())
 		p.udbt.Add(p.maybeNewBlock) // 将自己的新区块添加到未决区块表

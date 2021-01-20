@@ -11,5 +11,4 @@ package pot
 // 所有消息在发送时
 
 type Epoch struct {
-
 }

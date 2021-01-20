@@ -13,6 +13,9 @@ import (
 	"github.com/azd1997/blockchain-consensus/defines"
 )
 
+// udbt不仅要决出不确定的那一个区块
+// 并且还要决出 支持decided_block的人里边的 大多数的 maxIndex
+
 // newUndecidedBlockTable 新建未决区块表
 func newUndecidedBlockTable() *undecidedBlockTable {
 	return &undecidedBlockTable{table: map[string]*undecidedBlock{}}

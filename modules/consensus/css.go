@@ -48,7 +48,7 @@ func NewConsensus(typ string,
 	pit peerinfo.Pit, bc requires.BlockChain,
 	net bnet.BNet, msgchan chan []byte) (Consensus, error) {
 
-		typ = strings.ToLower(typ) // 支持pot, Pot等大小写
+	typ = strings.ToLower(typ) // 支持pot, Pot等大小写
 	switch typ {
 	case "pot":
 		return pot.New(id, duty, pit, bc, net, msgchan)

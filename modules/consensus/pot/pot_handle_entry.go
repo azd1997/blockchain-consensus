@@ -6,8 +6,6 @@
 
 package pot
 
-
-
 //
 //// 处理EntryBlocks
 //// 		TODO from以后会用于区块处理后对转发者(from)的处理
@@ -52,7 +50,7 @@ package pot
 //	if err != nil {
 //		p.Errorf("add block(%s) fail: err=%s", block.ShortName(), err)
 //		if err == simplechain.ErrWrongChain { // 切换状态
-//			p.setState(StateType_PreInited_RequestLatestBlock) // 切换到RLB阶段
+//			p.setStage(StateType_PreInited_RequestLatestBlock) // 切换到RLB阶段
 //		}
 //		return err
 //	}

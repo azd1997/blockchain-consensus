@@ -35,7 +35,7 @@ func (p *Pot) requestNeighborsFuncGenerator() (rangePitFunc, error) {
 			Epoch:   p.epoch, // 会变化
 			From:    p.id,
 			To:      peer.Id,
-			Data: [][]byte{spib},
+			Data:    [][]byte{spib},
 		}
 		if err := msg.WriteDesc("type", "req-peers"); err != nil {
 			return err
@@ -64,13 +64,13 @@ func (p *Pot) requestOneBlockFuncGenerator(index int64) func(peer *defines.PeerI
 			return nil
 		}
 		msg := &defines.Message{
-			Version: defines.CodeVersion,
-			Type:    defines.MessageType_ReqBlockByIndex,
-			Epoch:   p.epoch, // 会变化
-			From:    p.id,
-			To:      peer.Id,
-			ReqBlockIndexStart:index,
-			ReqBlockIndexCount:1,
+			Version:            defines.CodeVersion,
+			Type:               defines.MessageType_ReqBlockByIndex,
+			Epoch:              p.epoch, // 会变化
+			From:               p.id,
+			To:                 peer.Id,
+			ReqBlockIndexStart: index,
+			ReqBlockIndexCount: 1,
 		}
 		if err := msg.WriteDesc("type", "req-block"); err != nil {
 			return err

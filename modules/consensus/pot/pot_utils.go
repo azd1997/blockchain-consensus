@@ -12,18 +12,18 @@ import (
 )
 
 // 查看当前状态
-func (p *Pot) getState() StateType {
-	return StateType(atomic.LoadUint32((*uint32)(&p.state)))
+func (p *Pot) getStage() StageType {
+	return StageType(atomic.LoadUint32((*uint32)(&p.stage)))
 }
 
 // 更新当前状态
-func (p *Pot) setState(newState StateType) {
-	atomic.StoreUint32((*uint32)(&p.state), uint32(newState))
+func (p *Pot) setStage(newStage StageType) {
+	atomic.StoreUint32((*uint32)(&p.stage), uint32(newStage))
 }
 
 // 查看当前状态和duty
-func (p *Pot) DutyState() string {
-	return fmt.Sprintf("%s-%s", p.duty.String(), p.getState().String())
+func (p *Pot) DutyStageState() string {
+	return fmt.Sprintf("%s-%s-%s", p.duty.String(), p.getStage().String(), p.getState().String())
 }
 
 //// 获取某个id的进度

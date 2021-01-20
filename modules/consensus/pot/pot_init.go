@@ -44,7 +44,7 @@ import (
 //		if c == nil {
 //			p.Fatalf("init_seed: start clock fail\n")
 //		}
-//		//p.setState(Sta)
+//		//p.setStage(Sta)
 //	}
 //
 //}
@@ -54,7 +54,7 @@ func (p *Pot) initForSeedFirstStart() error {
 	p.Info("initForSeedFirstStart")
 
 	// 尝试与节点表其他seed联系，请求邻居信息
-	p.setState(StateType_PreInited_RequestNeighbors)
+	p.setStage(StageType_PreInited_RequestNeighbors)
 	rnf, err := p.requestNeighborsFuncGenerator()
 	if err != nil {
 		return err
@@ -82,7 +82,7 @@ func (p *Pot) initForSeedFirstStart() error {
 		//p.processes.refresh(genesis)
 
 		// 进入PostPot
-		p.setState(StateType_PostPot)
+		p.setStage(StageType_PostPot)
 		return nil // 此情况下预启动完成
 	} else if total < len(errs) {
 		//p.Infof("total=%d, len(errs)=%d, errs=%v", total, len(errs), errs)
@@ -119,7 +119,7 @@ func (p *Pot) initForSeedFirstStart() error {
 	*/
 
 	// 其他seed有在线者，那么向其他seed请求1号区块先
-	p.setState(StateType_PreInited_RequestFirstBlock)
+	p.setStage(StageType_PreInited_RequestFirstBlock)
 	firstBlock, err := p.requestOneBlockAndWait(false, 1)
 	if err != nil {
 		return err
@@ -136,7 +136,7 @@ func (p *Pot) initForSeedFirstStart() error {
 	<-p.potStartBeforeReady
 
 	// 4. 向seed或者peer请求最新区块
-	p.setState(StateType_PreInited_RequestLatestBlock)
+	p.setStage(StageType_PreInited_RequestLatestBlock)
 	latestBlock, err := p.requestLatestBlockAndWait(false)
 	if err != nil {
 		return err
@@ -171,7 +171,7 @@ func (p *Pot) initForSeedFirstStart() error {
 	//// 发网络时钟，当然必须是index更大的区块才行)
 
 	// 切换状态
-	p.setState(StateType_NotReady)
+	p.setStage(StageType_NotReady)
 
 	// 请求缺失的区块（如果有缺失的话）
 	start, end := firstBlock.Index+1, latestBlock.Index-1
@@ -190,7 +190,7 @@ func (p *Pot) initForSeedReStart() error {
 
 	// 1. 广播seeds(以及peers)，看有无在线的
 	// 尝试与节点表其他seed联系，请求邻居信息
-	p.setState(StateType_PreInited_RequestNeighbors)
+	p.setStage(StageType_PreInited_RequestNeighbors)
 	seedsAllFail, err := p.requestNeighborsAndWait()
 	if err != nil {
 		return err
@@ -214,7 +214,7 @@ func (p *Pot) initForSeedReStart() error {
 
 	// 4. 发起请求最新区块。
 	// 之所以要在PotStart时刻请求，是为了降低复杂性，2*TickMs能保证回应能在新区块诞生前收到
-	p.setState(StateType_PreInited_RequestLatestBlock)
+	p.setStage(StageType_PreInited_RequestLatestBlock)
 	latestBlock, err := p.requestLatestBlockAndWait(seedsAllFail)
 	if err != nil {
 		return err
@@ -229,7 +229,7 @@ func (p *Pot) initForSeedReStart() error {
 	}
 
 	// 6. 设置状态
-	p.setState(StateType_NotReady)
+	p.setStage(StageType_NotReady)
 
 	// 请求缺失的区块（如果有缺失的话）
 	start, end := localMaxBlock[0].Index+1, latestBlock.Index-1
@@ -246,14 +246,14 @@ func (p *Pot) initForPeerFirstStart() error {
 	p.Info("initForPeerFirstStart")
 
 	// 1. 向seeds和预配置的peers请求节点表
-	p.setState(StateType_PreInited_RequestNeighbors)
+	p.setStage(StageType_PreInited_RequestNeighbors)
 	seedsAllFail, err := p.requestNeighborsAndWait()
 	if err != nil {
 		return err
 	}
 
 	// 2. 请求1号区块，初始化时钟	// TODO: 1号区块距当前最新区块太远导致时间偏差较大问题，待解决
-	p.setState(StateType_PreInited_RequestFirstBlock)
+	p.setStage(StageType_PreInited_RequestFirstBlock)
 	firstBlock, err := p.requestOneBlockAndWait(seedsAllFail, 1)
 	if err != nil {
 		return err
@@ -269,7 +269,7 @@ func (p *Pot) initForPeerFirstStart() error {
 	<-p.potStartBeforeReady
 
 	// 4. 向seed或者peer请求最新区块
-	p.setState(StateType_PreInited_RequestLatestBlock)
+	p.setStage(StageType_PreInited_RequestLatestBlock)
 	latestBlock, err := p.requestLatestBlockAndWait(seedsAllFail)
 	if err != nil {
 		return err
@@ -284,7 +284,7 @@ func (p *Pot) initForPeerFirstStart() error {
 	}
 
 	// 6. 设置当前状态
-	p.setState(StateType_NotReady)
+	p.setStage(StageType_NotReady)
 
 	// 请求缺失的区块（如果有缺失的话）
 	start, end := firstBlock.Index+1, latestBlock.Index-1
@@ -301,7 +301,7 @@ func (p *Pot) initForPeerReStart() error {
 	p.Info("initForPeerReStart")
 
 	// 1. 向seeds和预配置的peers请求节点表
-	p.setState(StateType_PreInited_RequestNeighbors)
+	p.setStage(StageType_PreInited_RequestNeighbors)
 	seedsAllFail, err := p.requestNeighborsAndWait()
 	if err != nil {
 		return err
@@ -324,7 +324,7 @@ func (p *Pot) initForPeerReStart() error {
 	<-p.potStartBeforeReady
 
 	// 4. 向seed或者peer请求最新区块
-	p.setState(StateType_PreInited_RequestLatestBlock)
+	p.setStage(StageType_PreInited_RequestLatestBlock)
 	latestBlock, err := p.requestLatestBlockAndWait(seedsAllFail)
 	if err != nil {
 		return err
@@ -338,7 +338,7 @@ func (p *Pot) initForPeerReStart() error {
 	}
 
 	// 6. 设置当前状态
-	p.setState(StateType_NotReady)
+	p.setStage(StageType_NotReady)
 
 	// 请求缺失的区块（如果有缺失的话）
 	start, end := localMaxBlock[0].Index+1, latestBlock.Index-1

@@ -1,51 +1,86 @@
 /**********************************************************************
 * @Author: Eiger (201820114847@mail.scut.edu.cn)
-* @Date: 2020/9/20 20:41
-* @Description: 状态机状态
+* @Date: 1/20/21 8:55 PM
+* @Description: The file is for
 ***********************************************************************/
 
 package pot
 
-// StateType pot共识中的阶段类型
+import (
+	"github.com/azd1997/blockchain-consensus/defines"
+	"sync/atomic"
+)
+
 type StateType uint32
 
 const (
-
-	// StateType_PreInited (初始化之前)的状态，启动之后到进入到NotReady之前的阶段
-	StateType_PreInited_RequestNeighbors StateType = iota
-	StateType_PreInited_RequestFirstBlock
-	StateType_PreInited_RequestLatestBlock
-	// StateType_NotReady 状态: 区块链有缺失或者网络中能正常连接且均无缺失的节点>=3个
-	StateType_NotReady
-	// StateType_InPot Pot竞赛的阶段，位于PotStart到PotOver之间
-	StateType_InPot
-	// StateType_PostPot Pot竞赛结束之后的阶段，位于PotOver到PotStart之间
-	StateType_PostPot
-)
+	// 进入RLB阶段及之后才有state概念，之前都是None
+	StateType_None StateType = iota
+	StateType_Witness
+	StateType_Competitor
+	StateType_Winner
+	StateType_Judger
+	StateType_Learner
+	)
 
 var stateMap = map[StateType]string{
-	//StateType_Init_GetNeighbors: "[State_Init_GetNeighbors]",
-	//StateType_Init_GetProcesses: "[StateType_Init_GetProcesses]",
-	//StateType_Init_GetLatestBlock:    "[StateType_Init_GetLatestBlock]",
-	//StateType_NotReady:          "[State_NotReady]",
-	//StateType_ReadyCompete:      "[State_ReadyCompete]",
-	//StateType_Competing:         "[State_Competing]",
-	//StateType_CompeteOver:       "[State_CompeteOver]",
-	//StateType_CompeteWinner:     "[State_CompeteWinner]",
-	//StateType_CompeteLoser:      "[State_CompeteLoser]",
-
-	StateType_PreInited_RequestNeighbors:   "[State_PreInited_RN]",
-	StateType_PreInited_RequestFirstBlock:  "[State_PreInited_RFB]",
-	StateType_PreInited_RequestLatestBlock: "[State_PreInited_RLB]",
-	StateType_NotReady:                     "[State_NotReady]",
-	StateType_InPot:                        "[State_InPot]",
-	StateType_PostPot:                      "[State_PostPot]",
+	StateType_None:"none",
+	StateType_Witness: "witness",
+	StateType_Competitor: "competitor",
+	StateType_Winner : "winner",
+	StateType_Judger : "judger",
+	StateType_Learner : "learner",
 }
 
 func (st StateType) String() string {
-	if v, ok := stateMap[st]; ok {
-		return v
-	} else {
-		return "[State_Unknown]"
+	if str, ok := stateMap[st]; ok {
+		return str
 	}
+	return "unknown"
+}
+
+// pot_state = state_switch ( bc_state, moment, duty )
+// stage是moment的另一种表现
+// stage_RLB具有一些特殊性
+
+// 根据输入确定当前应该为何种potstate
+// 应当在每次Tick到来时调用
+// 如果只考虑InPot和PostPot两个阶段的话，这个转换公式可以只要stage或者moment
+func (p *Pot) stateSwitch(moment Moment) {
+
+	duty := p.duty
+	bcReady := p.isSelfReady()
+	stage := p.getStage()
+
+	// 这时没有状态的概念
+	if stage == StageType_PreInited_RequestNeighbors || stage == StageType_PreInited_RequestFirstBlock {
+		return
+	}
+
+	// potstart到来
+
+	if duty == defines.PeerDuty_Peer && bcReady && moment.Type == MomentType_PotStart {
+		p.setState(StateType_Competitor)
+		return
+	}
+
+	if moment.Type == MomentType_PotStart &&
+		(duty != defines.PeerDuty_Peer || (duty == defines.PeerDuty_Peer && !bcReady)) {
+		p.setState(StateType_Witness)
+		return
+	}
+
+	// potover到来
+	if moment.Type == MomentType_PotStart &&
+		(p.getState() == StateType_Competitor )
+}
+
+// 查看当前状态
+func (p *Pot) getState() StateType {
+	return StateType(atomic.LoadUint32((*uint32)(&p.state)))
+}
+
+// 更新当前状态
+func (p *Pot) setState(newState StateType) {
+	atomic.StoreUint32((*uint32)(&p.state), uint32(newState))
 }

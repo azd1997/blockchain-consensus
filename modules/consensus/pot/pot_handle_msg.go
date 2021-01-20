@@ -12,15 +12,15 @@ import (
 )
 
 func (p *Pot) handleMsgBlocks(msg *defines.Message) error {
-	state := p.getState()
+	stage := p.getStage()
 
 	// 1. RN阶段忽略
-	if state == StateType_PreInited_RequestNeighbors {
+	if stage == StageType_PreInited_RequestNeighbors {
 		return nil
 	}
 
 	// 2. RFB阶段只处理b1
-	if state == StateType_PreInited_RequestFirstBlock {
+	if stage == StageType_PreInited_RequestFirstBlock {
 		if len(msg.Data) == 0 {
 			return errors.New("empty ")
 		}
@@ -35,10 +35,9 @@ func (p *Pot) handleMsgBlocks(msg *defines.Message) error {
 		// 对b作检查
 		// TODO
 
-
 		if p.nWaitBlockChan != nil {
 			p.nWaitBlockChan <- fb // 通知收到一个节点回传了1号区块
-			p.Debugf("%s handle MsgBlock from (%s) succ", p.DutyState(), msg.From)
+			p.Debugf("%s handle MsgBlock from (%s) succ", p.DutyStageState(), msg.From)
 		}
 		// 这个firstBlock由启动逻辑确定之后再写到本地
 
@@ -48,7 +47,7 @@ func (p *Pot) handleMsgBlocks(msg *defines.Message) error {
 		return nil
 	}
 	// 3. RLB阶段只接收最新区块
-	if state == StateType_PreInited_RequestLatestBlock {
+	if stage == StageType_PreInited_RequestLatestBlock {
 		if len(msg.Data) == 0 {
 			return errors.New("empty ")
 		}
@@ -63,7 +62,7 @@ func (p *Pot) handleMsgBlocks(msg *defines.Message) error {
 
 		if p.nWaitBlockChan != nil {
 			p.nWaitBlockChan <- lb // 通知收到一个节点回传了最新区块
-			p.Debugf("%s handle EntryType_Block from (%s) succ", p.DutyState(), msg.From)
+			p.Debugf("%s handle EntryType_Block from (%s) succ", p.DutyStageState(), msg.From)
 		}
 
 		//if err := p.bc.AddBlock(lb); err != nil {
@@ -89,12 +88,12 @@ func (p *Pot) handleMsgBlocks(msg *defines.Message) error {
 }
 
 func (p *Pot) handleMsgNewBlock(msg *defines.Message) error {
-	state := p.getState()
+	stage := p.getStage()
 
 	// 1. RN/RFB/RLB阶段忽略
-	if state == StateType_PreInited_RequestNeighbors ||
-		state == StateType_PreInited_RequestFirstBlock ||
-		state == StateType_PreInited_RequestLatestBlock {
+	if stage == StageType_PreInited_RequestNeighbors ||
+		stage == StageType_PreInited_RequestFirstBlock ||
+		stage == StageType_PreInited_RequestLatestBlock {
 		return nil
 	}
 
@@ -111,13 +110,13 @@ func (p *Pot) handleMsgNewBlock(msg *defines.Message) error {
 }
 
 func (p *Pot) handleMsgTxs(msg *defines.Message) error {
-	state := p.getState()
+	stage := p.getStage()
 
 	// 1. 非peer忽略，RN/RFB/RLB阶段忽略
 	if p.duty != defines.PeerDuty_Peer ||
-		state == StateType_PreInited_RequestNeighbors ||
-		state == StateType_PreInited_RequestFirstBlock ||
-		state == StateType_PreInited_RequestLatestBlock {
+		stage == StageType_PreInited_RequestNeighbors ||
+		stage == StageType_PreInited_RequestFirstBlock ||
+		stage == StageType_PreInited_RequestLatestBlock {
 		return nil
 	}
 
@@ -138,7 +137,7 @@ func (p *Pot) handleMsgTxs(msg *defines.Message) error {
 
 func (p *Pot) handleMsgPeers(msg *defines.Message) error {
 
-	if p.getState() == StateType_PreInited_RequestNeighbors {
+	if p.getStage() == StageType_PreInited_RequestNeighbors {
 		count := 0
 		for _, pb := range msg.Data {
 			count++
@@ -168,8 +167,8 @@ func (p *Pot) handleMsgPeers(msg *defines.Message) error {
 }
 
 func (p *Pot) handleMsgProof(msg *defines.Message) error {
-	state := p.getState()
-	if state != StateType_InPot && state != StateType_PostPot {
+	stage := p.getStage()
+	if stage != StageType_InPot && stage != StageType_PostPot {
 		return nil
 	}
 
@@ -183,33 +182,32 @@ func (p *Pot) handleMsgProof(msg *defines.Message) error {
 	}
 
 	// 1. 只接受来自peer本人的proof
-	if state == StateType_InPot &&
+	if stage == StageType_InPot &&
 		proof.Id == msg.From &&
 		p.pit.IsPeer(msg.From) {
 		p.proofs.Add(proof)
 		return nil
 	}
 	// 2. 只接受来自种子节点转发的proof
-	if state == StateType_PostPot &&
+	if stage == StageType_PostPot &&
 		proof.Id != msg.From &&
 		p.pit.IsPeer(proof.Id) &&
 		p.pit.IsSeed(msg.From) {
 		p.proofs.AddProofRelayedBySeed(proof)
 		return nil
-		}
+	}
 
 	return nil
 }
 
 // 必须本地是ready状态才可以回复区块请求
 func (p *Pot) handleMsgReqBlockByIndex(msg *defines.Message) error {
-	state := p.getState()
-	if state != StateType_InPot && state != StateType_PostPot {
+	stage := p.getStage()
+	if stage != StageType_InPot && stage != StageType_PostPot {
 		return nil
 	}
 
 	// TODO
-
 
 	// 查询
 	bs, err := p.bc.GetBlocksByRange(msg.ReqBlockIndexStart, msg.ReqBlockIndexCount)
@@ -218,7 +216,7 @@ func (p *Pot) handleMsgReqBlockByIndex(msg *defines.Message) error {
 	}
 
 	blockBytes := make([][]byte, len(bs))
-	for i:=0; i<len(bs); i++ {
+	for i := 0; i < len(bs); i++ {
 		blockByte, err := bs[i].Encode()
 		if err != nil {
 			continue
@@ -228,13 +226,13 @@ func (p *Pot) handleMsgReqBlockByIndex(msg *defines.Message) error {
 
 	// 回复
 	reply := &defines.Message{
-		Version:            defines.CodeVersion,
-		Type:               defines.MessageType_Blocks,
-		Epoch:              p.epoch,
-		From:               p.id,
-		To:                 msg.From,
-		Data:               blockBytes,
-		Desc:               "",
+		Version: defines.CodeVersion,
+		Type:    defines.MessageType_Blocks,
+		Epoch:   p.epoch,
+		From:    p.id,
+		To:      msg.From,
+		Data:    blockBytes,
+		Desc:    "",
 	}
 	if err := p.signAndSendMsg(reply); err != nil {
 		return err
@@ -245,13 +243,12 @@ func (p *Pot) handleMsgReqBlockByIndex(msg *defines.Message) error {
 
 // 必须本地是ready状态才可以回复区块请求
 func (p *Pot) handleMsgReqBlockByHash(msg *defines.Message) error {
-	state := p.getState()
-	if state != StateType_InPot && state != StateType_PostPot {
+	stage := p.getStage()
+	if stage != StageType_InPot && stage != StageType_PostPot {
 		return nil
 	}
 
 	// TODO
-
 
 	// 查询
 	bs, err := p.bc.GetBlocksByHashes(msg.Hashes)
@@ -260,7 +257,7 @@ func (p *Pot) handleMsgReqBlockByHash(msg *defines.Message) error {
 	}
 
 	blockBytes := make([][]byte, len(bs))
-	for i:=0; i<len(bs); i++ {
+	for i := 0; i < len(bs); i++ {
 		blockByte, err := bs[i].Encode()
 		if err != nil {
 			continue
@@ -270,13 +267,13 @@ func (p *Pot) handleMsgReqBlockByHash(msg *defines.Message) error {
 
 	// 回复
 	reply := &defines.Message{
-		Version:            defines.CodeVersion,
-		Type:               defines.MessageType_Blocks,
-		Epoch:              p.epoch,
-		From:               p.id,
-		To:                 msg.From,
-		Data:               blockBytes,
-		Desc:               "",
+		Version: defines.CodeVersion,
+		Type:    defines.MessageType_Blocks,
+		Epoch:   p.epoch,
+		From:    p.id,
+		To:      msg.From,
+		Data:    blockBytes,
+		Desc:    "",
 	}
 	if err := p.signAndSendMsg(reply); err != nil {
 		return err
@@ -305,13 +302,13 @@ func (p *Pot) handleMsgReqPeers(msg *defines.Message) error {
 
 	// 回复
 	reply := &defines.Message{
-		Version:            defines.CodeVersion,
-		Type:               defines.MessageType_Peers,
-		Epoch:              p.epoch,
-		From:               p.id,
-		To:                 msg.From,
-		Data:               piBytes,
-		Desc:               "",
+		Version: defines.CodeVersion,
+		Type:    defines.MessageType_Peers,
+		Epoch:   p.epoch,
+		From:    p.id,
+		To:      msg.From,
+		Data:    piBytes,
+		Desc:    "",
 	}
 	if err := p.signAndSendMsg(reply); err != nil {
 		return err
@@ -327,7 +324,7 @@ func (p *Pot) handleMsgReqPeers(msg *defines.Message) error {
 			Type:    defines.MessageType_Peers,
 			From:    p.id,
 			To:      peer.Id,
-			Data: msg.Data,
+			Data:    msg.Data,
 		}
 		if err := msg.WriteDesc("type", "neighbor"); err != nil {
 			return err
@@ -337,7 +334,6 @@ func (p *Pot) handleMsgReqPeers(msg *defines.Message) error {
 
 	return nil
 }
-
 
 //
 //// 处理外界消息输入和内部消息
@@ -358,9 +354,9 @@ func (p *Pot) handleMsgReqPeers(msg *defines.Message) error {
 //		return p.handleMsgWhenPreInitedRLB(msg)
 //	case StateType_NotReady:
 //		return p.handleMsgWhenNotReady(msg)
-//	case StateType_InPot:
+//	case StageType_InPot:
 //		return p.handleMsgWhenInPot(msg)
-//	case StateType_PostPot:
+//	case StageType_PostPot:
 //		return p.handleMsgWhenPostPot(msg)
 //	default:
 //		return fmt.Errorf("unknown state(%d-%s)", state, state.String())

@@ -88,7 +88,7 @@ type BlockChain struct {
 	// 每次遇到不能直接追加在blocks末尾的时候先加入到discon。 每次加入discon的时候都检查下blocks末尾是否可以从discon取区块
 	discontinuous map[int64]*defines.Block // 不连续的区块
 
-	txpool map[string]*defines.Transaction
+	txpool     map[string]*defines.Transaction
 	txpoolLock sync.RWMutex
 
 	txin chan *defines.Transaction
@@ -105,7 +105,7 @@ func (bc *BlockChain) Display() string {
 	display := fmt.Sprintf("\nBlockChain(%s)(maxIndex=%d):\n", bc.id, bc.maxIndex)
 
 	var b1 *defines.Block
-	if len(bc.chain)>0 && len(*(bc.chain[0]).blocks) > 0 {
+	if len(bc.chain) > 0 && len(*(bc.chain[0]).blocks) > 0 {
 		b1 = (*(bc.chain[0]).blocks)[0]
 	}
 

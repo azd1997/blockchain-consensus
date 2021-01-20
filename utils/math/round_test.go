@@ -21,7 +21,7 @@ func TestRoundToInt(t *testing.T) {
 		{12.001, 12},
 		{11.877, 12},
 		{12.0, 12},
-		{11.5, 12},	// special
+		{11.5, 12}, // special
 	}
 	for _, tt := range tests {
 		if y := RoundToInt(tt.x); y != tt.y {
@@ -37,9 +37,9 @@ func TestRoundTickNo(t *testing.T) {
 
 	tests := []struct {
 		tn, t1 int64
-		y int
+		y      int
 	}{
-		{now, now-3*tick, 3},
+		{now, now - 3*tick, 3},
 	}
 	for _, tt := range tests {
 		if y := RoundTickNo(tt.tn, tt.t1, 500); y != tt.y {

@@ -22,6 +22,6 @@ func RoundToInt(x float64) int {
 }
 
 func RoundTickNo(bnTime, b1Time int64, tickms int) int {
-	n := float64(bnTime - b1Time) / float64(int64(tickms) * int64(time.Millisecond))	// ns
+	n := float64(bnTime-b1Time) / float64(int64(tickms)*int64(time.Millisecond)) // ns
 	return RoundToInt(n)
 }

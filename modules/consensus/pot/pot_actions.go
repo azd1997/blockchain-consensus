@@ -25,6 +25,10 @@ func (p *Pot) send(msg *defines.Message) error {
 	//p.msgout <- merr
 	//return <-merr.Err
 
+	// 为所有msg填充
+	msg.Version = defines.CodeVersion
+	msg.Epoch = p.bc.GetMaxIndex()
+
 	m, err := msg.Encode()
 	if err != nil {
 		return err
@@ -35,7 +39,7 @@ func (p *Pot) send(msg *defines.Message) error {
 	}
 
 	// 由于本地Socket通信很快，所以为了模拟实际通信延时，这里随机睡眠一段时间
-	randMs := rand.Intn(190) + 10	// 10~200ms
+	randMs := rand.Intn(190) + 10 // 10~200ms
 	time.Sleep(time.Duration(randMs) * time.Millisecond)
 
 	return p.net.Send(to.Addr, m)
@@ -46,6 +50,7 @@ func (p *Pot) signAndSendMsg(msg *defines.Message) error {
 	if msg == nil {
 		return errors.New("nil msg")
 	}
+	// TODO: 待修改该方法
 	err := msg.Sign()
 	if err != nil {
 		return err
@@ -74,7 +79,7 @@ func (p *Pot) broadcastTx(tx *defines.Transaction) error {
 				Type:    defines.MessageType_Txs,
 				From:    p.id,
 				To:      peer.Id,
-				Data: [][]byte{txBytes},
+				Data:    [][]byte{txBytes},
 			}
 			if err := msg.WriteDesc("type", "onetx"); err != nil {
 				return err
@@ -149,7 +154,7 @@ func (p *Pot) broadcastProof(proof *Proof, onlypeers bool) error {
 				Type:    msgtype,
 				From:    p.id,
 				To:      peer.Id,
-				Data: [][]byte{proofBytes},
+				Data:    [][]byte{proofBytes},
 			}
 			if err := msg.WriteDesc("type", desc); err != nil {
 				return err
@@ -184,13 +189,13 @@ func (p *Pot) broadcastNewBlock(nb *defines.Block) error {
 	f := func(peer *defines.PeerInfo) error {
 		if peer.Id != p.id {
 			msg := &defines.Message{
-				Version: defines.CodeVersion,
-				Type:    defines.MessageType_NewBlock,
-				From:    p.id,
-				To:      peer.Id,
-				Base:nb.PrevHash,
-				BaseIndex:nb.Index-1,
-				Data: [][]byte{blockBytes},
+				Version:   defines.CodeVersion,
+				Type:      defines.MessageType_NewBlock,
+				From:      p.id,
+				To:        peer.Id,
+				Base:      nb.PrevHash,
+				BaseIndex: nb.Index - 1,
+				Data:      [][]byte{blockBytes},
 			}
 			if err := msg.WriteDesc("type", "newblock"); err != nil {
 				return err
@@ -234,7 +239,7 @@ func (p *Pot) broadcastRequestNeighborsInStartup(toseeds bool) error {
 			Type:    defines.MessageType_ReqPeers,
 			From:    p.id,
 			To:      peer.Id,
-			Data: [][]byte{selfb},	// 自己的节点信息
+			Data:    [][]byte{selfb}, // 自己的节点信息
 		}
 		if err := msg.WriteDesc("type", "req-peers"); err != nil {
 			return err
@@ -468,12 +473,12 @@ func (p *Pot) broadcastRequestLatestBlock() error {
 			return nil
 		}
 		msg := &defines.Message{
-			Version: defines.CodeVersion,
-			Type:    defines.MessageType_ReqBlockByIndex,
-			From:    p.id,
-			To:      peer.Id,
-			ReqBlockIndexStart:-1,
-			ReqBlockIndexCount:1,
+			Version:            defines.CodeVersion,
+			Type:               defines.MessageType_ReqBlockByIndex,
+			From:               p.id,
+			To:                 peer.Id,
+			ReqBlockIndexStart: -1,
+			ReqBlockIndexCount: 1,
 		}
 		if err := msg.WriteDesc("type", "req-latestblock"); err != nil {
 			return err
