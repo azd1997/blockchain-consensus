@@ -25,9 +25,6 @@ func (p *Pot) send(msg *defines.Message) error {
 	//p.msgout <- merr
 	//return <-merr.Err
 
-	// 为所有msg填充
-	msg.Version = defines.CodeVersion
-	msg.Epoch = p.bc.GetMaxIndex()
 
 	m, err := msg.Encode()
 	if err != nil {
@@ -50,7 +47,12 @@ func (p *Pot) signAndSendMsg(msg *defines.Message) error {
 	if msg == nil {
 		return errors.New("nil msg")
 	}
-	// TODO: 待修改该方法
+
+	// 为所有msg填充
+	msg.Version = defines.CodeVersion
+	msg.Epoch = p.bc.GetMaxIndex()
+
+	// 签名
 	err := msg.Sign()
 	if err != nil {
 		return err

@@ -180,6 +180,10 @@ func New(id string, duty defines.PeerDuty,
 
 //////////////////////////// 实现接口 ///////////////////////////
 
+// Init 启动
+// 对于创世seed以外的节点而言，启动流程：
+// stage: RN -> RFB -> wait PotStart -> InPot -> PostPot -> InPot -> ...
+// state: ----------------------------- witness -> learner -> 此时才开始推算该是什么状态
 func (p *Pot) Init() error {
 
 	p.Infof("Init start")
@@ -216,7 +220,7 @@ func (p *Pot) Init() error {
 }
 
 func (p *Pot) Inited() bool {
-	panic("implement me")
+	return p.inited
 }
 
 // Close 关闭
@@ -287,125 +291,242 @@ func (p *Pot) StateMachineLoop() {
 			p.Infof("[t%d] stateMachineLoop: clock tick: %s",
 				math.RoundTickNo(moment.Time.UnixNano(), p.b1Time, TickMs), moment.String())
 
-			// 根据当前状态来处理此滴答消息
+			// 根据当前状态来进行状态变换
 			stage := p.getStage()
 			state := p.getState()
 			bcReady := p.isSelfReady()
 			duty := p.duty
-			mt := moment.Type
 
-			// 根据这些条件，先切换stage，再切换state
+			// RN阶段
+			if stage == StageType_PreInited_RequestNeighbors {
+				continue	// nothing
+			}
 
-			switch stage {
+			// RFB阶段
+			if stage == StageType_PreInited_RequestFirstBlock {
+				// 之所以使用这样一个PotStart时刻，
+				// 是因为在从start clock到第1个PotStart，
+				// 中间的过程如果直接从RFB尝试切换到InPot或者PostPOt情况未定，比较麻烦
 
-			case StageType_PreInited_RequestNeighbors: // nothing
-			case StageType_PreInited_RequestFirstBlock:
-				// 通过该chan向启动逻辑传递时刻信号
+				// 通过该chan向启动逻辑(init())传递时刻信号
+				// 启动逻辑中会根据该信号，将stage切换至InPot
+				// 并且将 RFB阶段的 除创世seed以外的其他节点 都切换为witness状态
+				// 使进度未明（不清楚是否ready）的节点强制为witness，可以简化程序逻辑
 				if moment.Type == MomentType_PotStart {
 					once.Do(func() {
 						p.potStartBeforeReady <- moment
 					})
 				}
-			case StageType_PreInited_RequestLatestBlock: // nothing
-				// RLB阶段也应该重置proofs，见证pot竞争，接收最新区块
-				if moment.Type == MomentType_PotStart {
-					if bcReady {
-						p.setStage(StageType_InPot)
-						p.Infof("switch state from %s to %s",
-							StageType_PreInited_RequestLatestBlock, StageType_InPot)
+				continue	// nothing
+			}
+
+			// 非RN/RFB这两种特殊stage的情况下 （也就是InPot和PostPot两种stage）
+			// 有以下状态变化的规则
+
+
+			// PotStart到来
+			if moment.Type == MomentType_PotStart {
+				p.setStage(StageType_InPot)
+
+				// decide新区块
+				p.decide(moment)
+
+				// 重置proofs
+				latestBlock := p.bc.GetLatestBlock()
+				p.proofs.Reset(moment, latestBlock)
+
+
+				// ready peer 在 PotStart时刻到来时成为 competitor
+				if duty == defines.PeerDuty_Peer && bcReady {
+					p.setState(StateType_Competitor)
+
+					// 做competitor的事
+					p.Info("start pot competetion. broadcast self proof")
+					// 构造新区块并广播其证明，同时附带自身进度
+					if err := p.broadcastSelfProof(); err != nil {
+						p.Errorf("start pot fail: %s", err)
 					}
-					p.decide(moment)
-					p.startPot(moment)
-				} else if moment.Type == MomentType_PotOver {
-					p.endPot(moment)
+				} else {	// not ready peer 以及 非peer的节点 在 PotStart时刻到来时成为 witness
+					p.setState(StateType_Witness)
+
+					// 成为witness时do nothing
+
+					// 每次在PotSTart来临时，自己还是not ready，那么就请求区块。 （具体的取哪些区块 TODO 先直接要求所有的区块）
+					if !bcReady {
+						p.broadcastRequestBlocksByIndex(2, 100)
+					}
 				}
 
-			//case StageType_NotReady:
-			//	// 能够处理邻居消息,区块消息,最新区块消息
+				continue
+			}
+
+			// PotOver到来
+			if moment.Type == MomentType_PotOver {
+				p.setStage(StageType_InPot)
+
+				// 重置udbt
+				latestBlock := p.bc.GetLatestBlock()
+				if latestBlock == nil {
+					p.udbt.Reset(0)
+				} else {
+					p.udbt.Reset(latestBlock.Index + 1)
+				}
+
+				// judge winner
+				selfJudgeWinnerProof := p.proofs.JudgeWinner(moment)
+				p.Info(p.proofs.Display())
+				p.Info(p.udbt.Display())
+
+				if selfJudgeWinnerProof == nil { // proofs为空，则说明此时还没有共识节点加入进来，或者说没有节点能够参赛
+					// do nothing
+					p.Info("end pot competetion. judge winner, no winner")
+					// 对于seed而言，还需要将本地最新区块广播出去
+					if p.duty == defines.PeerDuty_Seed && bcReady {
+						p.setState(StateType_Judger)
+						p.broadcastNewBlock(p.bc.GetLatestBlock())
+					} else {
+						p.setState(StateType_Learner)
+					}
+
+				} else {	// winner exists
+
+					if selfJudgeWinnerProof.Id == p.id && state == StateType_Competitor { // i win
+						p.Infof("end pot competetion. judge winner, i am winner(%s), broadcast new block(%s) now", selfJudgeWinnerProof.Short(), p.maybeNewBlock.ShortName())
+						p.setState(StateType_Winner)	// winner
+						p.udbt.Add(p.maybeNewBlock) // 将自己的新区块添加到未决区块表
+						p.broadcastNewBlock(p.maybeNewBlock)
+					} else { // 别人是胜者
+						if p.duty == defines.PeerDuty_Seed { // 如果是种子节点，还要把种子节点自己判断的winner广播出去
+							// 等待胜者区块
+							p.Infof("end pot competetion. judge winner, wait winner(%s) and broadcast to all peers", selfJudgeWinnerProof.Short())
+							p.setState(StateType_Judger)	// judger
+							p.proofs.AddProofRelayedBySeed(selfJudgeWinnerProof)
+							p.broadcastProof(selfJudgeWinnerProof, true)
+						} else { // 其他的话只需要等待
+							// 等待胜者区块
+							p.setState(StateType_Learner)
+							p.Infof("end pot competetion. judge winner, wait winner(%s)", selfJudgeWinnerProof.Short())
+						}
+					}
+				}
+			}
+
+
+
+
+
+			//// 根据这些条件，先切换stage，再切换state
 			//
-			//	p.Debugf("current is ready? %v", p.isSelfReady())
+			//switch stage {
 			//
+			//case StageType_PreInited_RequestNeighbors: // nothing
+			//case StageType_PreInited_RequestFirstBlock:
+			//	// 通过该chan向启动逻辑传递时刻信号
 			//	if moment.Type == MomentType_PotStart {
-			//		p.setStage(StageType_InPot)
-			//		p.Infof("switch state from %s to %s", StateType_NotReady, StageType_InPot)
+			//		once.Do(func() {
+			//			p.potStartBeforeReady <- moment
+			//		})
+			//	}
+			//case StageType_PreInited_RequestLatestBlock: // nothing
+			//	// RLB阶段也应该重置proofs，见证pot竞争，接收最新区块
+			//	if moment.Type == MomentType_PotStart {
+			//		if bcReady {
+			//			p.setStage(StageType_InPot)
+			//			p.Infof("switch state from %s to %s",
+			//				StageType_PreInited_RequestLatestBlock, StageType_InPot)
+			//		}
 			//		p.decide(moment)
 			//		p.startPot(moment)
 			//	} else if moment.Type == MomentType_PotOver {
 			//		p.endPot(moment)
 			//	}
-			case StageType_InPot:
-				if moment.Type == MomentType_PotOver { // 正常情况应该是PotOver时刻到来
-					p.setStage(StageType_PostPot)
-					p.Infof("switch state from %s to %s", StageType_InPot, StageType_PostPot)
-					// 汇总已收集的证明消息，决出胜者，判断自己是否出块，接下去等待胜者区块和seed广播的胜者证明
-					p.endPot(moment)
-				} else if moment.Type == MomentType_PotStart { // 不可能出现的错误
-					p.Errorf("stateMachineLoop: Moment(%s) comes at StateInPot", moment)
-				}
-
-			case StageType_PostPot:
-				if moment.Type == MomentType_PotStart { // 正常情况应该是PotOver时刻到来
-					p.setStage(StageType_InPot)
-					p.Infof("switch state from %s to %s", StageType_PostPot, StageType_InPot)
-					// 决定出新区块
-					p.decide(moment)
-					// 汇总已收集的证明消息，决出胜者，判断自己是否出块，接下去等待胜者区块和seed广播的胜者证明
-					p.startPot(moment)
-				} else if moment.Type == MomentType_PotOver { // 不可能出现的错误
-					p.Errorf("stateMachineLoop: Moment(%s) comes at StatePostPot", moment)
-				}
-			default:
-				p.Fatalf("stateMachineLoop: Moment(%s) comes at UnknownState(%s)", moment, state.String())
-
-				//case StateType_NotReady:
-				//	// 没准备好，啥也不干，等区块链同步
-				//
-				//	// 如果追上进度了则切换状态为ReadyCompete
-				//	if p.latest() {
-				//		p.setStage(StateType_ReadyCompete)
-				//	} else {
-				//		// 否则请求快照数据
-				//		p.broadcastRequestBlocks(true)
-				//	}
-				//
-				//case StateType_ReadyCompete:
-				//	// 当前是ReadyCompete，则状态切换为Competing
-				//
-				//	// 状态切换
-				//	p.setStage(StateType_Competing)
-				//	// 发起竞争（广播证明消息）
-				//	p.broadcastSelfProof()
-				//
-				//case StateType_Competing:
-				//	// 当前是Competing，则状态切换为CompetingEnd，并判断竞赛结果，将状态迅速切换为Winner或Loser
-				//
-				//	// 状态切换
-				//	p.setStage(StateType_CompeteOver)
-				//	// 判断竞赛结果，状态切换
-				//	if p.winner == p.id { // 自己胜出
-				//		p.setStage(StateType_CompeteWinner)
-				//		// 广播新区块
-				//		p.broadcastNewBlock(p.maybeNewBlock)
-				//	} else { // 别人胜出
-				//		p.setStage(StateType_CompeteLoser)
-				//		// 等待新区块(“逻辑上”的等待，代码中并不需要wait)
-				//	}
-				//
-				//case StateType_CompeteOver:
-				//	// 正常来说，tick时不会是恰好CompeteOver而又没确定是Winner/Loser
-				//	// 所以暂时无视
-				//case StateType_CompeteWinner:
-				//	// Winner来说的话，立马广播新区块，广播结束后即切换为Ready
-				//	// 所以不太可能tick时状态为Winner
-				//	// 暂时无视
-				//case StateType_CompeteLoser:
-				//	// Loser等待新区块，接收到tick说明还没得到新区块
-				//	// 状态切换为Ready
-				//
-				//	p.setStage(StateType_ReadyCompete)
-				//	// 发起竞争（广播证明消息）
-				//	p.broadcastSelfProof()
-			}
+			//
+			////case StageType_NotReady:
+			////	// 能够处理邻居消息,区块消息,最新区块消息
+			////
+			////	p.Debugf("current is ready? %v", p.isSelfReady())
+			////
+			////	if moment.Type == MomentType_PotStart {
+			////		p.setStage(StageType_InPot)
+			////		p.Infof("switch state from %s to %s", StateType_NotReady, StageType_InPot)
+			////		p.decide(moment)
+			////		p.startPot(moment)
+			////	} else if moment.Type == MomentType_PotOver {
+			////		p.endPot(moment)
+			////	}
+			//case StageType_InPot:
+			//	if moment.Type == MomentType_PotOver { // 正常情况应该是PotOver时刻到来
+			//		p.setStage(StageType_PostPot)
+			//		p.Infof("switch state from %s to %s", StageType_InPot, StageType_PostPot)
+			//		// 汇总已收集的证明消息，决出胜者，判断自己是否出块，接下去等待胜者区块和seed广播的胜者证明
+			//		p.endPot(moment)
+			//	} else if moment.Type == MomentType_PotStart { // 不可能出现的错误
+			//		p.Errorf("stateMachineLoop: Moment(%s) comes at StateInPot", moment)
+			//	}
+			//
+			//case StageType_PostPot:
+			//	if moment.Type == MomentType_PotStart { // 正常情况应该是PotOver时刻到来
+			//		p.setStage(StageType_InPot)
+			//		p.Infof("switch state from %s to %s", StageType_PostPot, StageType_InPot)
+			//		// 决定出新区块
+			//		p.decide(moment)
+			//		// 汇总已收集的证明消息，决出胜者，判断自己是否出块，接下去等待胜者区块和seed广播的胜者证明
+			//		p.startPot(moment)
+			//	} else if moment.Type == MomentType_PotOver { // 不可能出现的错误
+			//		p.Errorf("stateMachineLoop: Moment(%s) comes at StatePostPot", moment)
+			//	}
+			//default:
+			//	p.Fatalf("stateMachineLoop: Moment(%s) comes at UnknownState(%s)", moment, state.String())
+			//
+			//	//case StateType_NotReady:
+			//	//	// 没准备好，啥也不干，等区块链同步
+			//	//
+			//	//	// 如果追上进度了则切换状态为ReadyCompete
+			//	//	if p.latest() {
+			//	//		p.setStage(StateType_ReadyCompete)
+			//	//	} else {
+			//	//		// 否则请求快照数据
+			//	//		p.broadcastRequestBlocks(true)
+			//	//	}
+			//	//
+			//	//case StateType_ReadyCompete:
+			//	//	// 当前是ReadyCompete，则状态切换为Competing
+			//	//
+			//	//	// 状态切换
+			//	//	p.setStage(StateType_Competing)
+			//	//	// 发起竞争（广播证明消息）
+			//	//	p.broadcastSelfProof()
+			//	//
+			//	//case StateType_Competing:
+			//	//	// 当前是Competing，则状态切换为CompetingEnd，并判断竞赛结果，将状态迅速切换为Winner或Loser
+			//	//
+			//	//	// 状态切换
+			//	//	p.setStage(StateType_CompeteOver)
+			//	//	// 判断竞赛结果，状态切换
+			//	//	if p.winner == p.id { // 自己胜出
+			//	//		p.setStage(StateType_CompeteWinner)
+			//	//		// 广播新区块
+			//	//		p.broadcastNewBlock(p.maybeNewBlock)
+			//	//	} else { // 别人胜出
+			//	//		p.setStage(StateType_CompeteLoser)
+			//	//		// 等待新区块(“逻辑上”的等待，代码中并不需要wait)
+			//	//	}
+			//	//
+			//	//case StateType_CompeteOver:
+			//	//	// 正常来说，tick时不会是恰好CompeteOver而又没确定是Winner/Loser
+			//	//	// 所以暂时无视
+			//	//case StateType_CompeteWinner:
+			//	//	// Winner来说的话，立马广播新区块，广播结束后即切换为Ready
+			//	//	// 所以不太可能tick时状态为Winner
+			//	//	// 暂时无视
+			//	//case StateType_CompeteLoser:
+			//	//	// Loser等待新区块，接收到tick说明还没得到新区块
+			//	//	// 状态切换为Ready
+			//	//
+			//	//	p.setStage(StateType_ReadyCompete)
+			//	//	// 发起竞争（广播证明消息）
+			//	//	p.broadcastSelfProof()
+			//}
 
 			p.Info(p.bc.Display())
 		}

@@ -6,71 +6,69 @@
 
 package pot
 
-import "github.com/azd1997/blockchain-consensus/defines"
-
-// startPot 开始一轮Pot竞争
-// 	1. 根据本地的交易池创建一个新区块，并且得到相应的proof
-// 	2. 将proof广播
-//  3. 重置proofs
-func (p *Pot) startPot(moment Moment) {
-
-	// 重置proofs
-	latestBlock := p.bc.GetLatestBlock()
-	p.proofs.Reset(moment, latestBlock)
-
-	// 对于已经准备好的共识节点，此时还需要广播自身的证明消息
-	if p.duty == defines.PeerDuty_Peer && p.isSelfReady() {
-		p.Info("start pot competetion. broadcast self proof")
-		// 构造新区块并广播其证明，同时附带自身进度
-		if err := p.broadcastSelfProof(); err != nil {
-			p.Errorf("start pot fail: %s", err)
-		}
-	} else { // 其他所有的情况都是见证
-		p.Info("start pot competetion. witness")
-	}
-	// 所有角色还需要广播自身进度
-}
-
-// endPot 结束一轮Pot竞争
-// 	1. 根据proofs得到本轮pot竞赛的自己判定的winner
-func (p *Pot) endPot(moment Moment) {
-
-	// 刷新udbt
-	latestBlock := p.bc.GetLatestBlock()
-	if latestBlock == nil {
-		p.udbt.Reset(0)
-	} else {
-		p.udbt.Reset(latestBlock.Index + 1)
-	}
-
-	// 通过proofs裁决winner
-	selfJudgeWinnerProof := p.proofs.JudgeWinner(moment)
-	p.Info(p.proofs.Display())
-	//p.Info(p.udbt.Display())
-	if selfJudgeWinnerProof == nil { // proofs为空，则说明此时还没有共识节点加入进来
-		// do nothing
-		p.Info("end pot competetion. judge winner, no winner")
-
-		// 对于seed而言，还需要将本地最新区块广播出去
-		p.broadcastNewBlock(p.bc.GetLatestBlock())
-
-	} else if selfJudgeWinnerProof.Id == p.id { // 自己是胜者
-		p.Infof("end pot competetion. judge winner, i am winner(%s), broadcast new block(%s) now", selfJudgeWinnerProof.Short(), p.maybeNewBlock.ShortName())
-		p.udbt.Add(p.maybeNewBlock) // 将自己的新区块添加到未决区块表
-		p.broadcastNewBlock(p.maybeNewBlock)
-	} else { // 别人是胜者
-		if p.duty == defines.PeerDuty_Seed { // 如果是种子节点，还要把种子节点自己判断的winner广播出去
-			// 等待胜者区块
-			p.Infof("end pot competetion. judge winner, wait winner(%s) and broadcast to all peers", selfJudgeWinnerProof.Short())
-			p.proofs.AddProofRelayedBySeed(selfJudgeWinnerProof)
-			p.broadcastProof(selfJudgeWinnerProof, true)
-		} else { // 其他的话只需要等待
-			// 等待胜者区块
-			p.Infof("end pot competetion. judge winner, wait winner(%s)", selfJudgeWinnerProof.Short())
-		}
-	}
-}
-
+//// startPot 开始一轮Pot竞争
+//// 	1. 根据本地的交易池创建一个新区块，并且得到相应的proof
+//// 	2. 将proof广播
+////  3. 重置proofs
+//func (p *Pot) startPot(moment Moment) {
+//
+//	// 重置proofs
+//	latestBlock := p.bc.GetLatestBlock()
+//	p.proofs.Reset(moment, latestBlock)
+//
+//	// 对于已经准备好的共识节点，此时还需要广播自身的证明消息
+//	if p.duty == defines.PeerDuty_Peer && p.isSelfReady() {
+//		p.Info("start pot competetion. broadcast self proof")
+//		// 构造新区块并广播其证明，同时附带自身进度
+//		if err := p.broadcastSelfProof(); err != nil {
+//			p.Errorf("start pot fail: %s", err)
+//		}
+//	} else { // 其他所有的情况都是见证
+//		p.Info("start pot competetion. witness")
+//	}
+//	// 所有角色还需要广播自身进度
+//}
+//
+//// endPot 结束一轮Pot竞争
+//// 	1. 根据proofs得到本轮pot竞赛的自己判定的winner
+//func (p *Pot) endPot(moment Moment) {
+//
+//	// 刷新udbt
+//	latestBlock := p.bc.GetLatestBlock()
+//	if latestBlock == nil {
+//		p.udbt.Reset(0)
+//	} else {
+//		p.udbt.Reset(latestBlock.Index + 1)
+//	}
+//
+//	// 通过proofs裁决winner
+//	selfJudgeWinnerProof := p.proofs.JudgeWinner(moment)
+//	p.Info(p.proofs.Display())
+//	//p.Info(p.udbt.Display())
+//	if selfJudgeWinnerProof == nil { // proofs为空，则说明此时还没有共识节点加入进来
+//		// do nothing
+//		p.Info("end pot competetion. judge winner, no winner")
+//
+//		// 对于seed而言，还需要将本地最新区块广播出去
+//		p.broadcastNewBlock(p.bc.GetLatestBlock())
+//
+//	} else if selfJudgeWinnerProof.Id == p.id { // 自己是胜者
+//		p.Infof("end pot competetion. judge winner, i am winner(%s), broadcast new block(%s) now", selfJudgeWinnerProof.Short(), p.maybeNewBlock.ShortName())
+//		p.udbt.Add(p.maybeNewBlock) // 将自己的新区块添加到未决区块表
+//		p.broadcastNewBlock(p.maybeNewBlock)
+//	} else { // 别人是胜者
+//		if p.duty == defines.PeerDuty_Seed { // 如果是种子节点，还要把种子节点自己判断的winner广播出去
+//			// 等待胜者区块
+//			p.Infof("end pot competetion. judge winner, wait winner(%s) and broadcast to all peers", selfJudgeWinnerProof.Short())
+//			p.proofs.AddProofRelayedBySeed(selfJudgeWinnerProof)
+//			p.broadcastProof(selfJudgeWinnerProof, true)
+//		} else { // 其他的话只需要等待
+//			// 等待胜者区块
+//			p.Infof("end pot competetion. judge winner, wait winner(%s)", selfJudgeWinnerProof.Short())
+//		}
+//	}
+//}
+//
 // decide 决定新区块
 func (p *Pot) decide(moment Moment) {
 	p.Info("decide new block now")

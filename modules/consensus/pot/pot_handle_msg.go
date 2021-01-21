@@ -46,30 +46,31 @@ func (p *Pot) handleMsgBlocks(msg *defines.Message) error {
 		//}
 		return nil
 	}
-	// 3. RLB阶段只接收最新区块
-	if stage == StageType_PreInited_RequestLatestBlock {
-		if len(msg.Data) == 0 {
-			return errors.New("empty ")
-		}
-		lb := new(defines.Block)
-		if err := lb.Decode(msg.Data[0]); err != nil {
-			p.Errorf("lb.Decode fail. err=%s", err)
-			return err
-		}
+	//// 3. RLB阶段只接收最新区块
+	//if stage == StageType_PreInited_RequestLatestBlock {
+	//	if len(msg.Data) == 0 {
+	//		return errors.New("empty ")
+	//	}
+	//	lb := new(defines.Block)
+	//	if err := lb.Decode(msg.Data[0]); err != nil {
+	//		p.Errorf("lb.Decode fail. err=%s", err)
+	//		return err
+	//	}
+	//
+	//	// 对b作检查
+	//	// TODO
+	//
+	//	if p.nWaitBlockChan != nil {
+	//		p.nWaitBlockChan <- lb // 通知收到一个节点回传了最新区块
+	//		p.Debugf("%s handle EntryType_Block from (%s) succ", p.DutyStageState(), msg.From)
+	//	}
+	//
+	//	//if err := p.bc.AddBlock(lb); err != nil {
+	//	//	p.Errorf("p.bc.AddBlock(%s) fail. err=%s,b=%v", lb.ShortName(), err, lb)
+	//	//}
+	//	return nil
+	//}
 
-		// 对b作检查
-		// TODO
-
-		if p.nWaitBlockChan != nil {
-			p.nWaitBlockChan <- lb // 通知收到一个节点回传了最新区块
-			p.Debugf("%s handle EntryType_Block from (%s) succ", p.DutyStageState(), msg.From)
-		}
-
-		//if err := p.bc.AddBlock(lb); err != nil {
-		//	p.Errorf("p.bc.AddBlock(%s) fail. err=%s,b=%v", lb.ShortName(), err, lb)
-		//}
-		return nil
-	}
 	// 4. 其他阶段正常接收所有区块
 	for _, bb := range msg.Data {
 		b := new(defines.Block)
@@ -92,8 +93,7 @@ func (p *Pot) handleMsgNewBlock(msg *defines.Message) error {
 
 	// 1. RN/RFB/RLB阶段忽略
 	if stage == StageType_PreInited_RequestNeighbors ||
-		stage == StageType_PreInited_RequestFirstBlock ||
-		stage == StageType_PreInited_RequestLatestBlock {
+		stage == StageType_PreInited_RequestFirstBlock {
 		return nil
 	}
 
@@ -115,8 +115,7 @@ func (p *Pot) handleMsgTxs(msg *defines.Message) error {
 	// 1. 非peer忽略，RN/RFB/RLB阶段忽略
 	if p.duty != defines.PeerDuty_Peer ||
 		stage == StageType_PreInited_RequestNeighbors ||
-		stage == StageType_PreInited_RequestFirstBlock ||
-		stage == StageType_PreInited_RequestLatestBlock {
+		stage == StageType_PreInited_RequestFirstBlock {
 		return nil
 	}
 

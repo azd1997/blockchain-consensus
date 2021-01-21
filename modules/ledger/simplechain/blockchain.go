@@ -311,6 +311,7 @@ func (bc *BlockChain) AddNewBlock(nb *defines.Block) error {
 
 	// 将addnew位置true
 	bc.addnew = true
+	fmt.Println("add new block. ", nb.Index)
 
 	// 每次添加新区块之后，都检查下是否可以填补空白
 	if err := bc.checkDiscontinuous(); err != nil {
@@ -438,6 +439,8 @@ func (bc *BlockChain) CreateTheWorld() (genesis *defines.Block, err error) {
 	seg0 := bc.chain[0]
 	seg0.start, seg0.end = 1, 1
 
+	bc.addnew = true
+
 	return genesis, nil
 }
 
@@ -511,6 +514,7 @@ func (bc *BlockChain) Discontinuous() bool {
 // 获取最新的区块(这里的最新的指的是网络最新)
 func (bc *BlockChain) GetLatestBlock() *defines.Block {
 	if !bc.addnew || bc.maxIndex > bc.GetMaxIndex() {
+		fmt.Println(bc.addnew, bc.maxIndex, bc.GetMaxIndex())
 		return nil
 	}
 
