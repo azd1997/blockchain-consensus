@@ -12,7 +12,7 @@ import (
 )
 
 func TestCluster(t *testing.T) {
-	c, err := StartCluster(1, 3, true, true, false)
+	c, err := StartCluster(1, 3, false, false, false)
 	if err != nil {
 		t.Error(err)
 	}

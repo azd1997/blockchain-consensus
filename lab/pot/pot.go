@@ -64,18 +64,19 @@ type Node struct {
 	kv requires.Store
 	// bc 区块链（相当于日志持久器）
 	bc requires.BlockChain
-
 	// 节点信息表
 	pit peerinfo.Pit
-
 	// 共识状态机
 	pot consensus.Consensus
-
 	// 网络模块
 	net bnet.BNet
 
 	// 日志输出目的地
 	LogDest string
+
+	// 用于控制节点行为，从而方便测试
+	// 为了通用考虑，设计一个根据tx信号执行的定时任务器
+	Tasker *Tasker
 }
 
 // NewNode 构建Node
