@@ -37,7 +37,9 @@ func (tm *TxMaker) Start() {
 		select {
 		case <-tick:
 			// 随机选择一部分对象
-			to := tm.tos[rand.Intn(len(tm.tos))]
+			tos := append([]string{}, tm.tos...)
+			tos = Shuffle(tos)
+			to := tos[rand.Intn(len(tos))]
 			// 随机交易金额
 			amount := rand.Intn(100)
 			description := fmt.Sprintf("this is a tx from %s to %s", tm.id, to)
@@ -53,4 +55,17 @@ func (tm *TxMaker) Start() {
 			tm.txout <- tx
 		}
 	}
+}
+
+func Shuffle(strs []string) []string {
+	// 洗牌算法
+
+	var index int
+	l := len(strs)
+	for i := 0; i < l; i++ {
+		index = rand.Intn(l-i) + i
+		strs[i], strs[index] = strs[index], strs[i]
+	}
+
+	return strs
 }

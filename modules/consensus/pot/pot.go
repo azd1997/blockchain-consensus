@@ -41,6 +41,11 @@ const (
 
 // Pot pot节点
 type Pot struct {
+
+	// 后续再考虑好好改一下
+	shutdownAtTi int // ti时定时关闭，若<=0则不生效
+	cheatAtTi    int // ti时广播虚假的证明，将自己的证明数报至一个非常大的数：1000
+
 	id   string           // 账户、节点、客户端共用一个ID
 	duty defines.PeerDuty // 普通结点/种子节点/工人节点
 
@@ -51,7 +56,7 @@ type Pot struct {
 	epoch int64
 
 	stage StageType // 阶段
-	state StateType	// pot state
+	state StateType // pot state
 
 	//processes map[string]*defines.Process
 	//processesLock *sync.RWMutex
@@ -129,7 +134,9 @@ type Pot struct {
 // New 新建Pot
 func New(id string, duty defines.PeerDuty,
 	pit peerinfo.Pit, bc requires.BlockChain,
-	net bnet.BNet, msgchan chan []byte) (*Pot, error) {
+	net bnet.BNet, msgchan chan []byte,
+	shutdownAtTi, cheatAtTi int) (*Pot, error) {
+
 	logger := log.NewLogger(Module_Css, id)
 	if logger == nil {
 		return nil, errors.New("nil logger, please init logger first")
@@ -149,6 +156,9 @@ func New(id string, duty defines.PeerDuty,
 	proofs := newProofTable(latestIndex, latestBlockHash)
 
 	p := &Pot{
+		shutdownAtTi: shutdownAtTi,
+		cheatAtTi:    cheatAtTi,
+
 		id:    id,
 		duty:  duty,
 		clock: NewClock(false),
@@ -225,7 +235,11 @@ func (p *Pot) Inited() bool {
 
 // Close 关闭
 func (p *Pot) Close() error {
+	// 关闭自身工作循环
 	close(p.done)
+	// 关闭所依赖的其他组件
+	p.net.Close()
+	p.pit.Close()
 	return nil
 }
 
@@ -291,6 +305,15 @@ func (p *Pot) StateMachineLoop() {
 			p.Infof("[t%d] stateMachineLoop: clock tick: %s",
 				math.RoundTickNo(moment.Time.UnixNano(), p.b1Time, TickMs), moment.String())
 
+			ti := math.RoundTickNo(moment.Time.UnixNano(), p.b1Time, TickMs)
+
+			// 定时关闭
+			if p.shutdownAtTi > 0 && ti >= p.shutdownAtTi {
+				p.Infof("close at t[%d]", ti)
+				p.Close()
+				continue
+			}
+
 			// 根据当前状态来进行状态变换
 			stage := p.getStage()
 			state := p.getState()
@@ -299,7 +322,7 @@ func (p *Pot) StateMachineLoop() {
 
 			// RN阶段
 			if stage == StageType_PreInited_RequestNeighbors {
-				continue	// nothing
+				continue // nothing
 			}
 
 			// RFB阶段
@@ -317,12 +340,11 @@ func (p *Pot) StateMachineLoop() {
 						p.potStartBeforeReady <- moment
 					})
 				}
-				continue	// nothing
+				continue // nothing
 			}
 
 			// 非RN/RFB这两种特殊stage的情况下 （也就是InPot和PostPot两种stage）
 			// 有以下状态变化的规则
-
 
 			// PotStart到来
 			if moment.Type == MomentType_PotStart {
@@ -335,7 +357,6 @@ func (p *Pot) StateMachineLoop() {
 				latestBlock := p.bc.GetLatestBlock()
 				p.proofs.Reset(moment, latestBlock)
 
-
 				// ready peer 在 PotStart时刻到来时成为 competitor
 				if duty == defines.PeerDuty_Peer && bcReady {
 					p.setState(StateType_Competitor)
@@ -346,7 +367,7 @@ func (p *Pot) StateMachineLoop() {
 					if err := p.broadcastSelfProof(); err != nil {
 						p.Errorf("start pot fail: %s", err)
 					}
-				} else {	// not ready peer 以及 非peer的节点 在 PotStart时刻到来时成为 witness
+				} else { // not ready peer 以及 非peer的节点 在 PotStart时刻到来时成为 witness
 					p.setState(StateType_Witness)
 
 					// 成为witness时do nothing
@@ -388,18 +409,18 @@ func (p *Pot) StateMachineLoop() {
 						p.setState(StateType_Learner)
 					}
 
-				} else {	// winner exists
+				} else { // winner exists
 
 					if selfJudgeWinnerProof.Id == p.id && state == StateType_Competitor { // i win
 						p.Infof("end pot competetion. judge winner, i am winner(%s), broadcast new block(%s) now", selfJudgeWinnerProof.Short(), p.maybeNewBlock.ShortName())
-						p.setState(StateType_Winner)	// winner
-						p.udbt.Add(p.maybeNewBlock) // 将自己的新区块添加到未决区块表
+						p.setState(StateType_Winner) // winner
+						p.udbt.Add(p.maybeNewBlock)  // 将自己的新区块添加到未决区块表
 						p.broadcastNewBlock(p.maybeNewBlock)
 					} else { // 别人是胜者
 						if p.duty == defines.PeerDuty_Seed { // 如果是种子节点，还要把种子节点自己判断的winner广播出去
 							// 等待胜者区块
 							p.Infof("end pot competetion. judge winner, wait winner(%s) and broadcast to all peers", selfJudgeWinnerProof.Short())
-							p.setState(StateType_Judger)	// judger
+							p.setState(StateType_Judger) // judger
 							p.proofs.AddProofRelayedBySeed(selfJudgeWinnerProof)
 							p.broadcastProof(selfJudgeWinnerProof, true)
 						} else { // 其他的话只需要等待
@@ -410,10 +431,6 @@ func (p *Pot) StateMachineLoop() {
 					}
 				}
 			}
-
-
-
-
 
 			//// 根据这些条件，先切换stage，再切换state
 			//
@@ -554,10 +571,10 @@ func (p *Pot) MsgHandleLoop() {
 			// 存到本地
 			p.bc.TxInChan() <- tx
 			// 广播
-			err = p.broadcastTx(tx)
-			if err != nil {
-				p.Errorf("msgHandleLoop: broadcast localtx(%s) fail: tx=%v, err=%s", tx.ShortName(), tx, err)
-			}
+			//err = p.broadcastTx(tx)
+			//if err != nil {
+			//	p.Errorf("msgHandleLoop: broadcast localtx(%s) fail: tx=%v, err=%s", tx.ShortName(), tx, err)
+			//}
 		}
 	}
 }

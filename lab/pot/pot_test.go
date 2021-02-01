@@ -23,7 +23,7 @@ func TestNode_PeerInit(t *testing.T) {
 	defer log.Sync()
 
 	node, err := NewNode(
-		id, duty, addr,
+		id, duty, addr, 13, 0,
 		map[string]string{
 			"seed1": "127.0.0.1:8991",
 		},
@@ -47,7 +47,7 @@ func TestNode_SeedInit(t *testing.T) {
 	defer log.Sync()
 
 	node, err := NewNode(
-		id, duty, addr,
+		id, duty, addr, 13, 0,
 		map[string]string{
 			"seed1": "127.0.0.1:8991",
 		},

@@ -7,24 +7,28 @@
 package pot
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
 
 func TestCluster(t *testing.T) {
-	c, err := StartCluster(1, 3, false, false, false)
+	c, err := StartCluster(1, 7, 45, 0,
+		false, false, true)
 	if err != nil {
 		t.Error(err)
 	}
 	c = c
 
-	time.Sleep(10 * time.Second)
+	time.Sleep(20 * time.Second)
+
+	fmt.Println(c.DisplayAllNodes())
 }
 
 func TestStartNode(t *testing.T) {
-	_, _, seedsm, peersm := genIdsAndAddrs(1, 3)
+	_, _, seedsm, peersm := GenIdsAndAddrs(1, 3)
 	peer01 := "peer01"
-	_, err := StartNode(peer01, peersm[peer01], seedsm, peersm, false, true)
+	_, err := StartNode(peer01, peersm[peer01], 13, 0, seedsm, peersm, false, true)
 	if err != nil {
 		t.Error(err)
 	}

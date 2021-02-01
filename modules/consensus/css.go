@@ -46,12 +46,13 @@ type Consensus interface {
 func NewConsensus(typ string,
 	id string, duty defines.PeerDuty,
 	pit peerinfo.Pit, bc requires.BlockChain,
-	net bnet.BNet, msgchan chan []byte) (Consensus, error) {
+	net bnet.BNet, msgchan chan []byte,
+	shutdownAtTi, cheatAtTi int) (Consensus, error) {
 
 	typ = strings.ToLower(typ) // 支持pot, Pot等大小写
 	switch typ {
 	case "pot":
-		return pot.New(id, duty, pit, bc, net, msgchan)
+		return pot.New(id, duty, pit, bc, net, msgchan, shutdownAtTi, cheatAtTi)
 	default:
 		return nil, errors.New("unknown consensus type")
 	}

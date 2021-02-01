@@ -32,8 +32,40 @@ type Cluster struct {
 	clients map[string]*test.TxMaker
 }
 
-func StartCluster(nSeed int, nPeer int, debug bool, addCaller bool, enableClients bool) (*Cluster, error) {
-	seeds, peers, seedsm, peersm := genIdsAndAddrs(nSeed, nPeer)
+// 展示所有节点区块链进度信息
+func (c *Cluster) DisplayAllNodes() string {
+
+	var ref string   // 参照
+	allEqual := true // 所有节点是否有相同的区块链
+	res := "\nThe Cluster:"
+	for id := range c.seeds { // 遍历种子节点集合
+		bc := c.seeds[id].bc.Display()
+		if ref == "" {
+			ref = bc[19:] // 去掉前面的 BlockChain(peer01) 不比较
+		}
+		if ref != bc[19:] {
+			allEqual = false
+		}
+		res += bc
+	}
+	for id := range c.peers { // 遍历种子节点集合
+		bc := c.peers[id].bc.Display()
+		if ref == "" {
+			ref = bc[19:] // 去掉前面的 BlockChain(peer01) 不比较
+		}
+		if ref != bc[19:] {
+			allEqual = false
+		}
+		res += bc
+	}
+	res += fmt.Sprintf("allEqual = %v\n", allEqual)
+	return res
+}
+
+func StartCluster(nSeed int, nPeer int, shutdownAtTi, cheatAtTi int,
+	debug bool, addCaller bool, enableClients bool) (*Cluster, error) {
+
+	seeds, peers, seedsm, peersm := GenIdsAndAddrs(nSeed, nPeer)
 
 	c := &Cluster{
 		seeds:   map[string]*Node{},
@@ -43,7 +75,8 @@ func StartCluster(nSeed int, nPeer int, debug bool, addCaller bool, enableClient
 
 	for _, idaddr := range seeds {
 		id, addr := idaddr[0], idaddr[1]
-		node, err := StartNode(id, addr, seedsm, peersm, debug, addCaller)
+		node, err := StartNode(id, addr, shutdownAtTi, cheatAtTi,
+			seedsm, peersm, debug, addCaller)
 		if err != nil {
 			return nil, err
 		}
@@ -54,7 +87,8 @@ func StartCluster(nSeed int, nPeer int, debug bool, addCaller bool, enableClient
 
 	for _, idaddr := range peers {
 		id, addr := idaddr[0], idaddr[1]
-		node, err := StartNode(id, addr, seedsm, peersm, debug, addCaller)
+		node, err := StartNode(id, addr, shutdownAtTi, cheatAtTi,
+			seedsm, peersm, debug, addCaller)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +114,13 @@ func StartCluster(nSeed int, nPeer int, debug bool, addCaller bool, enableClient
 	return c, nil
 }
 
-func StartNode(id, addr string, seeds, peers map[string]string, debug bool, addCaller bool) (*Node, error) {
+//
+func (c *Cluster) Shutdown(node string) {
+
+}
+
+func StartNode(id, addr string, shutdownAtTi, cheatAtTi int,
+	seeds, peers map[string]string, debug bool, addCaller bool) (*Node, error) {
 
 	logdest := fmt.Sprintf(logDestFormat, id)
 
@@ -96,7 +136,7 @@ func StartNode(id, addr string, seeds, peers map[string]string, debug bool, addC
 		return nil, errors.New("unknown duty")
 	}
 
-	node, err := NewNode(id, duty, addr,
+	node, err := NewNode(id, duty, addr, shutdownAtTi, cheatAtTi,
 		seeds, peers)
 	if err != nil {
 		return nil, err
@@ -104,7 +144,7 @@ func StartNode(id, addr string, seeds, peers map[string]string, debug bool, addC
 	return node, nil
 }
 
-func genIdsAndAddrs(nSeed, nPeer int) ([][2]string, [][2]string, map[string]string, map[string]string) {
+func GenIdsAndAddrs(nSeed, nPeer int) ([][2]string, [][2]string, map[string]string, map[string]string) {
 	seeds := make([][2]string, 0, nSeed)
 	peers := make([][2]string, 0, nPeer)
 	seedsm := make(map[string]string)
@@ -115,12 +155,7 @@ func genIdsAndAddrs(nSeed, nPeer int) ([][2]string, [][2]string, map[string]stri
 	}
 
 	for i := 1; i <= nSeed; i++ {
-		idnum := ""
-		if i <= 9 {
-			idnum = "0" + strconv.Itoa(i)
-		} else {
-			idnum = strconv.Itoa(i)
-		}
+		idnum := Idnum(i)
 		id := seedIdPrefix + idnum
 		addr := seedAddrPrefix + idnum
 		seeds = append(seeds, [2]string{id, addr})
@@ -128,12 +163,7 @@ func genIdsAndAddrs(nSeed, nPeer int) ([][2]string, [][2]string, map[string]stri
 	}
 
 	for i := 1; i <= nPeer; i++ {
-		idnum := ""
-		if i <= 9 {
-			idnum = "0" + strconv.Itoa(i)
-		} else {
-			idnum = strconv.Itoa(i)
-		}
+		idnum := Idnum(i)
 		id := peerIdPrefix + idnum
 		addr := peerAddrPrefix + idnum
 		peers = append(peers, [2]string{id, addr})
@@ -141,4 +171,15 @@ func genIdsAndAddrs(nSeed, nPeer int) ([][2]string, [][2]string, map[string]stri
 	}
 
 	return seeds, peers, seedsm, peersm
+}
+
+// Idnum i范围1~99
+func Idnum(i int) string {
+	idnum := ""
+	if i <= 9 {
+		idnum = "0" + strconv.Itoa(i)
+	} else {
+		idnum = strconv.Itoa(i)
+	}
+	return idnum
 }

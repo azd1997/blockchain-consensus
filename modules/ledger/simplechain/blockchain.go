@@ -125,7 +125,7 @@ func (bc *BlockChain) Display() string {
 		}
 		display += segStr
 	}
-	display += "\n"
+	//display += "\n"
 	return display
 }
 

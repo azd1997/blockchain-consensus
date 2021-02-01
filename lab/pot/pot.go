@@ -83,6 +83,7 @@ type Node struct {
 func NewNode(
 	id string, duty defines.PeerDuty, // 账户配置
 	addr string,
+	shutdownAtTi, cheatAtTi int,
 	seeds map[string]string, //预配置的种子节点
 	peers map[string]string, // 预配置的共识节点
 ) (*Node, error) {
@@ -141,7 +142,7 @@ func NewNode(
 	node.net = netmod
 
 	// 构建共识状态机
-	pm, err := consensus.NewConsensus("pot", id, duty, pit, bc, netmod, msgchan)
+	pm, err := consensus.NewConsensus("pot", id, duty, pit, bc, netmod, msgchan, shutdownAtTi, cheatAtTi)
 	if err != nil {
 		return nil, err
 	}

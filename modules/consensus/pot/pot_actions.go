@@ -25,7 +25,6 @@ func (p *Pot) send(msg *defines.Message) error {
 	//p.msgout <- merr
 	//return <-merr.Err
 
-
 	m, err := msg.Encode()
 	if err != nil {
 		return err
@@ -36,7 +35,7 @@ func (p *Pot) send(msg *defines.Message) error {
 	}
 
 	// 由于本地Socket通信很快，所以为了模拟实际通信延时，这里随机睡眠一段时间
-	randMs := rand.Intn(190) + 10 // 10~200ms
+	randMs := rand.Intn(20) + 10 // 10~30ms
 	time.Sleep(time.Duration(randMs) * time.Millisecond)
 
 	return p.net.Send(to.Addr, m)

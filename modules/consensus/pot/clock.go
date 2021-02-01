@@ -21,7 +21,7 @@ type Moment struct {
 }
 
 func (m Moment) String() string {
-	return fmt.Sprintf("%s %s\n", m.Type.String(), m.Time.Format(time.RFC3339Nano))
+	return fmt.Sprintf("%s %s", m.Type.String(), m.Time.Format(time.RFC3339Nano))
 }
 
 // MomentType 时刻
