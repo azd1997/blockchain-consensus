@@ -25,6 +25,9 @@ type BlockChain interface {
 
 	Init() error
 	Inited() bool
+	Ok() bool // Ok 检查Net所依赖的对象是否初始化好
+	Close() error
+	Closed() bool
 
 	GetMaxIndex() int64
 	GetBlocksByRange(start, count int64) ([]*defines.Block, error)
@@ -46,8 +49,8 @@ type BlockChain interface {
 
 	// GenNextBlock 聚集可用的交易，生成下一个区块
 	GenNextBlock() (*defines.Block, error)
-	// 交易传入通道，bc会尝试添加到本地交易池
-	TxInChan() chan *defines.Transaction
+	// AddTx 尝试添加交易
+	AddTx(tx *defines.Transaction) error
 
 	// Discontinuous 用来判断区块链中是否有游离区块，没有的话，说明链完整而连续
 	Discontinuous() bool

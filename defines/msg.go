@@ -45,8 +45,9 @@ const (
 	MessageType_Blocks   MessageType = 0
 	MessageType_NewBlock MessageType = 1
 	MessageType_Txs      MessageType = 2
-	MessageType_Peers    MessageType = 3
-	MessageType_Proof    MessageType = 4
+	MessageType_LocalTxs MessageType = 3
+	MessageType_Peers    MessageType = 4
+	MessageType_Proof    MessageType = 5
 
 	// Req类消息 100-199
 	MessageType_ReqBlockByIndex MessageType = 100 // 根据index查询
@@ -581,6 +582,7 @@ func (msg *Message) String() string {
 	return string(b)
 }
 
+// TODO: WriteDesc键冲突时的处理，是否将Desc改写
 func (msg *Message) WriteDesc(keyValues ...string) error {
 	descmap := map[string]string{}
 	length := len(keyValues)

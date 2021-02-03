@@ -8,6 +8,7 @@ package bnet
 
 import (
 	"errors"
+	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
 	"github.com/azd1997/blockchain-consensus/modules/bnet/budp"
 )
@@ -25,19 +26,22 @@ type BNet interface {
 	Close() error
 	Closed() bool
 
-	Send(raddr string, msg []byte) error // 向某人发送消息
-	MsgOut() chan []byte                 // 要求结构体内部有一个消息总线chan，用于将得到的消息传输出来
-	RecvLoop()                           // go RecvLoop() 消息塞入msgout
+	Send(raddr string, msg *defines.Message) error // 向某人发送消息
+
+	// SetMsgOutChan [不建议调用]
+	SetMsgOutChan(bus chan *defines.Message) // 给结构体设置一个消息总线chan，用于将得到的消息传输出来
+	// RecvLoop [不可调用]
+	RecvLoop() // go RecvLoop() 消息塞入msgout
 }
 
 // NewBNet
-func NewBNet(id string, network string, addr string, msgchan chan []byte) (BNet, error) {
+func NewBNet(id string, network string, addr string, msgchan chan *defines.Message) (BNet, error) {
 
 	logger := log.NewLogger("NET", id)
 
 	switch network {
 	case "udp":
-		return budp.NewUDPNet(id, addr, logger, msgchan)
+		return budp.New(id, addr, logger, msgchan)
 	case "tcp":
 		return nil, nil
 	default:

@@ -13,7 +13,7 @@ import (
 
 func TestLogger(t *testing.T) {
 	InitGlobalLogger("testid", true, true, "./test.log")
-	defer Sync()
+	defer Sync("testid")
 
 	l := NewLogger("TES", "testid")
 
@@ -34,9 +34,9 @@ func TestLogger(t *testing.T) {
 
 func Test2Loggers(t *testing.T) {
 	InitGlobalLogger("id1", true, true)
-	defer Sync()
+	defer Sync("id1")
 	InitGlobalLogger("id2", true, true)
-	defer Sync()
+	defer Sync("id2")
 
 	l1 := NewLogger("TES", "id1")
 	l2 := NewLogger("TES", "id2")

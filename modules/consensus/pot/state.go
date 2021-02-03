@@ -13,22 +13,22 @@ import (
 type StateType uint32
 
 const (
-	// 进入RLB阶段及之后才有state概念，之前都是None
+	// RFB阶段之后才有state概念，之前都是None
 	StateType_None StateType = iota
 	StateType_Witness
 	StateType_Competitor
 	StateType_Winner
 	StateType_Judger
 	StateType_Learner
-	)
+)
 
 var stateMap = map[StateType]string{
-	StateType_None:"none",
-	StateType_Witness: "witness",
+	StateType_None:       "none",
+	StateType_Witness:    "witness",
 	StateType_Competitor: "competitor",
-	StateType_Winner : "winner",
-	StateType_Judger : "judger",
-	StateType_Learner : "learner",
+	StateType_Winner:     "winner",
+	StateType_Judger:     "judger",
+	StateType_Learner:    "learner",
 }
 
 func (st StateType) String() string {
@@ -82,4 +82,5 @@ func (p *Pot) getState() StateType {
 // 更新当前状态
 func (p *Pot) setState(newState StateType) {
 	atomic.StoreUint32((*uint32)(&p.state), uint32(newState))
+	p.Infof("turn state %s", newState.String())
 }

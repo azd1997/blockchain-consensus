@@ -17,6 +17,9 @@ import (
 // 一般情况下都是使用全局单例，但是对于想要在内存中进行集群部署来说，需要有logger生成函数
 var loggers = map[string]*zap.SugaredLogger{} // <id, logger>
 
+// 独立设出来，是为了方便在程序中关闭所使用的日志文件
+var lumberjackes = map[string]*lumberjack.Logger{}
+
 //var (
 //	highPriority = zap.LevelEnablerFunc(func(level zapcore.Level) bool {
 //		return level >= zapcore.InfoLevel
@@ -50,7 +53,18 @@ func InitGlobalLogger(id string, debug bool, addCaller bool, logFileName ...stri
 	consoleCore := zapcore.NewCore(encoder, consoleWriter, logLevel)
 
 	if len(logFileName) > 0 { // 只取第1个文件地址
-		fileWriter := getLogWriter(logFileName[0])
+
+		lj := &lumberjack.Logger{
+			Filename:   logFileName[0],
+			MaxSize:    1,
+			MaxAge:     30,
+			MaxBackups: 5,
+			LocalTime:  false,
+			Compress:   false,
+		}
+		lumberjackes[id] = lj
+
+		fileWriter := zapcore.AddSync(lj)
 		fileCore := zapcore.NewCore(encoder, fileWriter, logLevel)
 		allCore = append(allCore, fileCore)
 	}
@@ -68,6 +82,19 @@ func InitGlobalLogger(id string, debug bool, addCaller bool, logFileName ...stri
 	}
 
 	loggers[id] = logger.Sugar()
+}
+
+// Close 关闭对应logger所持有的文件
+func Close(id string) error {
+	if loggers[id] != nil {
+		loggers[id].Sync() // 这里的错误需要忽略
+		if lumberjackes[id] != nil {
+			if err := lumberjackes[id].Close(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // InitGlobalLogger 初始化全局日志单例
@@ -98,15 +125,19 @@ func InitGlobalLogger(id string, debug bool, addCaller bool, logFileName ...stri
 
 // Sync 将日志写到文件中去
 // 需要注意，由于这里使用的zaplogger有两个输出，一个是控制台，一个是文件。 Sync对Stdout是无效的，会报错，所以只能忽略这个错误了
-func Sync() {
+func Sync(id string) {
 	//if err := sugarLogger.Sync(); err != nil {
 	//	panic(err)
 	//}
 	//sugarLogger.Sync()
 
-	for id := range loggers {
+	if loggers[id] != nil {
 		loggers[id].Sync()
+
 	}
+	//for id := range loggers {
+	//	loggers[id].Sync()
+	//}
 }
 
 func getLogWriter(filename string) zapcore.WriteSyncer {

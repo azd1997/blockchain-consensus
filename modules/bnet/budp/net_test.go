@@ -7,6 +7,7 @@
 package budp
 
 import (
+	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
 	"sync"
 	"testing"
@@ -26,12 +27,14 @@ func TestUDPNet(t *testing.T) {
 
 	go func() {
 		logger := log.NewLogger("UDP", id1)
-		peerA, _ := NewUDPNet(id1, addr1, logger, make(chan []byte, 100))
+		peerA, _ := New(id1, addr1, logger, make(chan *defines.Message, 100))
 		if err := peerA.Init(); err != nil {
 			t.Error(err)
 		}
 		time.Sleep(1 * time.Second)
-		if err := peerA.Send(addr2, []byte("ping to #2: "+addr2)); err != nil {
+		if err := peerA.Send(addr2, &defines.Message{
+			Desc: "ping to #2: " + addr2,
+		}); err != nil {
 			t.Error(err)
 		}
 		wg.Done()
@@ -39,12 +42,14 @@ func TestUDPNet(t *testing.T) {
 
 	go func() {
 		logger := log.NewLogger("UDP", id2)
-		peerB, _ := NewUDPNet(id2, addr2, logger, make(chan []byte, 100))
+		peerB, _ := New(id2, addr2, logger, make(chan *defines.Message, 100))
 		if err := peerB.Init(); err != nil {
 			t.Error(err)
 		}
 		time.Sleep(1 * time.Second)
-		if err := peerB.Send(addr1, []byte("ping to #1: "+addr1)); err != nil {
+		if err := peerB.Send(addr1, &defines.Message{
+			Desc: "ping to #1: " + addr1,
+		}); err != nil {
 			t.Error(err)
 		}
 		wg.Done()

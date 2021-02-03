@@ -55,13 +55,8 @@ func (p *Pot) initForSeedFirstStart() error {
 
 	// 尝试与节点表其他seed联系，请求邻居信息
 	p.setStage(StageType_PreInited_RequestNeighbors)
-	rnf, err := p.requestNeighborsFuncGenerator()
-	if err != nil {
-		return err
-	}
-	total, errs := p.pit.RangeSeeds(rnf)
-	//fmt.Println(total, errs, p.pit.NSeed(), p.pit.Seeds())
-	if total == len(errs) {
+	seedsAllFail, err := p.requestNeighborsAndWait()
+	if seedsAllFail {
 		// 与所有其他seed的发信都失败了
 		// 存在两种可能：(a)自己是整个网络中第一个启动的seed; (b)自己不是第一个启动的seed，别人是，但是别人目前没在线
 		// 目前只按(a)情况处理
@@ -78,23 +73,14 @@ func (p *Pot) initForSeedFirstStart() error {
 		p.b1Time = genesis.Timestamp
 		// 启动时钟
 		p.clock.Start(genesis)
+		p.Infof("start clock succ. b1Time: %d", genesis.Timestamp)
 		// 更新自己进度
 		//p.processes.refresh(genesis)
 
 		// 进入PostPot
-		p.setStage(StageType_PostPot)	// 在这里设置是因为刚刚初始化clock，此时的PotOver时刻信号其实没有，所以手动设置stage
+		p.setStage(StageType_PostPot) // 在这里设置是因为刚刚初始化clock，此时的PotOver时刻信号其实没有，所以手动设置stage
 		p.setState(StateType_Judger)
 		return nil // 此情况下预启动完成
-	} else if total < len(errs) {
-		//p.Infof("total=%d, len(errs)=%d, errs=%v", total, len(errs), errs)
-		return errors.New("fatal error: impossible")
-	}
-
-	// total > len(errs) 部分成功或全部成功.   <的情况不用讨论，不可能出现
-	nWait := total - len(errs) // 设置等待数量
-	// 等待
-	if err := p.wait(nWait); err != nil { // 一个都没等到
-		return err // 退出启动
 	}
 
 	/*
@@ -128,6 +114,7 @@ func (p *Pot) initForSeedFirstStart() error {
 	p.b1Time = firstBlock.Timestamp
 	// 初始化时钟
 	p.clock.Start(firstBlock)
+	p.Infof("start clock succ. b1Time: %d", firstBlock.Timestamp)
 	// 将第一个区块加入到本地。这里对于1号区块的添加是使用AddNewBlock，特殊处理
 	if err := p.bc.AddNewBlock(firstBlock); err != nil {
 		p.Errorf("add first block fail: %s", err)
@@ -135,56 +122,8 @@ func (p *Pot) initForSeedFirstStart() error {
 
 	// 3. 等待一段时间，到达PotStart时刻
 	<-p.potStartBeforeReady
-	p.setStage(StageType_InPot)		// 因为此时的POTsTART信号已经被用了，所以手动设置stage
-	p.setState(StateType_Witness)	// 此时只能设置为witness
-
-
-	//// 4. 向seed或者peer请求最新区块
-	//p.setStage(StageType_PreInited_RequestLatestBlock)
-	//latestBlock, err := p.requestLatestBlockAndWait(false)
-	//if err != nil {
-	//	return err
-	//}
-	//if err := p.bc.AddNewBlock(latestBlock); err != nil {
-	//	p.Errorf("add latest block fail: %s", err)
-	//}
-	//// 驱动时钟，跟上网络时间
-	//if err := p.clock.Trigger(latestBlock); err != nil {
-	//	return err
-	//}
-	//
-	////// 其他seed有在线者，那么向其他seed接着请求最新区块
-	////total, errs = p.pit.RangeSeeds(p.requestLatestBlockFuncGenerator())
-	////if total - 1 == len(errs) {
-	////	// 所有发信都失败了，如果前面请求邻居信息成功了，而这里失败，说明之前活跃的seed挂掉了
-	////	// 为了降低启动流程的复杂性，这里直接令其退出
-	////	return errors.New("request latest block to seeds all fail")
-	////} else if total - 1 < len(errs) {
-	////	return errors.New("fatal error: impossible")
-	////}
-	////// total - 1 > len(errs) 部分发送成功或全部成功.
-	////p.nWait = total - 1 - len(errs)		// 设置等待数量
-	////// 等待 (此时的handle函数会将所有区块临时存储)
-	////if err := p.wait(); err != nil {	// 一个都没等到
-	////	return err	// 退出启动
-	////}
-	////// 由于seed是“可信的”，那么将仅比较index来确定(由于发信/收信时延的不确定性，有可能会出现回复的seed
-	////// 给出index和index+1两个连续的区块的情况，取index更大的。
-	//////
-	////// 此外，由于这些seed是可信的，所以它们的区块都是可信的，直接存入区块链即可，并且每次得到区块都用来触
-	////// 发网络时钟，当然必须是index更大的区块才行)
-	//
-	//// 切换状态
-	//p.setStage(StageType_NotReady)
-	//
-	//// 请求缺失的区块（如果有缺失的话）
-	//start, end := firstBlock.Index+1, latestBlock.Index-1
-	//if end >= start {
-	//	count := end - start + 1
-	//	p.Infof("current is discontinuous, req block %d-%d, %d blocks", start, end, count)
-	//	p.broadcastRequestBlocksByIndex(start, count)
-	//}
-
+	p.setStage(StageType_InPot)   // 因为此时的POTsTART信号已经被用了，所以手动设置stage
+	p.setState(StateType_Witness) // 此时只能设置为witness
 	return nil
 }
 
@@ -201,51 +140,25 @@ func (p *Pot) initForSeedReStart() error {
 	}
 
 	// 2. 根据本地已有区块，初始化时钟
-	localMaxBlock, err := p.bc.GetBlocksByRange(-1, 1)
-	if err != nil {
-		return err
-	}
-	p.clock.Start(localMaxBlock[0])
+	//localMaxBlock, err := p.bc.GetBlocksByRange(-1, 1)
+	//if err != nil {
+	//	return err
+	//}
+	//p.clock.Start(localMaxBlock[0])
 
 	firstBlock, err := p.bc.GetBlocksByRange(1, 1)
 	if err != nil {
 		return err
 	}
+	p.clock.Start(firstBlock[0])
 	p.b1Time = firstBlock[0].Timestamp
+	p.Infof("start clock succ. b1Time: %d", firstBlock[0].Timestamp)
 
 	// 3. 等待一段时间，到达PotStart时刻
 	<-p.potStartBeforeReady
 
-	p.setStage(StageType_InPot)		// 因为此时的POTsTART信号已经被用了，所以手动设置stage
-	p.setState(StateType_Witness)	// 此时只能设置为witness
-
-	//
-	//// 4. 发起请求最新区块。
-	//// 之所以要在PotStart时刻请求，是为了降低复杂性，2*TickMs能保证回应能在新区块诞生前收到
-	//p.setStage(StageType_PreInited_RequestLatestBlock)
-	//latestBlock, err := p.requestLatestBlockAndWait(seedsAllFail)
-	//if err != nil {
-	//	return err
-	//}
-	//if err := p.bc.AddNewBlock(latestBlock); err != nil {
-	//	p.Errorf("add latest block fail: %s", err)
-	//}
-	//
-	//// 5. 驱动时钟，跟上网络时间
-	//if err := p.clock.Trigger(latestBlock); err != nil {
-	//	return err
-	//}
-	//
-	//// 6. 设置状态
-	//p.setStage(StageType_NotReady)
-	//
-	//// 请求缺失的区块（如果有缺失的话）
-	//start, end := localMaxBlock[0].Index+1, latestBlock.Index-1
-	//if end >= start {
-	//	count := end - start + 1
-	//	p.broadcastRequestBlocksByIndex(start, count)
-	//}
-
+	p.setStage(StageType_InPot)   // 因为此时的POTsTART信号已经被用了，所以手动设置stage
+	p.setState(StateType_Witness) // 此时只能设置为witness
 	return nil
 }
 
@@ -269,41 +182,15 @@ func (p *Pot) initForPeerFirstStart() error {
 	p.b1Time = firstBlock.Timestamp
 	// 初始化时钟
 	p.clock.Start(firstBlock)
+	p.Infof("start clock succ. b1Time: %d", firstBlock.Timestamp)
 	if err := p.bc.AddNewBlock(firstBlock); err != nil {
 		p.Errorf("add first block fail: %s", err)
 	}
 
 	// 3. 等待一段时间，到达PotStart时刻
 	<-p.potStartBeforeReady
-	p.setStage(StageType_InPot)		// 因为此时的POTsTART信号已经被用了，所以手动设置stage
-	p.setState(StateType_Witness)	// 此时只能设置为witness
-
-
-	//// 4. 向seed或者peer请求最新区块
-	//p.setStage(StageType_PreInited_RequestLatestBlock)
-	//latestBlock, err := p.requestLatestBlockAndWait(seedsAllFail)
-	//if err != nil {
-	//	return err
-	//}
-	//if err := p.bc.AddNewBlock(latestBlock); err != nil {
-	//	p.Errorf("add latest block fail: %s", err)
-	//}
-	//
-	//// 5. 驱动时钟，跟上网络时间
-	//if err := p.clock.Trigger(latestBlock); err != nil {
-	//	return err
-	//}
-	//
-	//// 6. 设置当前状态
-	//p.setStage(StageType_NotReady)
-	//
-	//// 请求缺失的区块（如果有缺失的话）
-	//start, end := firstBlock.Index+1, latestBlock.Index-1
-	//if end >= start {
-	//	count := end - start + 1
-	//	p.broadcastRequestBlocksByIndex(start, count)
-	//}
-
+	p.setStage(StageType_InPot)   // 因为此时的POTsTART信号已经被用了，所以手动设置stage
+	p.setState(StateType_Witness) // 此时只能设置为witness
 	return nil
 }
 
@@ -319,106 +206,65 @@ func (p *Pot) initForPeerReStart() error {
 	}
 
 	// 2. 根据本地已有区块，初始化时钟
-	localMaxBlock, err := p.bc.GetBlocksByRange(-1, 1)
-	if err != nil {
-		return err
-	}
-	p.clock.Start(localMaxBlock[0])
+	//localMaxBlock, err := p.bc.GetBlocksByRange(-1, 1)
+	//if err != nil {
+	//	return err
+	//}
+	//p.clock.Start(localMaxBlock[0])
 
 	firstBlock, err := p.bc.GetBlocksByRange(1, 1)
 	if err != nil {
 		return err
 	}
+	p.clock.Start(firstBlock[0])
 	p.b1Time = firstBlock[0].Timestamp
+	p.Infof("start clock succ. b1Time: %d", firstBlock[0].Timestamp)
 
 	// 3. 等待一段时间，到达PotStart时刻
 	<-p.potStartBeforeReady
 
-	p.setStage(StageType_InPot)		// 因为此时的POTsTART信号已经被用了，所以手动设置stage
-	p.setState(StateType_Witness)	// 此时只能设置为witness
-
-	//// 4. 向seed或者peer请求最新区块
-	//p.setStage(StageType_PreInited_RequestLatestBlock)
-	//latestBlock, err := p.requestLatestBlockAndWait(seedsAllFail)
-	//if err != nil {
-	//	return err
-	//}
-	//if err := p.bc.AddNewBlock(latestBlock); err != nil {
-	//	p.Errorf("add latest block fail: %s", err)
-	//}
-	//// 5. 驱动时钟，跟上网络时间
-	//if err := p.clock.Trigger(latestBlock); err != nil {
-	//	return err
-	//}
-	//
-	//// 6. 设置当前状态
-	//p.setStage(StageType_NotReady)
-	//
-	//// 请求缺失的区块（如果有缺失的话）
-	//start, end := localMaxBlock[0].Index+1, latestBlock.Index-1
-	//if end >= start {
-	//	count := end - start + 1
-	//	p.broadcastRequestBlocksByIndex(start, count)
-	//}
-
+	p.setStage(StageType_InPot)   // 因为此时的POTsTART信号已经被用了，所以手动设置stage
+	p.setState(StateType_Witness) // 此时只能设置为witness
 	return nil
 }
 
 ////////////////////////////////////////////////////
 
-// 请求邻居节点
+// requestNeighborsAndWait 广播getNeighbors请求
+// toseeds true则向种子节点广播；否则向所有节点广播
 func (p *Pot) requestNeighborsAndWait() (seedsAllFail bool, err error) {
-	all := 0
-	rnf, err := p.requestNeighborsFuncGenerator()
-	if err != nil {
-		return false, err
-	}
-	total, errs := p.pit.RangeSeeds(rnf)
-	all = total - bool2int(p.duty == defines.PeerDuty_Seed)
-	if all == len(errs) { // 全部发信失败，则尝试请求peers
+
+	_, succ, err := p.broadcastRequestNeighbors(true, false)
+	if err != nil { // err!=nil意味着可能的发信全部失败
 		seedsAllFail = true
-		total, errs = p.pit.RangePeers(rnf)
-		if total == len(errs) { // 还是全部失败，则退出
+		// 尝试向peer请求
+		_, succ, err = p.broadcastRequestNeighbors(false, true)
+		if err != nil { // 全部失败则退出
 			return true, errors.New("request neighbors to seeds and peers all fail")
 		}
-		all = total - bool2int(p.duty == defines.PeerDuty_Seed)
 	}
-	if all < len(errs) {
-		return seedsAllFail, errors.New("fatal error: impossible")
-	}
-	// 部分成功或全部成功
-	nWait := all - len(errs) // 设置等待数量
-	// 等待 (此时的handle函数会将邻居节点进行存储，若重复以先存为准)
+	nWait := succ                         // 需要等待succ个节点的回信
 	if err := p.wait(nWait); err != nil { // 一个都没等到
 		return seedsAllFail, err // 退出启动
 	}
 	return seedsAllFail, nil
 }
 
-// 请求最新区块
-func (p *Pot) requestLatestBlockAndWait(seedsAllFail bool) (*defines.Block, error) {
-	return p.requestOneBlockAndWait(seedsAllFail, -1)
-}
-
-// 请求具体某一个区块
+// requestOneBlockAndWait 请求具体某一个区块
 func (p *Pot) requestOneBlockAndWait(seedsAllFail bool, index int64) (*defines.Block, error) {
-	var total, all int
-	var errs map[string]error
+	var succ int
+	var err error
 	var nWait int
-	if seedsAllFail {
-		total, errs = p.pit.RangePeers(p.requestOneBlockFuncGenerator(index))
+	if !seedsAllFail {
+		_, succ, err = p.broadcastRequestBlocksByIndex(index, 1, true, false)
 	} else {
-		total, errs = p.pit.RangeSeeds(p.requestOneBlockFuncGenerator(index))
+		_, succ, err = p.broadcastRequestBlocksByIndex(index, 1, false, true)
 	}
-	all = total - bool2int(p.duty == defines.PeerDuty_Seed)
-	if all == len(errs) { // 全部发信失败，则退出
-		return nil, errors.New("request latest block to seeds and peers all fail")
-	} else if all < len(errs) {
-		return nil, errors.New("fatal error: impossible")
-	} else {
-		// 部分成功或全部成功
-		nWait = all - len(errs) // 设置等待数量
+	if err != nil { // 全部发信失败，则退出
+		return nil, errors.New("request one block to seeds and peers all fail")
 	}
+	// 部分成功或全部成功
+	nWait = succ // 设置等待数量
 	// 等待该区块，并从众多回复中确定接收哪一个
 	if wb, err := p.waitAndDecideOneBlock(index, nWait); err != nil { // 一个都没等到
 		return nil, err // 退出启动

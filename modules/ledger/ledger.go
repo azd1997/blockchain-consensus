@@ -13,11 +13,17 @@ import (
 	"github.com/azd1997/blockchain-consensus/requires"
 )
 
-func NewLedger(ledgertype string, id string) (requires.BlockChain, error) {
+// New
+func New(ledgertype string, id string) (requires.BlockChain, error) {
 	switch ledgertype {
 	case "simplechain":
-		return simplechain.NewBlockChain(id)
+		return simplechain.New(id)
 	default:
 		return nil, errors.New("unsupport ledger type")
 	}
+}
+
+// Ledger 账本。比如区块链账本
+type Ledger interface {
+	requires.BlockChain
 }

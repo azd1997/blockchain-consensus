@@ -18,7 +18,7 @@ func TestBlockChain(t *testing.T) {
 	log.InitGlobalLogger(id, true, true)
 
 	// bc创建启动
-	bc, err := NewBlockChain(id)
+	bc, err := New(id)
 	if err != nil {
 		t.Error(err)
 	}

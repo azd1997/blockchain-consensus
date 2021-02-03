@@ -18,7 +18,7 @@ type SimplePit struct {
 	peers map[string]*defines.PeerInfo
 }
 
-func NewSimplePit(id string) (*SimplePit, error) {
+func New(id string) (*SimplePit, error) {
 	return &SimplePit{
 		id:    id,
 		seeds: map[string]*defines.PeerInfo{},

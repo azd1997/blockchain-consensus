@@ -34,7 +34,7 @@ type BlockSegment struct {
 	blocks     *[]*defines.Block
 }
 
-func NewBlockChain(id string) (*BlockChain, error) {
+func New(id string) (*BlockChain, error) {
 
 	logger := log.NewLogger(Module_Bcl, id)
 	if logger == nil {
@@ -56,8 +56,8 @@ func NewBlockChain(id string) (*BlockChain, error) {
 		indexes:       map[string]int64{},
 		discontinuous: map[int64]*defines.Block{},
 		txpool:        map[string]*defines.Transaction{},
-		txin:          make(chan *defines.Transaction, 100),
-		Logger:        logger,
+		//txin:          make(chan *defines.Transaction, 100),
+		Logger: logger,
 	}, nil
 }
 
@@ -91,13 +91,27 @@ type BlockChain struct {
 	txpool     map[string]*defines.Transaction
 	txpoolLock sync.RWMutex
 
-	txin chan *defines.Transaction
+	//existed map[string]struct{}		// 存储已经写到区块链的tx的id
+
+	//txin chan *defines.Transaction
 
 	// 自己的进度是否存在空洞？空洞情况
 	// “不重叠区间” 按left升序
 	//holes [][2]int64 // 空洞，还欠缺的区块区间 [2]uint64{left, right}，[left, right]这个区间的区块还没有同步到
 
 	*log.Logger
+}
+
+func (bc *BlockChain) Ok() bool {
+	return true
+}
+
+func (bc *BlockChain) Close() error {
+	return nil
+}
+
+func (bc *BlockChain) Closed() bool {
+	return false
 }
 
 // Display 展示进度
@@ -118,9 +132,9 @@ func (bc *BlockChain) Display() string {
 			curTickNo := math.RoundTickNo(curBlock.Timestamp, b1.Timestamp, 500)
 
 			if j < len(*seg.blocks)-1 {
-				segStr += fmt.Sprintf("(t%d,b%d,%s)%s ——> ", curTickNo, curBlock.Index, curBlock.Maker, curBlock.ShortName())
+				segStr += fmt.Sprintf("(t%d,b%d,x%d,%s)%s ——> ", curTickNo, curBlock.Index, len(curBlock.Txs), curBlock.Maker, curBlock.ShortName())
 			} else {
-				segStr += fmt.Sprintf("(t%d,b%d,%s)%s\n", curTickNo, curBlock.Index, curBlock.Maker, curBlock.ShortName())
+				segStr += fmt.Sprintf("(t%d,b%d,x%d,%s)%s\n", curTickNo, curBlock.Index, len(curBlock.Txs), curBlock.Maker, curBlock.ShortName())
 			}
 		}
 		display += segStr
@@ -136,7 +150,7 @@ func (bc *BlockChain) ID() string {
 func (bc *BlockChain) Init() error {
 	bc.Debug("BlockChain: Init. start collect tx loop")
 
-	go bc.collectTxLoop()
+	//go bc.collectTxLoop()
 
 	return nil
 }
@@ -313,6 +327,9 @@ func (bc *BlockChain) AddNewBlock(nb *defines.Block) error {
 	bc.addnew = true
 	fmt.Println("add new block. ", nb.Index)
 
+	// 清除掉已用掉的交易
+	bc.cleanTxPool(nb)
+
 	// 每次添加新区块之后，都检查下是否可以填补空白
 	if err := bc.checkDiscontinuous(); err != nil {
 		return err
@@ -384,6 +401,9 @@ func (bc *BlockChain) checkDiscontinuous() error {
 					bc.chain = bc.chain[:i]
 
 					delete(bc.discontinuous, prevIndex) // 删除
+
+					// TODO: 清除掉已用掉的交易
+					bc.cleanTxPool(prevBlock)
 				} else { // 不满足条件，发现该区块与前一个不连贯，说明这一段出现了问题，丢弃
 					bc.chain = bc.chain[:i]
 					// 返回错误，上层再往上抛出，让外边重新
@@ -410,9 +430,11 @@ func (bc *BlockChain) checkDiscontinuous() error {
 func (bc *BlockChain) cleanTxPool(newb *defines.Block) {
 	for _, usedtx := range newb.Txs {
 		k := usedtx.Key()
+		bc.txpoolLock.Lock()
 		if bc.txpool[k] != nil {
 			delete(bc.txpool, k)
 		}
+		bc.txpoolLock.Unlock()
 	}
 }
 
@@ -477,15 +499,19 @@ func (bc *BlockChain) GenNextBlock() (*defines.Block, error) {
 	return nextb, nil
 }
 
-func (bc *BlockChain) TxInChan() chan *defines.Transaction {
-	return bc.txin
-}
+//func (bc *BlockChain) TxInChan() chan *defines.Transaction {
+//	return bc.txin
+//}
+//
+//func (bc *BlockChain) collectTxLoop() {
+//	for tx := range bc.txin {
+//		bc.Debugf("collectTxLoop: recv a tx: %s", tx.Key())
+//		bc.addTx(tx)
+//	}
+//}
 
-func (bc *BlockChain) collectTxLoop() {
-	for tx := range bc.txin {
-		bc.Debugf("collectTxLoop: recv a tx: %s", tx.Key())
-		bc.addTx(tx)
-	}
+func (bc *BlockChain) AddTx(tx *defines.Transaction) error {
+	return bc.addTx(tx)
 }
 
 func (bc *BlockChain) addTx(tx *defines.Transaction) error {
@@ -494,7 +520,10 @@ func (bc *BlockChain) addTx(tx *defines.Transaction) error {
 	k := tx.Key()
 
 	// 如果交易没被使用过，并且有效，就可以进行接下来的步骤
-	// TODO
+	// TODO 我这里原先有个cleanTxpool，似乎已经起到清除已存在tx的作用
+	//if _, exist := bc.existed[k]; exist {
+	//	return errors.New("already exists")
+	//}
 
 	// 添加到ubtxp
 	bc.txpoolLock.Lock()

@@ -10,7 +10,7 @@ import "testing"
 
 func TestZapLogger(t *testing.T) {
 	InitGlobalLogger("id1", true, true, "./test.log")
-	defer Sync()
+	defer Sync("id1")
 
 	loggers["id1"].Debug("test sugar log")
 	loggers["id1"].Error("some error")

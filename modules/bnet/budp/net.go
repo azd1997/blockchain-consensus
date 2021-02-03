@@ -17,7 +17,7 @@ import (
 	"github.com/azd1997/blockchain-consensus/utils/netutil"
 )
 
-// uninit -> inited (running) -> closed
+// UDPNet uninit -> inited (running) -> closed
 // network: udp
 type UDPNet struct {
 	id   string
@@ -28,14 +28,15 @@ type UDPNet struct {
 	inited bool
 	closed bool
 
-	msgout chan []byte
+	msgout chan *defines.Message
 
 	done chan struct{}
 
 	*log.Logger
 }
 
-func NewUDPNet(id string, addr string, logger *log.Logger, msgchan chan []byte) (*UDPNet, error) {
+// New
+func New(id string, addr string, logger *log.Logger, msgchan chan *defines.Message) (*UDPNet, error) {
 	return &UDPNet{
 		id:       id,
 		addr:     addr,
@@ -67,6 +68,14 @@ func (un *UDPNet) Init() error {
 	if err != nil {
 		return err
 	}
+	err = listener.SetReadBuffer(defines.MaxMessageLen)
+	if err != nil {
+		return err
+	}
+	err = listener.SetWriteBuffer(defines.MaxMessageLen)
+	if err != nil {
+		return err
+	}
 	un.listener = listener
 
 	// 启动接收循环
@@ -87,6 +96,9 @@ func (un *UDPNet) Ok() bool {
 func (un *UDPNet) Close() error {
 	// close流程
 	close(un.done)
+	if un.listener != nil {
+		un.listener.Close()
+	}
 
 	un.closed = true
 	return nil
@@ -96,59 +108,84 @@ func (un *UDPNet) Closed() bool {
 	return un.closed
 }
 
-func (un *UDPNet) Send(raddr string, msg []byte) error {
+func (un *UDPNet) Send(raddr string, msg *defines.Message) error {
 	if !un.inited || un.closed {
 		return errors.New("UDPNet is not running")
 	}
 
-	buf := new(bytes.Buffer)
-	if err := binary.Write(buf, binary.BigEndian, defines.MessageMagicNumber, uint32(len(msg)), msg); err != nil {
+	// 对msg进行编码
+	m, err := msg.Encode()
+	if err != nil {
 		return err
+	}
+
+	buf := new(bytes.Buffer)
+	if err := binary.Write(buf, binary.BigEndian, defines.MessageMagicNumber, uint32(len(m)), m); err != nil {
+		return err
+	}
+	data := buf.Bytes()
+
+	if len(data) > defines.MaxMessageLen {
+		panic("too large !!!")
 	}
 
 	rip, rport := netutil.ParseIPPort(raddr)
-	n, err := un.listener.WriteTo(buf.Bytes(), &net.UDPAddr{IP: rip, Port: rport})
+	n, err := un.listener.WriteTo(data, &net.UDPAddr{IP: rip, Port: rport})
 	if err != nil {
-		un.Errorf("UDPNet send msg fail. raddr=%s, err=%s, msg=%v", raddr, err, msg)
+		un.Errorf("UDPNet send msg(%s) fail. raddr=%s, err=%s, msg=%v", msg.Type.String(), raddr, err, msg)
 		return err
 	}
-	un.Debugf("UDPNet send msg succ. raddr=%s, n=%d, msg=%v", raddr, n, msg)
+	un.Debugf("UDPNet send msg(%s) succ. raddr=%s, n=%d, msg=%v", msg.Type.String(), raddr, n, msg)
 	return nil
 }
 
-func (un *UDPNet) MsgOut() chan []byte {
-	return un.msgout
+func (un *UDPNet) SetMsgOutChan(bus chan *defines.Message) {
+	un.msgout = bus
 }
 
 func (un *UDPNet) RecvLoop() {
 	magic, msglen := uint32(0), uint32(0)
+
 	for {
-		buf := make([]byte, defines.MaxMessageLen)
-		n, raddr, err := un.listener.ReadFrom(buf)
-		if err != nil {
-			un.Errorf("n=%d, raddr=%s, err=%s", n, raddr, err)
-			continue
-		}
+		select {
+		case <-un.done:
+			un.Info("UDPNet RecvLoop close ...")
+			return
+		default:
+			// 解码消息
 
-		r := bytes.NewReader(buf[:n])
+			buf := make([]byte, defines.MaxMessageLen)
+			n, raddr, err := un.listener.ReadFrom(buf)
+			if err != nil {
+				un.Errorf("n=%d, raddr=%s, err=%s", n, raddr, err)
+				continue
+			}
 
-		if err := binary.Read(r, binary.BigEndian, &magic); err != nil {
-			un.Errorf("UDPNet(%s) met error: %s\n", un.addr, err)
-			continue
+			r := bytes.NewReader(buf[:n])
+
+			if err := binary.Read(r, binary.BigEndian, &magic); err != nil {
+				un.Errorf("UDPNet(%s) met error: %s\n", un.addr, err)
+				continue
+			}
+			if magic != defines.MessageMagicNumber {
+				continue
+			}
+			if err := binary.Read(r, binary.BigEndian, &msglen); err != nil {
+				un.Errorf("UDPNet(%s) met error: %s\n", un.addr, err)
+				continue
+			}
+			msgbytes := make([]byte, msglen)
+			if err := binary.Read(r, binary.BigEndian, msgbytes); err != nil {
+				un.Errorf("UDPNet(%s) met error: %s\n", un.addr, err)
+				continue
+			}
+			msg := new(defines.Message)
+			if err := msg.Decode(msgbytes); err != nil {
+				un.Errorf("UDPNet(%s) met error: %s\n", un.addr, err)
+				continue
+			}
+			un.Debugf("UDPNet(%s) recv msg(%s) from (%s): msg=%v\n", un.addr, msg.Type.String(), raddr, msg)
+			un.msgout <- msg
 		}
-		if magic != defines.MessageMagicNumber {
-			continue
-		}
-		if err := binary.Read(r, binary.BigEndian, &msglen); err != nil {
-			un.Errorf("UDPNet(%s) met error: %s\n", un.addr, err)
-			continue
-		}
-		msgbytes := make([]byte, msglen)
-		if err := binary.Read(r, binary.BigEndian, msgbytes); err != nil {
-			un.Errorf("UDPNet(%s) met error: %s\n", un.addr, err)
-			continue
-		}
-		un.Debugf("UDPNet(%s) recv msg from (%s): msg=%v\n", un.addr, raddr, msgbytes)
-		un.msgout <- msgbytes
 	}
 }

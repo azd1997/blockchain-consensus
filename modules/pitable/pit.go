@@ -4,12 +4,12 @@
 * @Description: The file is for
 ***********************************************************************/
 
-package peerinfo
+package pitable
 
 import (
 	"errors"
 	"github.com/azd1997/blockchain-consensus/defines"
-	"github.com/azd1997/blockchain-consensus/modules/peerinfo/simplepit"
+	"github.com/azd1997/blockchain-consensus/modules/pitable/simplepit"
 )
 
 // Pit 内部的PeerInfoTable接口
@@ -38,11 +38,11 @@ type Pit interface {
 	NPeer() int
 }
 
-// NewPit
-func NewPit(pittype string, id string) (Pit, error) {
+// New
+func New(pittype string, id string) (Pit, error) {
 	switch pittype {
 	case "simplepit":
-		return simplepit.NewSimplePit(id)
+		return simplepit.New(id)
 	default:
 		return nil, errors.New("unsupport pit type")
 	}

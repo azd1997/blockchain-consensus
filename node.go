@@ -9,9 +9,17 @@ package bcc
 import (
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
+	"github.com/azd1997/blockchain-consensus/modules/bnet"
 	"github.com/azd1997/blockchain-consensus/modules/bnet/btcp"
-	"github.com/azd1997/blockchain-consensus/modules/peerinfo/memorypit"
+	"github.com/azd1997/blockchain-consensus/modules/bnet/budp"
+	"github.com/azd1997/blockchain-consensus/modules/consensus"
+	"github.com/azd1997/blockchain-consensus/modules/consensus/pot"
+	"github.com/azd1997/blockchain-consensus/modules/ledger/simplechain"
+	"github.com/azd1997/blockchain-consensus/modules/pitable"
+	"github.com/azd1997/blockchain-consensus/modules/pitable/memorypit"
+	"github.com/azd1997/blockchain-consensus/modules/pitable/simplepit"
 	"github.com/azd1997/blockchain-consensus/requires"
+	"github.com/azd1997/blockchain-consensus/test"
 )
 
 /*
@@ -36,22 +44,8 @@ import (
 	}
 */
 
-// Option Node所需的选项
-type Option struct {
-}
-
-// PrepareOption 准备Option
-//func PrepareOption(configReader io.Reader) (*Option, error) {
-//	// 解析配置
-//	tc, err := config.ParseConfig(configReader)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	、、
-//}
-
 // Node 节点服务器
+// 众多模块的集合体
 type Node struct {
 
 	// 节点ID，与账户共用一个ID
@@ -59,22 +53,57 @@ type Node struct {
 	duty defines.PeerDuty
 	addr string
 
+	// msgBus 消息总线
+	// net -> pot; txmaker -> pot
+	msgBus chan []byte
+
 	// kv 存储
 	kv requires.Store
 	// bc 区块链（相当于日志持久器）
 	bc requires.BlockChain
-
-	// 节点信息表
-	pit *memorypit.PeerInfoTable
-
-	// 共识状态机
-	css Consensus
-
-	// 网络模块
-	net *btcp.Net
+	// pit 节点信息表
+	pit pitable.Pit
+	// css 共识状态机
+	css consensus.Consensus
+	// net 网络模块
+	net bnet.BNet
+	// tv 交易解释器（业务持有）与验证器（业务自定义，传入Node）
+	tv requires.Validator
 
 	// 日志输出目的地
-	LogDest log.LogDest
+	//LogDest string
+}
+
+// DefaultNode 所有模块都采用默认提供的组件
+func DefaultNode(id string, duty defines.PeerDuty, addr string) (*Node, error) {
+	node := &Node{
+		id:   id,
+		duty: duty,
+		addr: addr,
+
+		kv:  nil,
+		bc:  nil,
+		pit: nil,
+		css: nil,
+		net: nil,
+		tv:  nil,
+	}
+
+	kv := test.NewStore()
+	bc, err := simplechain.NewBlockChain(id)
+	if err != nil {
+		return nil, err
+	}
+	pit, err := simplepit.NewSimplePit(id)
+	if err != nil {
+		return nil, err
+	}
+	bus := make(chan []byte, 1000)
+	netm, err := budp.NewUDPNet(id, addr, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	css, err := pot.New(id, duty, pit, bc, netm, bus)
 }
 
 // NewNode 构建Node

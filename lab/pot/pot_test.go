@@ -20,10 +20,10 @@ func TestNode_PeerInit(t *testing.T) {
 
 	// 初始化日志单例
 	log.InitGlobalLogger(id, true, true, logdest)
-	defer log.Sync()
+	defer log.Sync(id)
 
 	node, err := NewNode(
-		id, duty, addr, 13, 0,
+		id, duty, addr, 13, nil, false,
 		map[string]string{
 			"seed1": "127.0.0.1:8991",
 		},
@@ -44,10 +44,10 @@ func TestNode_SeedInit(t *testing.T) {
 
 	// 初始化日志单例
 	log.InitGlobalLogger(id, true, true, logdest)
-	defer log.Sync()
+	defer log.Sync(id)
 
 	node, err := NewNode(
-		id, duty, addr, 13, 0,
+		id, duty, addr, 13, nil, false,
 		map[string]string{
 			"seed1": "127.0.0.1:8991",
 		},

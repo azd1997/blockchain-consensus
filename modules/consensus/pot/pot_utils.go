@@ -11,17 +11,18 @@ import (
 	"sync/atomic"
 )
 
-// 查看当前状态
+// getStage 查看当前状态
 func (p *Pot) getStage() StageType {
 	return StageType(atomic.LoadUint32((*uint32)(&p.stage)))
 }
 
-// 更新当前状态
+// setStage 更新当前状态
 func (p *Pot) setStage(newStage StageType) {
 	atomic.StoreUint32((*uint32)(&p.stage), uint32(newStage))
+	p.Infof("enter stage %s", newStage.String())
 }
 
-// 查看当前状态和duty
+// DutyStageState 查看当前状态和duty
 func (p *Pot) DutyStageState() string {
 	return fmt.Sprintf("%s-%s-%s", p.duty.String(), p.getStage().String(), p.getState().String())
 }

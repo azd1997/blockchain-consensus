@@ -8,7 +8,7 @@ package btcp
 
 import (
 	"fmt"
-	"github.com/azd1997/blockchain-consensus/modules/peerinfo/memorypit"
+	"github.com/azd1997/blockchain-consensus/modules/pitable/memorypit"
 	"reflect"
 	"testing"
 	"time"

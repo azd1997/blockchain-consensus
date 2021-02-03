@@ -10,9 +10,11 @@ import (
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/modules/bnet"
 	"github.com/azd1997/blockchain-consensus/modules/consensus"
+	"github.com/azd1997/blockchain-consensus/modules/consensus/pot"
 	"github.com/azd1997/blockchain-consensus/modules/ledger"
-	"github.com/azd1997/blockchain-consensus/modules/peerinfo"
+	"github.com/azd1997/blockchain-consensus/modules/pitable"
 	"github.com/azd1997/blockchain-consensus/requires"
+	"github.com/azd1997/blockchain-consensus/test"
 )
 
 // 配置内容
@@ -65,25 +67,23 @@ type Node struct {
 	// bc 区块链（相当于日志持久器）
 	bc requires.BlockChain
 	// 节点信息表
-	pit peerinfo.Pit
+	pit pitable.Pit
 	// 共识状态机
 	pot consensus.Consensus
 	// 网络模块
 	net bnet.BNet
+	// 交易制造者
+	tm *test.TxMaker
 
 	// 日志输出目的地
 	LogDest string
-
-	// 用于控制节点行为，从而方便测试
-	// 为了通用考虑，设计一个根据tx信号执行的定时任务器
-	Tasker *Tasker
 }
 
 // NewNode 构建Node
 func NewNode(
 	id string, duty defines.PeerDuty, // 账户配置
 	addr string,
-	shutdownAtTi, cheatAtTi int,
+	shutdownAtTi int, cheatAtTi []int, enableClients bool,
 	seeds map[string]string, //预配置的种子节点
 	peers map[string]string, // 预配置的共识节点
 ) (*Node, error) {
@@ -95,7 +95,7 @@ func NewNode(
 	}
 
 	// 构建bc
-	bc, err := ledger.NewLedger("simplechain", id)
+	bc, err := ledger.New("simplechain", id)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func NewNode(
 	node.bc = bc
 
 	// 构建节点表
-	pit, err := peerinfo.NewPit("simplepit", id)
+	pit, err := pitable.New("simplepit", id)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,8 @@ func NewNode(
 	node.pit.AddPeers(peers)
 	node.pit.AddSeeds(seeds)
 
-	msgchan := make(chan []byte, 100)
+	// 消息总线
+	msgchan := make(chan *defines.Message, 100)
 
 	// 构建网络模块
 	netmod, err := bnet.NewBNet(id, "udp", addr, msgchan)
@@ -142,15 +143,29 @@ func NewNode(
 	node.net = netmod
 
 	// 构建共识状态机
-	pm, err := consensus.NewConsensus("pot", id, duty, pit, bc, netmod, msgchan, shutdownAtTi, cheatAtTi)
+	pm, err := pot.New(id, duty, pit, bc, netmod, msgchan)
 	if err != nil {
 		return nil, err
 	}
+	pm.CheatShutdownAt(shutdownAtTi, cheatAtTi...) // 设置定时关闭和作弊
 	err = pm.Init()
 	if err != nil {
 		return nil, err
 	}
 	node.pot = pm
+
+	//
+	if enableClients {
+		tos := make([]string, 0, len(peers))
+		for to := range peers {
+			if id != to {
+				tos = append(tos, to)
+			}
+		}
+		tm := test.NewTxMaker(id, tos, msgchan)
+		node.tm = tm
+		go tm.Start()
+	}
 
 	return node, nil
 }

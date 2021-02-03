@@ -9,12 +9,9 @@ package pot
 import (
 	"errors"
 	"fmt"
-	"strconv"
-	"time"
-
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
-	"github.com/azd1997/blockchain-consensus/test"
+	"strconv"
 )
 
 const (
@@ -27,14 +24,14 @@ const (
 
 // Cluster 模拟数量为两位数的集群
 type Cluster struct {
-	seeds   map[string]*Node
-	peers   map[string]*Node
-	clients map[string]*test.TxMaker
+	seeds map[string]*Node
+	peers map[string]*Node
 }
 
 // 展示所有节点区块链进度信息
-func (c *Cluster) DisplayAllNodes() string {
+func (c *Cluster) DisplayAllNodes() (string, bool) {
 
+	//fmt.Println(c)
 	var ref string   // 参照
 	allEqual := true // 所有节点是否有相同的区块链
 	res := "\nThe Cluster:"
@@ -59,23 +56,36 @@ func (c *Cluster) DisplayAllNodes() string {
 		res += bc
 	}
 	res += fmt.Sprintf("allEqual = %v\n", allEqual)
-	return res
+	return res, allEqual
 }
 
-func StartCluster(nSeed int, nPeer int, shutdownAtTi, cheatAtTi int,
+// StartCluster
+// shutdownAtTiMap k>0时表示peer idno; k<0时表示seed idno。 cheatAtTiMap同理
+func StartCluster(nSeed int, nPeer int,
+	shutdownAtTi int, shutdownAtTiMap map[int]int, cheatAtTiMap map[int][]int,
 	debug bool, addCaller bool, enableClients bool) (*Cluster, error) {
 
 	seeds, peers, seedsm, peersm := GenIdsAndAddrs(nSeed, nPeer)
 
 	c := &Cluster{
-		seeds:   map[string]*Node{},
-		peers:   map[string]*Node{},
-		clients: map[string]*test.TxMaker{},
+		seeds: map[string]*Node{},
+		peers: map[string]*Node{},
 	}
 
-	for _, idaddr := range seeds {
+	for idx, idaddr := range seeds {
 		id, addr := idaddr[0], idaddr[1]
-		node, err := StartNode(id, addr, shutdownAtTi, cheatAtTi,
+
+		sat, cat := shutdownAtTi, []int(nil)
+		if shutdownAtTiMap != nil {
+			if _, ok := shutdownAtTiMap[-idx-1]; ok {
+				sat = shutdownAtTiMap[-idx-1]
+			}
+		}
+		if cheatAtTiMap != nil && cheatAtTiMap[-idx-1] != nil {
+			cat = cheatAtTiMap[-idx-1]
+		}
+
+		node, err := StartNode(id, addr, sat, cat, enableClients,
 			seedsm, peersm, debug, addCaller)
 		if err != nil {
 			return nil, err
@@ -83,32 +93,23 @@ func StartCluster(nSeed int, nPeer int, shutdownAtTi, cheatAtTi int,
 		c.seeds[id] = node
 	}
 
-	time.Sleep(2 * time.Second)
-
-	for _, idaddr := range peers {
+	for idx, idaddr := range peers { // idx其实就是对应的 idno
 		id, addr := idaddr[0], idaddr[1]
-		node, err := StartNode(id, addr, shutdownAtTi, cheatAtTi,
+		sat, cat := shutdownAtTi, []int(nil)
+		if shutdownAtTiMap != nil {
+			if _, ok := shutdownAtTiMap[idx+1]; ok {
+				sat = shutdownAtTiMap[idx+1]
+			}
+		}
+		if cheatAtTiMap != nil && cheatAtTiMap[idx+1] != nil {
+			cat = cheatAtTiMap[idx+1]
+		}
+		node, err := StartNode(id, addr, sat, cat, enableClients,
 			seedsm, peersm, debug, addCaller)
 		if err != nil {
 			return nil, err
 		}
 		c.peers[id] = node
-	}
-
-	if enableClients {
-		// 创建txmaker
-		for id := range peersm {
-			id := id
-			tos := make([]string, 0, len(peers))
-			for to := range peersm {
-				if id != to {
-					tos = append(tos, to)
-				}
-			}
-			tm := test.NewTxMaker(id, tos, c.peers[id].pot.LocalTxInChan())
-			c.clients[id] = tm
-			go tm.Start()
-		}
 	}
 
 	return c, nil
@@ -119,7 +120,8 @@ func (c *Cluster) Shutdown(node string) {
 
 }
 
-func StartNode(id, addr string, shutdownAtTi, cheatAtTi int,
+func StartNode(id, addr string,
+	shutdownAtTi int, cheatAtTi []int, enableClients bool,
 	seeds, peers map[string]string, debug bool, addCaller bool) (*Node, error) {
 
 	logdest := fmt.Sprintf(logDestFormat, id)
@@ -136,8 +138,7 @@ func StartNode(id, addr string, shutdownAtTi, cheatAtTi int,
 		return nil, errors.New("unknown duty")
 	}
 
-	node, err := NewNode(id, duty, addr, shutdownAtTi, cheatAtTi,
-		seeds, peers)
+	node, err := NewNode(id, duty, addr, shutdownAtTi, cheatAtTi, enableClients, seeds, peers)
 	if err != nil {
 		return nil, err
 	}

@@ -9,13 +9,13 @@ package btcp
 import (
 	"errors"
 	"fmt"
-	"github.com/azd1997/blockchain-consensus/modules/peerinfo/memorypit"
+	"github.com/azd1997/blockchain-consensus/modules/pitable/memorypit"
 	"net"
 	"sync"
 
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
-	"github.com/azd1997/blockchain-consensus/modules/peerinfo"
+	"github.com/azd1997/blockchain-consensus/modules/pitable"
 	"github.com/azd1997/blockchain-consensus/requires"
 	_default "github.com/azd1997/blockchain-consensus/requires/default"
 )
@@ -153,7 +153,7 @@ func NewNet(opt *Option) (*Net, error) {
 
 	// 节点表
 	if opt.Pit == nil {
-		n.pit = peerinfo.Global()
+		n.pit = pitable.Global()
 	} else {
 		if opt.Pit.Inited() {
 			n.pit = opt.Pit

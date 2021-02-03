@@ -15,12 +15,12 @@ import (
 )
 
 type TxMaker struct {
-	id    string                    // 自己
-	tos   []string                  // 可能的交易接收方
-	txout chan *defines.Transaction // 传给pot状态机
+	id    string                // 自己
+	tos   []string              // 可能的交易接收方
+	txout chan *defines.Message // 传给pot状态机
 }
 
-func NewTxMaker(id string, tos []string, txout chan *defines.Transaction) *TxMaker {
+func NewTxMaker(id string, tos []string, txout chan *defines.Message) *TxMaker {
 	return &TxMaker{
 		id:    id,
 		tos:   tos,
@@ -31,7 +31,7 @@ func NewTxMaker(id string, tos []string, txout chan *defines.Transaction) *TxMak
 // 隔一段时间随机向某个to构造交易
 // go tm.Start
 func (tm *TxMaker) Start() {
-	period := 5 * time.Millisecond
+	period := 50 * time.Millisecond
 	tick := time.Tick(period)
 	for {
 		select {
@@ -51,8 +51,27 @@ func (tm *TxMaker) Start() {
 			// 随机拖延一段时间
 			time.Sleep(time.Duration(rand.Intn(3)) * time.Millisecond)
 
+			txb, err := tx.Encode()
+			if err != nil {
+				fmt.Printf("TxMaker(%s) make tx fail: %s\n", tm.id, err)
+			}
 			fmt.Printf("TxMaker(%s) make tx succ. from: %s, to: %s\n", tm.id, tm.id, to)
-			tm.txout <- tx
+
+			tm.txout <- &defines.Message{
+				Version:            defines.CodeVersion,
+				Type:               defines.MessageType_LocalTxs,
+				Epoch:              0,
+				From:               "",
+				To:                 "",
+				BaseIndex:          0,
+				Base:               nil,
+				Data:               [][]byte{txb},
+				ReqBlockIndexStart: 0,
+				ReqBlockIndexCount: 0,
+				Hashes:             nil,
+				Desc:               "",
+				Sig:                nil,
+			}
 		}
 	}
 }
