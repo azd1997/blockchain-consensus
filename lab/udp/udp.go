@@ -9,7 +9,7 @@ package main
 import (
 	"fmt"
 	"net"
-	"os"
+	"sync"
 	"time"
 )
 
@@ -26,6 +26,8 @@ func read(conn *net.UDPConn) {
 func main() {
 	addr1 := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 9981}
 	addr2 := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 9982}
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
 	go func() {
 		listener1, err := net.ListenUDP("udp", addr1)
 		if err != nil {
@@ -34,18 +36,24 @@ func main() {
 		}
 		go read(listener1)
 		time.Sleep(5 * time.Second)
-		listener1.WriteToUDP([]byte("ping to #2: "+addr2.String()), addr2)
-	}()
-	go func() {
-		listener1, err := net.ListenUDP("udp", addr2)
-		if err != nil {
+		if _, err := listener1.WriteToUDP([]byte("ping to #2: "+addr2.String()), addr2); err != nil {
 			fmt.Println(err)
-			return
+		} else {
+			fmt.Println("send succ")
 		}
-		go read(listener1)
-		time.Sleep(5 * time.Second)
-		listener1.WriteToUDP([]byte("ping to #1: "+addr1.String()), addr1)
+		wg.Done()
 	}()
-	b := make([]byte, 1)
-	os.Stdin.Read(b)
+	//go func() {
+	//	listener1, err := net.ListenUDP("udp", addr2)
+	//	if err != nil {
+	//		fmt.Println(err)
+	//		return
+	//	}
+	//	go read(listener1)
+	//	time.Sleep(5 * time.Second)
+	//	listener1.WriteToUDP([]byte("ping to #1: "+addr1.String()), addr1)
+	//}()
+	//b := make([]byte, 1)
+	//os.Stdin.Read(b)
+	wg.Wait()
 }
