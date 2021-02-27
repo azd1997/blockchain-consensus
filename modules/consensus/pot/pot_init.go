@@ -25,30 +25,6 @@ import (
 // ** 整个网络启动时一定是先启动种子节点而后启动非种子节点；种子节点允许中间重启
 //
 
-// 作为Seed初始化
-// 包括初始化启动(还没有区块链)与重启动两种
-// 	1. 初始化启动： 启动消息处理循环/创造0号区块/启动时钟/进入
-//	2. 重启动：启动消息处理循环/等待直到收到NewBlock
-//func (p *Pot) init_Seed() {
-//	// 启动消息处理循环
-//	go p.msgHandleLoop()
-//	// 判断是初始化启动还是重启动
-//	if p.bc.GetMaxIndex() == 0 {	// 说明还没有区块，也就是初始化启动
-//		// 创建创世区块(1号区块)
-//		genesis, err := p.bc.CreateTheWorld()
-//		if err != nil {
-//			p.Fatalf("init_seed: create genesis block fail: %s\n", err)
-//		}
-//		// 启动时钟
-//		c := StartClock(genesis)
-//		if c == nil {
-//			p.Fatalf("init_seed: start clock fail\n")
-//		}
-//		//p.setStage(Sta)
-//	}
-//
-//}
-
 // initForSeedFirstStart seed初次启动
 func (p *Pot) initForSeedFirstStart() error {
 	p.Info("initForSeedFirstStart")

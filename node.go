@@ -14,6 +14,7 @@ import (
 	"github.com/azd1997/blockchain-consensus/modules/bnet/budp"
 	"github.com/azd1997/blockchain-consensus/modules/consensus"
 	"github.com/azd1997/blockchain-consensus/modules/consensus/pot"
+	"github.com/azd1997/blockchain-consensus/modules/ledger"
 	"github.com/azd1997/blockchain-consensus/modules/ledger/simplechain"
 	"github.com/azd1997/blockchain-consensus/modules/pitable"
 	"github.com/azd1997/blockchain-consensus/modules/pitable/memorypit"
@@ -55,7 +56,7 @@ type Node struct {
 
 	// msgBus 消息总线
 	// net -> pot; txmaker -> pot
-	msgBus chan []byte
+	msgBus chan *defines.Message
 
 	// kv 存储
 	kv requires.Store
@@ -75,108 +76,194 @@ type Node struct {
 }
 
 // DefaultNode 所有模块都采用默认提供的组件
-func DefaultNode(id string, duty defines.PeerDuty, addr string) (*Node, error) {
-	node := &Node{
-		id:   id,
-		duty: duty,
-		addr: addr,
-
-		kv:  nil,
-		bc:  nil,
-		pit: nil,
-		css: nil,
-		net: nil,
-		tv:  nil,
-	}
-
-	kv := test.NewStore()
-	bc, err := simplechain.NewBlockChain(id)
-	if err != nil {
-		return nil, err
-	}
-	pit, err := simplepit.NewSimplePit(id)
-	if err != nil {
-		return nil, err
-	}
-	bus := make(chan []byte, 1000)
-	netm, err := budp.NewUDPNet(id, addr, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	css, err := pot.New(id, duty, pit, bc, netm, bus)
-}
+//func DefaultNode(id string, duty defines.PeerDuty, addr string) (*Node, error) {
+//	node := &Node{
+//		id:   id,
+//		duty: duty,
+//		addr: addr,
+//
+//		kv:  nil,
+//		bc:  nil,
+//		pit: nil,
+//		css: nil,
+//		net: nil,
+//		tv:  nil,
+//	}
+//
+//	kv := test.NewStore()
+//	bc, err := simplechain.NewBlockChain(id)
+//	if err != nil {
+//		return nil, err
+//	}
+//	pit, err := simplepit.NewSimplePit(id)
+//	if err != nil {
+//		return nil, err
+//	}
+//	bus := make(chan []byte, 1000)
+//	netm, err := budp.NewUDPNet(id, addr, nil, nil)
+//	if err != nil {
+//		return nil, err
+//	}
+//	css, err := pot.New(id, duty, pit, bc, netm, bus)
+//}
 
 // NewNode 构建Node
 func NewNode(
 	id string, duty defines.PeerDuty, // 账户配置
-	consensusType string, // 共识配置
-	ln requires.Listener, dialer requires.Dialer, // 网络配置
-	kv requires.Store, bc requires.BlockChain, // 外部依赖
-	logdest log.LogDest, // 日志配置
+	addr string,
+	initedPit pitable.Pit, initedBc requires.BlockChain,
+	msgbus chan *defines.Message, initedNet bnet.BNet, initedCss consensus.Consensus,
+	seeds map[string]string, //预配置的种子节点
+	peers map[string]string, // 预配置的共识节点
 ) (*Node, error) {
 
 	node := &Node{
-		id: id,
-		kv: kv,
-		bc: bc,
+		id:   id,
+		duty: duty,
+		addr: addr,
 	}
+
+	// 构建bc
+	if initedBc == nil {
+		bc, err := ledger.New("simplechain", id)
+		if err != nil {
+			return nil, err
+		}
+		err = bc.Init()
+		if err != nil {
+			return nil, err
+		}
+		initedBc = bc
+	}
+	node.bc = initedBc
 
 	// 构建节点表
-	pit := memorypit.NewPeerInfoTable(kv)
-	err := pit.Init()
-	if err != nil {
+	if initedPit == nil {
+		pit, err := pitable.New("simplepit", id)
+		if err != nil {
+			return nil, err
+		}
+		err = pit.Init()
+		if err != nil {
+			return nil, err
+		}
+		initedPit = pit
+	}
+	node.pit = initedPit
+	// 预配置节点表
+	if err := node.pit.Set(&defines.PeerInfo{
+		Id:   node.id,
+		Addr: node.addr,
+		Attr: 0,
+		Duty: node.duty,
+		Data: nil,
+	}); err != nil {
 		return nil, err
 	}
-	node.pit = pit
+	node.pit.AddPeers(peers)
+	node.pit.AddSeeds(seeds)
 
-	// 构建共识状态机
-	css, err := NewConsensus(consensusType)
-	if err != nil {
-		return nil, err
+	// 消息总线
+	if msgbus == nil {
+		msgbus = make(chan *defines.Message, 100)
 	}
-	node.css = css
-	cssin, cssout := css.InMsgChan(), css.OutMsgChan()
 
 	// 构建网络模块
-	opt := &btcp.Option{
-		Listener: ln,
-		Dialer:   dialer,
-		MsgIn:    cssout,
-		MsgOut:   cssin,
-		LogDest:  logdest,
-		Pit:      pit,
+	netmod, err := bnet.NewBNet(id, "udp", addr, msgchan)
+	if err != nil {
+		return nil, err
 	}
-	netmod, err := btcp.NewNet(opt)
+	err = netmod.Init()
 	if err != nil {
 		return nil, err
 	}
 	node.net = netmod
 
+	// 构建共识状态机
+	pm, err := pot.New(id, duty, pit, bc, netmod, msgchan)
+	if err != nil {
+		return nil, err
+	}
+	err = pm.Init()
+	if err != nil {
+		return nil, err
+	}
+	node.css = pm
+
 	return node, nil
 }
 
-// Init 初始化
-func (s *Node) Init() error {
-	// 准备好PeerInfoTable
-	err := s.pit.Init()
-	if err != nil {
-		return err
-	}
+//// NewNode 构建Node
+//func NewNode(
+//	id string, duty defines.PeerDuty, // 账户配置
+//	consensusType string, // 共识配置
+//	ln requires.Listener, dialer requires.Dialer, // 网络配置
+//	kv requires.Store, bc requires.BlockChain, // 外部依赖
+//	logdest log.LogDest, // 日志配置
+//) (*Node, error) {
+//
+//	node := &Node{
+//		id: id,
+//		kv: kv,
+//		bc: bc,
+//	}
+//
+//	// 构建节点表
+//	pit := memorypit.NewPeerInfoTable(kv)
+//	err := pit.Init()
+//	if err != nil {
+//		return nil, err
+//	}
+//	node.pit = pit
+//
+//	// 构建共识状态机
+//	css, err := NewConsensus(consensusType)
+//	if err != nil {
+//		return nil, err
+//	}
+//	node.css = css
+//	cssin, cssout := css.InMsgChan(), css.OutMsgChan()
+//
+//	// 构建网络模块
+//	opt := &btcp.Option{
+//		Listener: ln,
+//		Dialer:   dialer,
+//		MsgIn:    cssout,
+//		MsgOut:   cssin,
+//		LogDest:  logdest,
+//		Pit:      pit,
+//	}
+//	netmod, err := btcp.NewNet(opt)
+//	if err != nil {
+//		return nil, err
+//	}
+//	node.net = netmod
+//
+//	return node, nil
+//}
 
-	// 网络模块初始化
-	err = s.net.Init()
-	if err != nil {
-		return err
-	}
-
-	// 共识模块初始化
-	err = s.css.Init()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
+//// Init 初始化
+//func (s *Node) Init() error {
+//	// 准备好PeerInfoTable
+//	err := s.pit.Init()
+//	if err != nil {
+//		return err
+//	}
+//
+//	// 网络模块初始化
+//	err = s.net.Init()
+//	if err != nil {
+//		return err
+//	}
+//
+//	// 共识模块初始化
+//	err = s.css.Init()
+//	if err != nil {
+//		return err
+//	}
+//
+//	return nil
+//}
 
 // Ok 检查Node是否非空，以及内部一些成员是否准备好
 func (s *Node) Ok() bool {
