@@ -207,14 +207,11 @@ func New(id string, duty defines.PeerDuty,
 // stage: RN -> RFB -> wait PotStart -> InPot -> PostPot -> InPot -> ...
 // state: ----------------------------- witness -> learner -> 此时才开始推算该是什么状态
 func (p *Pot) Init() error {
-
 	p.Infof("Init start")
-
 	// 启动消息处理循环
 	go p.MsgHandleLoop()
 	// 启动状态切换循环(没有clock触发)
 	go p.StateMachineLoop()
-
 	// 区块链的最新状态
 	bc := p.bc.GetMaxIndex()
 	var err error
@@ -232,7 +229,6 @@ func (p *Pot) Init() error {
 			err = p.initForPeerReStart()
 		}
 	}
-
 	if err != nil {
 		return err
 	}
