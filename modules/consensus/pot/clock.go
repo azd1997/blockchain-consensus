@@ -105,7 +105,7 @@ func NewClock(enableTimeCorrect bool) *Clock {
 //	return c
 //}
 
-// StartClock 接收到网络中最新的区块后，以该区块为起始驱动时钟运行
+// Start 接收到网络中最新的区块后，以该区块为起始驱动时钟运行
 func (c *Clock) Start(baseBlock *defines.Block) *Clock {
 	c.epoch = baseBlock.Index
 	if c.enableTimeCorrect {
@@ -168,8 +168,7 @@ func (c *Clock) loop() {
 				phase2 = time.Duration(unit)
 				//fmt.Println(phase1.Milliseconds(), phase2.Milliseconds())
 				//fmt.Println("1111", time.Now())
-				c.t.Reset(phase1)
-				//fmt.Println("2222", time.Now())
+				c.t.Reset(phase1)				//fmt.Println("2222", time.Now())
 				c.Tick <- Moment{
 					Type: MomentType_PotOver,
 					Time: <-c.t.C,

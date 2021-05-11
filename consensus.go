@@ -31,12 +31,12 @@ type Consensus interface {
 	// 消息处理循环
 	msgHandleLoop()
 
-	// MsgChannel 对于Consensus的上层来说，需要调用该函数，
+	// OutMsgChan 对于Consensus的上层来说，需要调用该函数，
 	// 得到消息channel，根据该channel拿消息去发送到网络中
 	// TODO: 发送的结果是成功还是失败？状态机需不需要考虑？
 	OutMsgChan() chan *defines.MessageWithError
 
-	// 接收消息的channel，需要将该chan移交给网络模块去写消息
+	// InMsgChan 接收消息的channel，需要将该chan移交给网络模块去写消息
 	// Consensus模块在内部循环读该chan，处理Message
 	InMsgChan() chan *defines.Message
 }
