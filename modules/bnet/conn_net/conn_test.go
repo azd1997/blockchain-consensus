@@ -4,7 +4,7 @@
 * @Description: 测试进一步封装的Conn的建立与消息收发
 ***********************************************************************/
 
-package btcp
+package conn_net
 
 import (
 	_default "github.com/azd1997/blockchain-consensus/requires/default"

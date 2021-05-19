@@ -10,6 +10,7 @@ import (
 	"errors"
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
+	"github.com/azd1997/blockchain-consensus/modules/bnet/btcp"
 	"github.com/azd1997/blockchain-consensus/modules/bnet/budp"
 )
 
@@ -35,7 +36,8 @@ type BNet interface {
 }
 
 // NewBNet
-func NewBNet(id string, network string, addr string, msgchan chan *defines.Message) (BNet, error) {
+func NewBNet(id string, network string, addr string,
+		msgchan chan *defines.Message) (BNet, error) {
 
 	logger := log.NewLogger("NET", id)
 
@@ -43,7 +45,7 @@ func NewBNet(id string, network string, addr string, msgchan chan *defines.Messa
 	case "udp":
 		return budp.New(id, addr, logger, msgchan)
 	case "tcp":
-		return nil, nil
+		return btcp.New(id, addr, logger, msgchan)
 	default:
 		return nil, errors.New("unknown network protocol")
 	}

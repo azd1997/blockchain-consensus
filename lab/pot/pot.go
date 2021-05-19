@@ -39,7 +39,7 @@ engine = "badger"
 database = "./data"
 
 [bnet]
-protocol = "btcp"
+protocol = "conn_net"
 addr = "127.0.0.1:8099"
 
 # seeds信息对， id-addr

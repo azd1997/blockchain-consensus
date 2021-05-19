@@ -10,7 +10,7 @@ import (
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
 	"github.com/azd1997/blockchain-consensus/modules/bnet"
-	"github.com/azd1997/blockchain-consensus/modules/bnet/btcp"
+	"github.com/azd1997/blockchain-consensus/modules/bnet/conn_net"
 	"github.com/azd1997/blockchain-consensus/modules/bnet/budp"
 	"github.com/azd1997/blockchain-consensus/modules/consensus"
 	"github.com/azd1997/blockchain-consensus/modules/consensus/pot"
@@ -225,7 +225,7 @@ func NewNode(
 //	cssin, cssout := css.InMsgChan(), css.OutMsgChan()
 //
 //	// 构建网络模块
-//	opt := &btcp.Option{
+//	opt := &conn_net.Option{
 //		Listener: ln,
 //		Dialer:   dialer,
 //		MsgIn:    cssout,
@@ -233,7 +233,7 @@ func NewNode(
 //		LogDest:  logdest,
 //		Pit:      pit,
 //	}
-//	netmod, err := btcp.NewNet(opt)
+//	netmod, err := conn_net.NewNet(opt)
 //	if err != nil {
 //		return nil, err
 //	}

@@ -4,7 +4,7 @@
 * @Description: bcc库内部封装的Conn
 ***********************************************************************/
 
-package btcp
+package conn_net
 
 import (
 	"fmt"

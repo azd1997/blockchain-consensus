@@ -4,7 +4,7 @@
 * @Description: 网络模块测试文件
 ***********************************************************************/
 
-package btcp
+package conn_net
 
 import (
 	"fmt"
