@@ -122,7 +122,7 @@ func (c *Conn) Send(msg *defines.Message) error {
 // 关于RecvLoop退出：
 // c.Close()后主动关闭，而后c.RecvLoop()会因为“use of closed network connection”而退出
 // 对端的conn则会收到“EOF”而退出
-//
+// TODO: 链接关闭时退出
 func (c *Conn) RecvLoop() {
 	c.status = ConnStatus_Running
 	log.Printf("Conn(%s) running\n", c.Name())

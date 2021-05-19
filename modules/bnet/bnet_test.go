@@ -15,8 +15,7 @@ import (
 	"time"
 )
 
-func TestBNet(t *testing.T) {
-
+func testBNet(t *testing.T, network string) {
 	addr1 := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 9981}
 	addr2 := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 9982}
 	id1, id2 := "peerA", "peerB"
@@ -27,12 +26,12 @@ func TestBNet(t *testing.T) {
 	wg.Add(2)
 
 	go func() {
-		peerA, _ := NewBNet(id1, "udp", addr1.String(), make(chan *defines.Message, 100))
+		peerA, _ := NewBNet(id1, network, addr1.String(), make(chan *defines.Message, 100))
 		if err := peerA.Init(); err != nil {
 			t.Error(err)
 		}
 		time.Sleep(1 * time.Second)
-		if err := peerA.Send(addr2.String(), &defines.Message{
+		if err := peerA.Send(id2, addr2.String(), &defines.Message{
 			Desc: "ping to #2: " + addr2.String(),
 		}); err != nil {
 			t.Error(err)
@@ -41,12 +40,12 @@ func TestBNet(t *testing.T) {
 	}()
 
 	go func() {
-		peerB, _ := NewBNet(id2, "udp", addr2.String(), make(chan *defines.Message, 100))
+		peerB, _ := NewBNet(id2, network, addr2.String(), make(chan *defines.Message, 100))
 		if err := peerB.Init(); err != nil {
 			t.Error(err)
 		}
 		time.Sleep(1 * time.Second)
-		if err := peerB.Send(addr1.String(), &defines.Message{
+		if err := peerB.Send(id1, addr1.String(), &defines.Message{
 			Desc: "ping to #1: " + addr1.String(),
 		}); err != nil {
 			t.Error(err)
@@ -57,4 +56,12 @@ func TestBNet(t *testing.T) {
 	wg.Wait()
 
 	time.Sleep(10 * time.Millisecond)
+}
+
+func TestBNet_UDP(t *testing.T) {
+	testBNet(t, "udp")
+}
+
+func TestBNet_TCP(t *testing.T) {
+	testBNet(t, "tcp")
 }

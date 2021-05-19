@@ -12,6 +12,12 @@ import (
 	"github.com/azd1997/blockchain-consensus/modules/pitable/simplepit"
 )
 
+type PitType uint8
+
+const (
+	PitType_SimplePit PitType = iota
+)
+
 // Pit 内部的PeerInfoTable接口
 type Pit interface {
 	Init() error
@@ -39,9 +45,9 @@ type Pit interface {
 }
 
 // New
-func New(pittype string, id string) (Pit, error) {
+func New(pittype PitType, id string) (Pit, error) {
 	switch pittype {
-	case "simplepit":
+	case PitType_SimplePit:
 		return simplepit.New(id)
 	default:
 		return nil, errors.New("unsupport pit type")

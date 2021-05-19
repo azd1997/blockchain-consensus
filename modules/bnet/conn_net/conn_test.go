@@ -148,7 +148,7 @@ func TestConn(t *testing.T) {
 
 var testMsg = &defines.Message{
 	Version: defines.CodeVersion,
-	Type:    defines.MessageType_OneBlock,
+	Type:    defines.MessageType_Blocks,
 	From:    "id_peerb",
 	To:      "id_peera",
 	Sig:     []byte("Signature"),

@@ -27,7 +27,7 @@ type BNet interface {
 	Close() error
 	Closed() bool
 
-	Send(raddr string, msg *defines.Message) error // 向某人发送消息
+	Send(id string, raddr string, msg *defines.Message) error // 向某人发送消息
 
 	// SetMsgOutChan [不建议调用]
 	SetMsgOutChan(bus chan *defines.Message) // 给结构体设置一个消息总线chan，用于将得到的消息传输出来

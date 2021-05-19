@@ -13,10 +13,16 @@ import (
 	"github.com/azd1997/blockchain-consensus/requires"
 )
 
+type LedgerType uint8
+
+const (
+	LedgerType_SimpleChain LedgerType = iota
+)
+
 // New
-func New(ledgertype string, id string) (requires.BlockChain, error) {
+func New(ledgertype LedgerType, id string) (requires.BlockChain, error) {
 	switch ledgertype {
-	case "simplechain":
+	case LedgerType_SimpleChain:
 		return simplechain.New(id)
 	default:
 		return nil, errors.New("unsupport ledger type")

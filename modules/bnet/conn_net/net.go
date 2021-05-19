@@ -145,17 +145,17 @@ func New(id string, addr string, logger *log.Logger,
 	}, nil
 }
 
-func (tn *Net) ID() string {
-	return tn.id
+func (n *Net) ID() string {
+	return n.id
 }
 
-func (tn *Net) Addr() string {
-	return tn.addr
+func (n *Net) Addr() string {
+	return n.addr
 }
 
 // Network 网络协议
-func (tn *Net) Network() string {
-	return tn.network
+func (n *Net) Network() string {
+	return n.network
 }
 
 // Init 初始化
@@ -164,53 +164,53 @@ func (tn *Net) Network() string {
 //		2. 启动消息处理循环（如果有）
 // 		3. 与已有节点建立连接
 //		4. 执行启动任务（如果有）
-func (tn *Net) Init() error {
+func (n *Net) Init() error {
 
-	tn.Infof("Init: id(%s), addr(%s): start", tn.id, tn.addr)
+	n.Infof("Init: id(%s), addr(%s): start", n.id, n.addr)
 
 	// 启动监听循环
-	go tn.listenLoop()
-	// 启动消息处理循环
-	if tn.customMsgHandleFunc != nil {
-		go tn.msgHandleLoop()
-	}
-	// 启动发送循环
-	go tn.msgSendLoop()
+	go n.listenLoop()
+	//// 启动消息处理循环
+	//if n.customMsgHandleFunc != nil {
+	//	go n.msgHandleLoop()
+	//}
+	//// 启动发送循环
+	//go n.msgSendLoop()
 
-	f := func(peer *defines.PeerInfo) error {
-		// 建立连接
-		_, err := tn.connect(peer.Id)
-		if err != nil {
-			tn.Errorf("Init: connect to peer (%s,%s) fail: %s", peer.Id, peer.Addr, err)
-			return err
-		}
-		return nil
-	}
+	//f := func(peer *defines.PeerInfo) error {
+	//	// 建立连接
+	//	_, err := n.connect(peer.Id)
+	//	if err != nil {
+	//		n.Errorf("Init: connect to peer (%s,%s) fail: %s", peer.Id, peer.Addr, err)
+	//		return err
+	//	}
+	//	return nil
+	//}
+	//
+	//// 和所有seeds建立连接，发送getNeighbors消息
+	//n.pit.RangeSeeds(f)
+	//// 如果peers非空，也建立连接
+	//n.pit.RangePeers(f)
+	//
+	//// 如果已经设置CustomInitFunc，那么执行
+	//if n.customInitFunc != nil {
+	//	n.Infof("Init: CustomInitFunc: ready")
+	//	err := n.customInitFunc(n)
+	//	if err != nil {
+	//		// 这里如果出错不会退出，而是打日志
+	//		n.Errorf("Init: CustomInitFunc: %s", err)
+	//	}
+	//	n.Infof("Init: CustomInitFunc: finish")
+	//}
 
-	// 和所有seeds建立连接，发送getNeighbors消息
-	tn.pit.RangeSeeds(f)
-	// 如果peers非空，也建立连接
-	tn.pit.RangePeers(f)
-
-	// 如果已经设置CustomInitFunc，那么执行
-	if tn.customInitFunc != nil {
-		tn.Infof("Init: CustomInitFunc: ready")
-		err := tn.customInitFunc(tn)
-		if err != nil {
-			// 这里如果出错不会退出，而是打日志
-			tn.Errorf("Init: CustomInitFunc: %s", err)
-		}
-		tn.Infof("Init: CustomInitFunc: finish")
-	}
-
-	tn.inited = true
-	tn.Infof("Init: id(%s), addr(%s): finish", tn.id, tn.addr)
+	n.inited = true
+	n.Infof("Init: id(%s), addr(%s): finish", n.id, n.addr)
 	return nil
 }
 
 // Inited 是否已初始化
-func (tn *Net) Inited() bool {
-	return tn.inited
+func (n *Net) Inited() bool {
+	return n.inited
 }
 
 // Close 关闭
@@ -221,10 +221,10 @@ func (tn *Net) Inited() bool {
 //		3. (不关闭msgout，只是直接丢弃，因为做conns和Net间goroutine的同步没太大必要，直接放弃msgout即可)
 //		*. 上面三者其实没有严格顺序，因为所有可能的存在的新连接、新消息都不会被处理，即便处理也没有关系
 // 		目前直接使用done通知关闭
-func (tn *Net) Close() error {
+func (n *Net) Close() error {
 
 	// 关闭监听器
-	err := tn.ln.Close()
+	err := n.ln.Close()
 	if err != nil {
 		return err
 	}
@@ -232,39 +232,45 @@ func (tn *Net) Close() error {
 	// 关闭发送循环，放弃msgin的读取
 	// 关闭监听循环
 	// 关闭消息处理循环（如果有）
-	close(tn.done)
+	close(n.done)
 
 	// 关闭所有现有链接
-	tn.connsLock.RLock()
-	for id := range tn.conns {
-		tn.conns[id].Close()
+	n.connsLock.RLock()
+	for id := range n.conns {
+		n.conns[id].Close()
 	}
-	tn.connsLock.RUnlock()
+	n.connsLock.RUnlock()
 
-	tn.inited = false
+	n.inited = false
 	return nil
 }
 
 // Ok 判断Net是否准备好
-func (tn *Net) Ok() bool {
-	return tn != nil && tn.ln != nil && tn.d != nil
+func (n *Net) Ok() bool {
+	return n != nil && n.ln != nil && n.d != nil
 }
 
-func (tn *Net) Closed() bool {
-	return tn.closed
+func (n *Net) Closed() bool {
+	return n.closed
 }
 
-func (tn *Net) Send(raddr string, msg *defines.Message) error {
-	return tn.send(raddr, msg)
+func (n *Net) Send(id, raddr string, msg *defines.Message) error {
+	err := n.send(id, raddr, msg)
+	if err != nil {
+		n.Errorf("UDPNet send msg(%s) fail. raddr=%s, err=%s, msg=%v", msg.Type.String(), raddr, err, msg)
+		return err
+	}
+	n.Debugf("UDPNet send msg(%s) succ. raddr=%s, n=%d, msg=%v", msg.Type.String(), raddr, n, msg)
+	return nil
 }
 
-func (tn *Net) SetMsgOutChan(bus chan *defines.Message) {
-	if tn.msgout == nil {
-		tn.msgout = bus
+func (n *Net) SetMsgOutChan(bus chan *defines.Message) {
+	if n.msgout == nil {
+		n.msgout = bus
 	}
 }
 
-func (tn *Net) RecvLoop() {
+func (n *Net) RecvLoop() {
 	// 空实现
 }
 
@@ -355,44 +361,39 @@ func (tn *Net) RecvLoop() {
 // connect 连接某个id的节点
 // 如果连接已存在，则返回该连接Conn
 // 如果链接不存在，则创建
-func (tn *Net) connect(to string) (*Conn, error) {
-	if !tn.Ok() {
+func (n *Net) connect(to, raddr string) (*Conn, error) {
+	if !n.Ok() {
 		return nil, errors.New("Net is not ok for Connect")
 	}
 
 	// to是自己
-	if tn.id == to {
+	if n.id == to {
 		return nil, nil
 	}
 
 	// 连接存在，直接返回
-	if tn.conns[to] != nil {
-		return tn.conns[to], nil
+	if c, exists := n.conns[to]; exists && c.status == ConnStatus_Running {
+		return c, nil
 	}
 
-	// 连接不存在，创建连接
-	toPeerInfo, err := tn.pit.Get(to)
+	// 连接不存在(或原来的连接已经停止了)，创建连接 和to建立连接
+	c, err := n.d.Dial(raddr, to)
 	if err != nil {
 		return nil, err
 	}
-	// 和to建立连接
-	c, err := tn.d.Dial(toPeerInfo.Addr, toPeerInfo.Id)
-	if err != nil {
-		return nil, err
-	}
-	conn := ToConn(c, tn.msgout) // c传输过来的消息会写到msgout传出去
+	conn := ToConn(c, n.msgout) // c传输过来的消息会写到msgout传出去
 	// 记录连接
-	tn.connsLock.Lock()
-	tn.conns[to] = conn
-	tn.connsLock.Unlock()
+	n.connsLock.Lock()
+	n.conns[to] = conn
+	n.connsLock.Unlock()
 	// 启动连接
-	tn.startConn(conn)
+	n.startConn(conn)
 
 	return conn, nil
 }
 
 // startConn 启动连接
-func (tn *Net) startConn(c *Conn) {
+func (n *Net) startConn(c *Conn) {
 	if c == nil {
 		return
 	}
@@ -404,9 +405,9 @@ func (tn *Net) startConn(c *Conn) {
 // 如果net.id与to之间已经有Conn，那么通过该Conn发送消息
 // 如果没有Conn，那么建立新Conn，并发送消息。
 // TODO: 关于连接数量的控制
-func (tn *Net) send(raddr string, msg *defines.Message) error {
+func (n *Net) send(id, raddr string, msg *defines.Message) error {
 	// 获取或创建连接
-	conn, err := tn.connect(raddr)
+	conn, err := n.connect(id, raddr)
 	if err != nil {
 		return err
 	}
@@ -425,27 +426,27 @@ func (tn *Net) send(raddr string, msg *defines.Message) error {
 
 // 消息处理循环
 // 仅当Net.msgHandleFunc设置时生效
-func (tn *Net) msgHandleLoop() {
-	if tn.customMsgHandleFunc == nil {
-		tn.Error("msgHandleLoop: nil msgHandleFunc, return")
-		return
-	}
-
-	var err error
-
-	for {
-		select {
-		case <-tn.done:
-			tn.Infof("msgHandleLoop: returned...")
-			return
-		case msg := <-tn.msgout:
-			err = tn.customMsgHandleFunc(tn, msg)
-			if err != nil {
-				tn.Errorf("msgHandleLoop: handle msg: {msg:%v, err:%s}", msg, err)
-			}
-		}
-	}
-}
+//func (tn *Net) msgHandleLoop() {
+//	if tn.customMsgHandleFunc == nil {
+//		tn.Error("msgHandleLoop: nil msgHandleFunc, return")
+//		return
+//	}
+//
+//	var err error
+//
+//	for {
+//		select {
+//		case <-tn.done:
+//			tn.Infof("msgHandleLoop: returned...")
+//			return
+//		case msg := <-tn.msgout:
+//			err = tn.customMsgHandleFunc(tn, msg)
+//			if err != nil {
+//				tn.Errorf("msgHandleLoop: handle msg: {msg:%v, err:%s}", msg, err)
+//			}
+//		}
+//	}
+//}
 
 // msgSendLoop 发送循环
 // 不断读msgin的消息，然后发送出去
@@ -476,26 +477,26 @@ func (tn *Net) msgHandleLoop() {
 //}
 
 // listenLoop 监听循环
-func (tn *Net) listenLoop() {
+func (n *Net) listenLoop() {
 
 	for {
 		select {
-		case <-tn.done:
-			tn.Infof("listenLoop: returned...")
+		case <-n.done:
+			n.Infof("listenLoop: returned...")
 			return
 		default:
 			// 接受连接
-			conn, err := tn.ln.Accept()
+			conn, err := n.ln.Accept()
 			if err != nil {
-				tn.Errorf("listenLoop: accept fail: %s", err)
+				n.Errorf("listenLoop: accept fail: %s", err)
 				continue
 			}
 			// 启动连接，循环接收消息
-			c := ToConn(conn, tn.msgout)
+			c := ToConn(conn, n.msgout)
 			// 记录连接
-			tn.conns[conn.RemoteID()] = c
+			n.conns[conn.RemoteID()] = c
 			// 启动连接
-			tn.startConn(c)
+			n.startConn(c)
 		}
 	}
 }

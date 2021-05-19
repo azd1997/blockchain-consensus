@@ -32,7 +32,7 @@ func TestUDPNet(t *testing.T) {
 			t.Error(err)
 		}
 		time.Sleep(1 * time.Second)
-		if err := peerA.Send(addr2, &defines.Message{
+		if err := peerA.Send(id2, addr2, &defines.Message{
 			Desc: "ping to #2: " + addr2,
 		}); err != nil {
 			t.Error(err)
@@ -47,7 +47,7 @@ func TestUDPNet(t *testing.T) {
 			t.Error(err)
 		}
 		time.Sleep(1 * time.Second)
-		if err := peerB.Send(addr1, &defines.Message{
+		if err := peerB.Send(id1, addr1, &defines.Message{
 			Desc: "ping to #1: " + addr1,
 		}); err != nil {
 			t.Error(err)

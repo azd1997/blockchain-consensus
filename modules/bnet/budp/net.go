@@ -108,7 +108,7 @@ func (un *UDPNet) Closed() bool {
 	return un.closed
 }
 
-func (un *UDPNet) Send(raddr string, msg *defines.Message) error {
+func (un *UDPNet) Send(id, raddr string, msg *defines.Message) error {
 	if !un.inited || un.closed {
 		return errors.New("UDPNet is not running")
 	}

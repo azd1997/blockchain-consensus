@@ -29,7 +29,7 @@ func (p *Pot) send(msg *defines.Message) error {
 	randMs := rand.Intn(20) + 10 // 10~30ms
 	time.Sleep(time.Duration(randMs) * time.Millisecond)
 
-	return p.net.Send(to.Addr, msg)
+	return p.net.Send(msg.To, to.Addr, msg)
 }
 
 // signAndSendMsg 酌情使用 go signAndSendMsg()

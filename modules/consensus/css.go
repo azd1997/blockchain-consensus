@@ -8,13 +8,20 @@ package consensus
 
 import (
 	"errors"
+	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/modules/bnet"
+	"github.com/azd1997/blockchain-consensus/modules/consensus/pot"
 	"github.com/azd1997/blockchain-consensus/modules/pitable"
 	"github.com/azd1997/blockchain-consensus/requires"
-	"strings"
+)
 
-	"github.com/azd1997/blockchain-consensus/defines"
-	"github.com/azd1997/blockchain-consensus/modules/consensus/pot"
+type ConsensusType uint8
+
+const (
+	ConsensuType_PoT ConsensusType = iota
+	ConsensuType_PoW
+	ConsensuType_PBFT
+	ConsensuType_Raft
 )
 
 // Consensus 共识接口。事实上一个Consensus实例代表一个基于该共识协议的共识节点
@@ -39,14 +46,13 @@ type Consensus interface {
 }
 
 // New 新建一个共识状态机
-func New(typ string,
+func New(typ ConsensusType,
 	id string, duty defines.PeerDuty,
 	pit pitable.Pit, bc requires.BlockChain,
 	net bnet.BNet, msgchan chan *defines.Message) (Consensus, error) {
 
-	typ = strings.ToLower(typ) // 支持pot, Pot等大小写
 	switch typ {
-	case "pot":
+	case ConsensuType_PoT:
 		return pot.New(id, duty, pit, bc, net, msgchan)
 	default:
 		return nil, errors.New("unknown consensus type")
