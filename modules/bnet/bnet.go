@@ -14,6 +14,14 @@ import (
 	"github.com/azd1997/blockchain-consensus/modules/bnet/budp"
 )
 
+
+type NetType uint8
+
+const (
+	NetType_TCP NetType = iota
+	NetType_UDP
+)
+
 // 考虑到具体的BNet实现必然是统一网络协议的，所以，没必要在发送时使用net.Addr，直接使用“ip:port”的string
 
 type BNet interface {
@@ -36,15 +44,15 @@ type BNet interface {
 }
 
 // NewBNet
-func NewBNet(id string, network string, addr string,
+func NewBNet(id string, network NetType, addr string,
 		msgchan chan *defines.Message) (BNet, error) {
 
 	logger := log.NewLogger("NET", id)
 
 	switch network {
-	case "udp":
+	case NetType_UDP:
 		return budp.New(id, addr, logger, msgchan)
-	case "tcp":
+	case NetType_TCP:
 		return btcp.New(id, addr, logger, msgchan)
 	default:
 		return nil, errors.New("unknown network protocol")

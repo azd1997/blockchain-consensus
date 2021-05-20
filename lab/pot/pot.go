@@ -86,6 +86,7 @@ func NewNode(
 	shutdownAtTi int, cheatAtTi []int, enableClients bool,
 	seeds map[string]string, //预配置的种子节点
 	peers map[string]string, // 预配置的共识节点
+	genesis ...string,		// 待写入创世区块内容。只有第一个节点需要设置此项
 ) (*Node, error) {
 
 	node := &Node{
@@ -95,7 +96,7 @@ func NewNode(
 	}
 
 	// 构建bc
-	bc, err := ledger.New("simplechain", id)
+	bc, err := ledger.New(ledger.LedgerType_SimpleChain, id)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +107,7 @@ func NewNode(
 	node.bc = bc
 
 	// 构建节点表
-	pit, err := pitable.New("simplepit", id)
+	pit, err := pitable.New(pitable.PitType_SimplePit, id)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +133,7 @@ func NewNode(
 	msgchan := make(chan *defines.Message, 100)
 
 	// 构建网络模块
-	netmod, err := bnet.NewBNet(id, "udp", addr, msgchan)
+	netmod, err := bnet.NewBNet(id, bnet.NetType_TCP, addr, msgchan)
 	if err != nil {
 		return nil, err
 	}

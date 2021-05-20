@@ -12,6 +12,7 @@ import (
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
 	"github.com/azd1997/blockchain-consensus/modules/bnet"
+	"github.com/azd1997/blockchain-consensus/modules/ledger"
 	"github.com/azd1997/blockchain-consensus/modules/pitable"
 	"github.com/azd1997/blockchain-consensus/requires"
 	"github.com/azd1997/blockchain-consensus/utils/math"
@@ -78,7 +79,7 @@ type Pot struct {
 	// 2. 查询区块
 	// 3. 添加交易。
 	// 4. 生成新区块
-	bc requires.BlockChain
+	bc ledger.Ledger
 
 	// 节点信息表，传入的需要是已初始化好的
 	pit pitable.Pit
