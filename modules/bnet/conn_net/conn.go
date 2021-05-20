@@ -48,6 +48,8 @@ func (cs ConnStatus) String() string {
 	4. 需要发送Message时调bconn.Send()
 	5. Message处理方需要读bconn.MsgChan()
 
+	// 注意：由于基于TCP C/S架构实现P2P，为了避免连接建立的冲突，将连接视为 【单向连接】
+
 */
 type Conn struct {
 	conn requires.Conn
@@ -134,6 +136,7 @@ func (c *Conn) RecvLoop() {
 		err = binary.Read(c.conn, binary.BigEndian, &magic)
 		if err != nil {
 			log.Printf("Conn(%s) met error: %s\n", c.Name(), err)
+
 			continue
 		}
 		err = binary.Read(c.conn, binary.BigEndian, &msglen)

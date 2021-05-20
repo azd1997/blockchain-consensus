@@ -9,6 +9,12 @@ package pot
 import (
 	"errors"
 	"github.com/azd1997/blockchain-consensus/defines"
+	"time"
+)
+
+const (
+	retryMaxTimesWhenInit = 100
+	retryDurationWhenInit = 1 * time.Second
 )
 
 // Init 初始化
@@ -25,38 +31,54 @@ import (
 // ** 整个网络启动时一定是先启动种子节点而后启动非种子节点；种子节点允许中间重启
 //
 
+// 创世区块一定先启动，其他节点必需与创世节点连接上才能启动，其他节点可以暂时连接不上
+func (p *Pot) initForGenesis() error {
+	p.Info("initForGenesis")
+
+	genesis, err := p.bc.CreateTheWorld()
+	if err != nil {
+		p.Fatalf("initForGenesis: create genesis block fail: %s\n", err)
+	}
+	p.b1Time = genesis.Timestamp
+	// 启动时钟
+	p.clock.Start(genesis)
+	p.Infof("start clock succ. b1Time: %d", genesis.Timestamp)
+
+	// 进入PostPot
+	p.setStage(StageType_PostPot) // 在这里设置是因为刚刚初始化clock，此时的PotOver时刻信号其实没有，所以手动设置stage
+	// 设置状态
+	if p.duty == defines.PeerDuty_Seed {
+		p.setState(StateType_Judger)
+	} else if p.duty == defines.PeerDuty_Peer {
+		p.setState(StateType_Winner)
+	} else {
+		p.Fatalf("initForGenesis: only peer and seed can become a genesis\n")
+	}
+	return nil
+}
+
+// 启动流程应该是：
+// 一方面， 节点不断请求节点表内预配置的seed/peer list
+	// 当有一个返回之后就
+
 // initForSeedFirstStart seed初次启动
 func (p *Pot) initForSeedFirstStart() error {
 	p.Info("initForSeedFirstStart")
 
+	retryWhenInit := 0
 	// 尝试与节点表其他seed联系，请求邻居信息
 	p.setStage(StageType_PreInited_RequestNeighbors)
-	seedsAllFail, err := p.requestNeighborsAndWait()
-	if seedsAllFail {
-		// 与所有其他seed的发信都失败了
-		// 存在两种可能：(a)自己是整个网络中第一个启动的seed; (b)自己不是第一个启动的seed，别人是，但是别人目前没在线
-		// 目前只按(a)情况处理
-		// 为了处理(b)情况，要求所有peer需要定期广播给所有seed，来报告进度，seed可以借此发现自己落后从而纠正
-		// 而这个定期广播恰好由证明消息所承担了
-		//
-		// (a)情况下，当前seed需要创建区块链了：
-
-		// 创建创世区块(1号区块)
-		genesis, err := p.bc.CreateTheWorld()
-		if err != nil {
-			p.Fatalf("initForSeedFirstStart: create genesis block fail: %s\n", err)
+	_, err := p.requestNeighborsAndWait() // 约2s
+	// 本机节点必需至少找到一个节点进行连接
+	for err != nil {
+		// 不断重试
+		retryWhenInit++
+		time.Sleep(retryDurationWhenInit)
+		p.Infof("initForPeerFirstStart: retryWhenInit: %d", retryWhenInit)
+		if retryWhenInit > retryMaxTimesWhenInit {
+			return errors.New("retry too much times when init")
 		}
-		p.b1Time = genesis.Timestamp
-		// 启动时钟
-		p.clock.Start(genesis)
-		p.Infof("start clock succ. b1Time: %d", genesis.Timestamp)
-		// 更新自己进度
-		//p.processes.refresh(genesis)
-
-		// 进入PostPot
-		p.setStage(StageType_PostPot) // 在这里设置是因为刚刚初始化clock，此时的PotOver时刻信号其实没有，所以手动设置stage
-		p.setState(StateType_Judger)
-		return nil // 此情况下预启动完成
+		_, err = p.requestNeighborsAndWait()
 	}
 
 	/*
@@ -109,10 +131,20 @@ func (p *Pot) initForSeedReStart() error {
 
 	// 1. 广播seeds(以及peers)，看有无在线的
 	// 尝试与节点表其他seed联系，请求邻居信息
+	retryWhenInit := 0
+	// 尝试与节点表其他seed联系，请求邻居信息
 	p.setStage(StageType_PreInited_RequestNeighbors)
-	_, err := p.requestNeighborsAndWait()
-	if err != nil {
-		return err
+	_, err := p.requestNeighborsAndWait() // 约2s
+	// 本机节点必需至少找到一个节点进行连接
+	for err != nil {
+		// 不断重试
+		retryWhenInit++
+		time.Sleep(retryDurationWhenInit)
+		p.Infof("initForPeerFirstStart: retryWhenInit: %d", retryWhenInit)
+		if retryWhenInit > retryMaxTimesWhenInit {
+			return errors.New("retry too much times when init")
+		}
+		_, err = p.requestNeighborsAndWait()
 	}
 
 	// 2. 根据本地已有区块，初始化时钟
@@ -143,10 +175,20 @@ func (p *Pot) initForPeerFirstStart() error {
 	p.Info("initForPeerFirstStart")
 
 	// 1. 向seeds和预配置的peers请求节点表
+	retryWhenInit := 0
+	// 尝试与节点表其他seed联系，请求邻居信息
 	p.setStage(StageType_PreInited_RequestNeighbors)
-	seedsAllFail, err := p.requestNeighborsAndWait()
-	if err != nil {
-		return err
+	seedsAllFail, err := p.requestNeighborsAndWait() // 约2s
+	// 本机节点必需至少找到一个节点进行连接
+	for err != nil {
+		// 不断重试
+		retryWhenInit++
+		time.Sleep(retryDurationWhenInit)
+		p.Infof("initForPeerFirstStart: retryWhenInit: %d", retryWhenInit)
+		if retryWhenInit > retryMaxTimesWhenInit {
+			return errors.New("retry too much times when init")
+		}
+		seedsAllFail, err = p.requestNeighborsAndWait()
 	}
 
 	// 2. 请求1号区块，初始化时钟	// TODO: 1号区块距当前最新区块太远导致时间偏差较大问题，待解决
@@ -175,10 +217,20 @@ func (p *Pot) initForPeerReStart() error {
 	p.Info("initForPeerReStart")
 
 	// 1. 向seeds和预配置的peers请求节点表
+	retryWhenInit := 0
+	// 尝试与节点表其他seed联系，请求邻居信息
 	p.setStage(StageType_PreInited_RequestNeighbors)
-	_, err := p.requestNeighborsAndWait()
-	if err != nil {
-		return err
+	_, err := p.requestNeighborsAndWait() // 约2s
+	// 本机节点必需至少找到一个节点进行连接
+	for err != nil {
+		// 不断重试
+		retryWhenInit++
+		time.Sleep(retryDurationWhenInit)
+		p.Infof("initForPeerFirstStart: retryWhenInit: %d", retryWhenInit)
+		if retryWhenInit > retryMaxTimesWhenInit {
+			return errors.New("retry too much times when init")
+		}
+		_, err = p.requestNeighborsAndWait()
 	}
 
 	// 2. 根据本地已有区块，初始化时钟
@@ -207,7 +259,8 @@ func (p *Pot) initForPeerReStart() error {
 ////////////////////////////////////////////////////
 
 // requestNeighborsAndWait 广播getNeighbors请求
-// toseeds true则向种子节点广播；否则向所有节点广播
+// seedsAllFail代表种子节点全部请求失败
+// err!=nil代表全部节点请求失败
 func (p *Pot) requestNeighborsAndWait() (seedsAllFail bool, err error) {
 
 	_, succ, err := p.broadcastRequestNeighbors(true, false)

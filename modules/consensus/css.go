@@ -49,11 +49,12 @@ type Consensus interface {
 func New(typ ConsensusType,
 	id string, duty defines.PeerDuty,
 	pit pitable.Pit, bc requires.BlockChain,
-	net bnet.BNet, msgchan chan *defines.Message) (Consensus, error) {
+	net bnet.BNet, msgchan chan *defines.Message,
+	genesisData ...string) (Consensus, error) {
 
 	switch typ {
 	case ConsensuType_PoT:
-		return pot.New(id, duty, pit, bc, net, msgchan)
+		return pot.New(id, duty, pit, bc, net, msgchan, genesisData...)
 	default:
 		return nil, errors.New("unknown consensus type")
 	}

@@ -144,7 +144,7 @@ func NewNode(
 	node.net = netmod
 
 	// 构建共识状态机
-	pm, err := pot.New(id, duty, pit, bc, netmod, msgchan)
+	pm, err := pot.New(id, duty, pit, bc, netmod, msgchan, genesis...)
 	if err != nil {
 		return nil, err
 	}

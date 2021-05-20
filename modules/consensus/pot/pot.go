@@ -17,6 +17,7 @@ import (
 	"github.com/azd1997/blockchain-consensus/requires"
 	"github.com/azd1997/blockchain-consensus/utils/math"
 	"sort"
+	"strings"
 	"sync"
 )
 
@@ -42,6 +43,12 @@ type Pot struct {
 
 	id   string           // 账户、节点、客户端共用一个ID
 	duty defines.PeerDuty // 普通结点/种子节点/工人节点
+
+	// 创世节点信息
+	// 对于非创世节点，genesisData无意义
+	// 对于创世节点，genesisId, genesisAddr 置空，genesisData必填
+	//genesisId, genesisAddr string
+	genesisData string	// 如果genesis非空，则本机节点创世
 
 	// epoch等效于网络中最新区块索引
 	// 节点启动时必须Ready后判断当前处于哪一epoch
@@ -158,7 +165,9 @@ func (p *Pot) CheatShutdownAt(shutdownAt int, cheatAt ...int) {
 // New 新建Pot
 func New(id string, duty defines.PeerDuty,
 	pit pitable.Pit, bc requires.BlockChain,
-	net bnet.BNet, msgchan chan *defines.Message) (*Pot, error) {
+	net bnet.BNet, msgchan chan *defines.Message,
+	//genesisId, genesisAddr string,
+	genesisData ...string) (*Pot, error) {
 
 	logger := log.NewLogger(Module_Css, id)
 	if logger == nil {
@@ -178,9 +187,20 @@ func New(id string, duty defines.PeerDuty,
 	}
 	proofs := newProofTable(latestIndex, latestBlockHash)
 
+	genesisStr := ""
+	if len(genesisData) > 0 {
+		genesisStr = strings.Join(genesisData, " ")
+	}
+	if strings.TrimSpace(genesisStr) == "" {
+		genesisStr = ""
+	}
+
 	p := &Pot{
 		id:                  id,
 		duty:                duty,
+		//genesisId: genesisId,
+		//genesisAddr: genesisAddr,
+		genesisData: genesisStr,
 		clock:               NewClock(false),
 		msgin:               msgchan,
 		potStartBeforeReady: make(chan Moment), //阻塞式
@@ -207,32 +227,41 @@ func New(id string, duty defines.PeerDuty,
 // 对于创世seed以外的节点而言，启动流程：
 // stage: RN -> RFB -> wait PotStart -> InPot -> PostPot -> InPot -> ...
 // state: ----------------------------- witness -> learner -> 此时才开始推算该是什么状态
-func (p *Pot) Init() error {
+func (p *Pot) Init() (err error) {
 	p.Infof("Init start")
+
 	// 启动消息处理循环
 	go p.MsgHandleLoop()
 	// 启动状态切换循环(没有clock触发)
 	go p.StateMachineLoop()
+
 	// 区块链的最新状态
 	bc := p.bc.GetMaxIndex()
-	var err error
-	// 根据节点duty和其本地区块链状态决定以何种逻辑启动
-	if p.duty == defines.PeerDuty_Seed { // seed
-		if bc == 0 { // 初次启动
-			err = p.initForSeedFirstStart()
-		} else { // 重启动
-			err = p.initForSeedReStart()
-		}
-	} else { // peer
-		if bc == 0 { // 初次启动
-			err = p.initForPeerFirstStart()
-		} else { // 重启动
-			err = p.initForPeerReStart()
+
+	// 是否是创世节点
+	if p.genesisData != "" && bc == 0 {	// 本地已有区块链数据则不可再创世
+		// 创世启动
+		err = p.initForGenesis()
+	} else {
+		// 根据节点duty和其本地区块链状态决定以何种逻辑启动
+		if p.duty == defines.PeerDuty_Seed { // seed
+			if bc == 0 { // 初次启动
+				err = p.initForSeedFirstStart()
+			} else { // 重启动
+				err = p.initForSeedReStart()
+			}
+		} else { // peer
+			if bc == 0 { // 初次启动
+				err = p.initForPeerFirstStart()
+			} else { // 重启动
+				err = p.initForPeerReStart()
+			}
 		}
 	}
 	if err != nil {
 		return err
 	}
+
 	p.inited = true
 	p.Infof("Init succ")
 	return nil
@@ -269,7 +298,7 @@ func (p *Pot) SetMsgInChan(bus chan *defines.Message) {
 	p.msgin = bus
 }
 
-// 这个handlemsg的错误其实没啥用
+// HandleMsg 这个handlemsg的错误其实没啥用
 func (p *Pot) HandleMsg(msg *defines.Message) error {
 	// 检查消息格式与签名
 	if msg.Type != defines.MessageType_LocalTxs {
@@ -338,6 +367,26 @@ func (p *Pot) MsgHandleLoop() {
 		}
 	}
 }
+
+//// HeartbeatLoop 心跳循环
+//// 每个节点启动之后都需要启动心跳循环，心跳循环的作用是使其他节点知道自己的存在而不删除自己
+//func (p *Pot) HeartbeatLoop() {
+//	var err error
+//	tick := time.Tick(time.Duration(TickMs) * time.Millisecond * 10)		// 每10个TICK需要心跳一次
+//
+//	for {
+//		select {
+//		case <-p.done:
+//			p.Infof("HeartbeatLoop: return ...")
+//			return
+//		case t := <-tick:
+//			err = p.broadcastHeartbeat(t)
+//			if err != nil {
+//				p.Errorf("HeartbeatLoop: broadcastHeartbeat fail: t=%s,err=%s", t, err)
+//			}
+//		}
+//	}
+//}
 
 func (p *Pot) handleTick(m Moment) {
 	ti := math.RoundTickNo(m.Time.UnixNano(), p.b1Time, TickMs)

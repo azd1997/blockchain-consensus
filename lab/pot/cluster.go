@@ -28,7 +28,7 @@ type Cluster struct {
 	peers map[string]*Node
 }
 
-// 展示所有节点区块链进度信息
+// DisplayAllNodes 展示所有节点区块链进度信息
 func (c *Cluster) DisplayAllNodes() (string, bool) {
 
 	//fmt.Println(c)
@@ -73,43 +73,60 @@ func StartCluster(nSeed int, nPeer int,
 	}
 
 	for idx, idaddr := range seeds {
-		id, addr := idaddr[0], idaddr[1]
+		go func(idx int, idaddr [2]string) {
+			id, addr := idaddr[0], idaddr[1]
 
-		sat, cat := shutdownAtTi, []int(nil)
-		if shutdownAtTiMap != nil {
-			if _, ok := shutdownAtTiMap[-idx-1]; ok {
-				sat = shutdownAtTiMap[-idx-1]
+			fmt.Printf("\n=================== id: %s, addr: %s =======================\n\n", id, addr)
+
+			sat, cat := shutdownAtTi, []int(nil)
+			if shutdownAtTiMap != nil {
+				if _, ok := shutdownAtTiMap[-idx-1]; ok {
+					sat = shutdownAtTiMap[-idx-1]
+				}
 			}
-		}
-		if cheatAtTiMap != nil && cheatAtTiMap[-idx-1] != nil {
-			cat = cheatAtTiMap[-idx-1]
-		}
+			if cheatAtTiMap != nil && cheatAtTiMap[-idx-1] != nil {
+				cat = cheatAtTiMap[-idx-1]
+			}
 
-		node, err := StartNode(id, addr, sat, cat, enableClients,
-			seedsm, peersm, debug, addCaller)
-		if err != nil {
-			return nil, err
-		}
-		c.seeds[id] = node
+			var node *Node
+			var err error
+			if id == "seed01" {
+				node, err = StartNode(id, addr, sat, cat, enableClients,
+					seedsm, peersm, debug, addCaller, "genesis string")
+			} else {
+				node, err = StartNode(id, addr, sat, cat, enableClients,
+					seedsm, peersm, debug, addCaller)
+			}
+
+			if err != nil {
+				panic(err)
+			}
+			c.seeds[id] = node
+		}(idx, idaddr)
+
 	}
 
 	for idx, idaddr := range peers { // idx其实就是对应的 idno
-		id, addr := idaddr[0], idaddr[1]
-		sat, cat := shutdownAtTi, []int(nil)
-		if shutdownAtTiMap != nil {
-			if _, ok := shutdownAtTiMap[idx+1]; ok {
-				sat = shutdownAtTiMap[idx+1]
+		go func(idx int, idaddr [2]string) {
+			id, addr := idaddr[0], idaddr[1]
+			fmt.Printf("\n=================== id: %s, addr: %s =======================\n\n", id, addr)
+			sat, cat := shutdownAtTi, []int(nil)
+			if shutdownAtTiMap != nil {
+				if _, ok := shutdownAtTiMap[idx+1]; ok {
+					sat = shutdownAtTiMap[idx+1]
+				}
 			}
-		}
-		if cheatAtTiMap != nil && cheatAtTiMap[idx+1] != nil {
-			cat = cheatAtTiMap[idx+1]
-		}
-		node, err := StartNode(id, addr, sat, cat, enableClients,
-			seedsm, peersm, debug, addCaller)
-		if err != nil {
-			return nil, err
-		}
-		c.peers[id] = node
+			if cheatAtTiMap != nil && cheatAtTiMap[idx+1] != nil {
+				cat = cheatAtTiMap[idx+1]
+			}
+			node, err := StartNode(id, addr, sat, cat, enableClients,
+				seedsm, peersm, debug, addCaller)
+			if err != nil {
+				panic(err)
+			}
+			c.peers[id] = node
+		}(idx, idaddr)
+
 	}
 
 	return c, nil
@@ -122,7 +139,8 @@ func (c *Cluster) Shutdown(node string) {
 
 func StartNode(id, addr string,
 	shutdownAtTi int, cheatAtTi []int, enableClients bool,
-	seeds, peers map[string]string, debug bool, addCaller bool) (*Node, error) {
+	seeds, peers map[string]string, debug bool, addCaller bool,
+	genesis ...string) (*Node, error) {
 
 	logdest := fmt.Sprintf(logDestFormat, id)
 
@@ -138,7 +156,7 @@ func StartNode(id, addr string,
 		return nil, errors.New("unknown duty")
 	}
 
-	node, err := NewNode(id, duty, addr, shutdownAtTi, cheatAtTi, enableClients, seeds, peers)
+	node, err := NewNode(id, duty, addr, shutdownAtTi, cheatAtTi, enableClients, seeds, peers, genesis...)
 	if err != nil {
 		return nil, err
 	}

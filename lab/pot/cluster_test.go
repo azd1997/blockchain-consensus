@@ -26,7 +26,7 @@ func TestCluster(t *testing.T) {
 	}
 
 	// 运行集群
-	nSeed := 2
+	nSeed := 1
 	nPeer := 3
 	shutdownAtTi := 21
 	var cheatAtTiMap map[int][]int = map[int][]int{
@@ -37,7 +37,7 @@ func TestCluster(t *testing.T) {
 	}
 	E := 1 // E1，全部正常； E2，某节点中间断线； E3，某节点中间作弊
 	c, err := StartCluster(nSeed, nPeer, shutdownAtTi, shutdownAtTiMap, cheatAtTiMap,
-		false, false, true)
+		true, true, false)
 	// shutdownAtTiMap优先级比shutdownAtTi高，如果未设置Map，那么所有节点都按照shutdownAtTi关闭
 	if err != nil {
 		t.Error(err)

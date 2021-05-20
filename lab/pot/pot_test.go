@@ -60,6 +60,31 @@ func TestNode_SeedInit(t *testing.T) {
 	node = node
 }
 
+func TestNode_GenesisInit(t *testing.T) {
+	id := "seed1"
+	duty := defines.PeerDuty_Seed
+	addr := "127.0.0.1:8991"
+	logdest := "./pot-seed1.log"
+
+	// 初始化日志单例
+	log.InitGlobalLogger(id, true, true, logdest)
+	defer log.Sync(id)
+
+	node, err := NewNode(
+		id, duty, addr, 13, nil, false,
+		map[string]string{
+			"seed1": "127.0.0.1:8991",
+		},
+		map[string]string{
+			"peer1": "127.0.0.1:7991",
+			"peer2": "127.0.0.1:7992",
+			"peer3": "127.0.0.1:7993",
+		},
+		"genesis string")
+	tError(t, err)
+	node = node
+}
+
 func tError(t *testing.T, err error) {
 	if err != nil {
 		t.Error(err)

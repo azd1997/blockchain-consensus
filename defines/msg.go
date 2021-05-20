@@ -55,7 +55,7 @@ const (
 	MessageType_ReqPeers        MessageType = 102 // 请求对方所有可用peers
 
 	// 其他控制类消息 200-255
-
+	MessageType_Heartbeat        MessageType = 200 // 心跳消息
 )
 
 var mtStrMap = map[MessageType]string{
@@ -72,6 +72,7 @@ var mtStrMap = map[MessageType]string{
 	MessageType_ReqPeers:        "reqpeers",
 
 	// 200-255 控制类
+	MessageType_Heartbeat:"heartbeat",
 }
 
 func (mt MessageType) String() string {

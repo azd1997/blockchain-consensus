@@ -350,6 +350,43 @@ func (p *Pot) broadcastRequestBlocksByIndex(start int64, count int64, toseeds, t
 	return total, succ, nil
 }
 
+// broadcastHeartbeat 广播心跳消息
+func (p *Pot) broadcastHeartbeat(t time.Time) error {
+	// 查询自身节点信息
+	self, err := p.pit.Get(p.id)
+	if err != nil {
+		return err
+	}
+	selfb, err := self.Encode()
+	if err != nil {
+		return err
+	}
+
+	// msg模板
+	msg := &defines.Message{
+		Version: defines.CodeVersion,
+		Type:    defines.MessageType_ReqPeers,
+		From:    p.id,
+		To:      "",
+		Data:    [][]byte{selfb}, // 自己的节点信息
+	}
+	if err := msg.WriteDesc("type", "heartbeat"); err != nil {
+		return err
+	}
+
+	// 广播
+	total, succ, errs := p.broadcastMsg(msg, true, true)
+	if succ <= 0 {
+		err = errors.New("broadcast msg all failed")
+		p.Errorf("broadcastMsg all fail. total=%d, succ=%d, errs=%v", total, succ, errs)
+		return err
+	}
+	if len(errs) > 0 {
+		p.Warnf("broadcastMsg part fail. total=%d, succ=%d, errs=%v", total, succ, errs)
+	}
+	return nil
+}
+
 ///////////////////////////////////////////////////////////////////
 
 // wait 函数用于等待邻居们的某一类消息回应

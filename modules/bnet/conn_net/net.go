@@ -58,7 +58,7 @@ type Net struct {
 
 	// 连接表
 	// 与对端结点连接异常时，或者后需考虑连接数量控制，会需要删除一些连接
-	conns     map[string]*Conn
+	conns     map[string][2]*Conn	// [Self->To; To->Self] 前者只管发送，后者只管接收
 	connsLock sync.RWMutex
 
 	/*
@@ -257,10 +257,10 @@ func (n *Net) Closed() bool {
 func (n *Net) Send(id, raddr string, msg *defines.Message) error {
 	err := n.send(id, raddr, msg)
 	if err != nil {
-		n.Errorf("UDPNet send msg(%s) fail. raddr=%s, err=%s, msg=%v", msg.Type.String(), raddr, err, msg)
+		n.Errorf("ConnNet send msg(%s) fail. raddr=%s, err=%s, msg=%v", msg.Type.String(), raddr, err, msg)
 		return err
 	}
-	n.Debugf("UDPNet send msg(%s) succ. raddr=%s, n=%d, msg=%v", msg.Type.String(), raddr, n, msg)
+	n.Debugf("ConnNet send msg(%s) succ. raddr=%s, n=%d, msg=%v", msg.Type.String(), raddr, n, msg)
 	return nil
 }
 
@@ -372,9 +372,13 @@ func (n *Net) connect(to, raddr string) (*Conn, error) {
 	}
 
 	// 连接存在，直接返回
-	if c, exists := n.conns[to]; exists && c.status == ConnStatus_Running {
-		return c, nil
+	n.connsLock.RLock()
+	c1, exists := n.conns[to]
+	n.connsLock.RUnlock()
+	if exists && c1.status == ConnStatus_Running {
+		return c1, nil
 	}
+
 
 	// 连接不存在(或原来的连接已经停止了)，创建连接 和to建立连接
 	c, err := n.d.Dial(raddr, to)
