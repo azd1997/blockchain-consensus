@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-func testBNet(t *testing.T, network string) {
+func testBNet(t *testing.T, network NetType) {
 	addr1 := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 9981}
 	addr2 := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 9982}
 	id1, id2 := "peerA", "peerB"
@@ -58,10 +58,14 @@ func testBNet(t *testing.T, network string) {
 	time.Sleep(10 * time.Millisecond)
 }
 
-func TestBNet_UDP(t *testing.T) {
-	testBNet(t, "udp")
+func TestBNet_bUDP(t *testing.T) {
+	testBNet(t, NetType_bUDP)
 }
 
-func TestBNet_TCP(t *testing.T) {
-	testBNet(t, "tcp")
+func TestBNet_bTCP(t *testing.T) {
+	testBNet(t, NetType_bTCP)
+}
+
+func TestBNet_bTCP_Dual(t *testing.T) {
+	testBNet(t, NetType_bTCP_Dual)
 }

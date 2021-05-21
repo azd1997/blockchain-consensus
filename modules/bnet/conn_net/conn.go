@@ -21,23 +21,7 @@ const (
 	DefaultConnTimeout time.Duration = 5 * time.Second
 )
 
-type ConnStatus uint8
 
-const (
-	ConnStatus_Ready   ConnStatus = 0
-	ConnStatus_Running ConnStatus = 1
-	ConnStatus_Closed  ConnStatus = 2
-)
-
-var connStatusString = map[ConnStatus]string{
-	ConnStatus_Ready:   "Ready",
-	ConnStatus_Running: "Running",
-	ConnStatus_Closed:  "Closed",
-}
-
-func (cs ConnStatus) String() string {
-	return connStatusString[cs]
-}
 
 // Conn 连接
 /*
@@ -70,7 +54,7 @@ func ToConn(conn requires.Conn, recvmsg chan<- *defines.Message) *Conn {
 	c := &Conn{
 		conn:    conn,
 		msgChan: recvmsg,
-		status:  ConnStatus_Ready,
+		status:  ConnStatus_OnlySend,
 		timeout: DefaultConnTimeout,
 	}
 	return c
@@ -126,7 +110,7 @@ func (c *Conn) Send(msg *defines.Message) error {
 // 对端的conn则会收到“EOF”而退出
 // TODO: 链接关闭时退出
 func (c *Conn) RecvLoop() {
-	c.status = ConnStatus_Running
+	c.status = ConnStatus_SendRecv
 	log.Printf("Conn(%s) running\n", c.Name())
 
 	var err error

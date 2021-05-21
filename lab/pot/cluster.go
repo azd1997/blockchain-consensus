@@ -11,8 +11,17 @@ import (
 	"fmt"
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
+	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
 )
+
+func handleSignal() {
+	signal.Notify()
+	os.Signal()
+	syscall.S_BLKSIZE
+}
 
 const (
 	seedIdPrefix   = "seed"

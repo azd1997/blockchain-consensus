@@ -133,7 +133,7 @@ func NewNode(
 	msgchan := make(chan *defines.Message, 100)
 
 	// 构建网络模块
-	netmod, err := bnet.NewBNet(id, bnet.NetType_TCP, addr, msgchan)
+	netmod, err := bnet.NewBNet(id, bnet.NetType_bTCP_Dual, addr, msgchan)
 	if err != nil {
 		return nil, err
 	}

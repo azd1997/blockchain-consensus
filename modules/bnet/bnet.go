@@ -11,6 +11,7 @@ import (
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
 	"github.com/azd1997/blockchain-consensus/modules/bnet/btcp"
+	"github.com/azd1997/blockchain-consensus/modules/bnet/btcp_dual"
 	"github.com/azd1997/blockchain-consensus/modules/bnet/budp"
 )
 
@@ -18,8 +19,9 @@ import (
 type NetType uint8
 
 const (
-	NetType_TCP NetType = iota
-	NetType_UDP
+	NetType_bUDP NetType = iota
+	NetType_bTCP
+	NetType_bTCP_Dual
 )
 
 // 考虑到具体的BNet实现必然是统一网络协议的，所以，没必要在发送时使用net.Addr，直接使用“ip:port”的string
@@ -50,10 +52,12 @@ func NewBNet(id string, network NetType, addr string,
 	logger := log.NewLogger("NET", id)
 
 	switch network {
-	case NetType_UDP:
+	case NetType_bUDP:
 		return budp.New(id, addr, logger, msgchan)
-	case NetType_TCP:
+	case NetType_bTCP:
 		return btcp.New(id, addr, logger, msgchan)
+	case NetType_bTCP_Dual:
+		return btcp_dual.New(id, addr, logger, msgchan)
 	default:
 		return nil, errors.New("unknown network protocol")
 	}

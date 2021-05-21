@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	retryMaxTimesWhenInit = 100
+	retryMaxTimesWhenInit = 10
 	retryDurationWhenInit = 1 * time.Second
 )
 
@@ -73,7 +73,7 @@ func (p *Pot) initForSeedFirstStart() error {
 	for err != nil {
 		// 不断重试
 		retryWhenInit++
-		time.Sleep(retryDurationWhenInit)
+		time.Sleep(retryDurationWhenInit * time.Duration(retryWhenInit))
 		p.Infof("initForPeerFirstStart: retryWhenInit: %d", retryWhenInit)
 		if retryWhenInit > retryMaxTimesWhenInit {
 			return errors.New("retry too much times when init")
@@ -139,7 +139,7 @@ func (p *Pot) initForSeedReStart() error {
 	for err != nil {
 		// 不断重试
 		retryWhenInit++
-		time.Sleep(retryDurationWhenInit)
+		time.Sleep(retryDurationWhenInit * time.Duration(retryWhenInit))
 		p.Infof("initForPeerFirstStart: retryWhenInit: %d", retryWhenInit)
 		if retryWhenInit > retryMaxTimesWhenInit {
 			return errors.New("retry too much times when init")
@@ -183,7 +183,7 @@ func (p *Pot) initForPeerFirstStart() error {
 	for err != nil {
 		// 不断重试
 		retryWhenInit++
-		time.Sleep(retryDurationWhenInit)
+		time.Sleep(retryDurationWhenInit * time.Duration(retryWhenInit))
 		p.Infof("initForPeerFirstStart: retryWhenInit: %d", retryWhenInit)
 		if retryWhenInit > retryMaxTimesWhenInit {
 			return errors.New("retry too much times when init")
@@ -225,7 +225,7 @@ func (p *Pot) initForPeerReStart() error {
 	for err != nil {
 		// 不断重试
 		retryWhenInit++
-		time.Sleep(retryDurationWhenInit)
+		time.Sleep(retryDurationWhenInit * time.Duration(retryWhenInit))
 		p.Infof("initForPeerFirstStart: retryWhenInit: %d", retryWhenInit)
 		if retryWhenInit > retryMaxTimesWhenInit {
 			return errors.New("retry too much times when init")

@@ -58,7 +58,7 @@ type Net struct {
 
 	// 连接表
 	// 与对端结点连接异常时，或者后需考虑连接数量控制，会需要删除一些连接
-	conns     map[string][2]*Conn	// [Self->To; To->Self] 前者只管发送，后者只管接收
+	conns     map[string]*Conn
 	connsLock sync.RWMutex
 
 	/*
@@ -99,8 +99,8 @@ type Net struct {
 	done chan struct{}
 }
 
-// New 新建
-func New(id string, addr string, logger *log.Logger,
+// NewNewNet 新建
+func NewNet(id string, addr string, logger *log.Logger,
 		msgchan chan *defines.Message,
 		ln requires.Listener, d requires.Dialer) (*Net, error) {
 
@@ -375,7 +375,7 @@ func (n *Net) connect(to, raddr string) (*Conn, error) {
 	n.connsLock.RLock()
 	c1, exists := n.conns[to]
 	n.connsLock.RUnlock()
-	if exists && c1.status == ConnStatus_Running {
+	if exists && c1.status == ConnStatus_SendRecv {
 		return c1, nil
 	}
 

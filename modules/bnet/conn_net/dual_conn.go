@@ -2,6 +2,7 @@ package conn_net
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -30,8 +31,12 @@ func ToDualConn(send, recv requires.Conn, recvmsg chan<- *defines.Message) *Dual
 		sendConn:send,
 		recvConn:recv,
 		msgChan: recvmsg,
-		status:  ConnStatus_Ready,
 		timeout: DefaultConnTimeout,
+	}
+	if send == nil {
+		c.status = ConnStatus_Closed
+	} else {
+		c.status = ConnStatus_OnlySend
 	}
 	return c
 }
@@ -43,10 +48,12 @@ func (c *DualConn) Status() string {
 
 // Name Conn名称
 func (c *DualConn) Name() string {
-	if c.sendConn != nil {
+	if c.sendConn != nil && c.recvConn != nil {
 		return fmt.Sprintf("[%s]<->[%s]", c.sendConn.LocalID(), c.sendConn.RemoteID())
-	} else if c.recvConn != nil {
-		return fmt.Sprintf("[%s]<->[%s]", c.recvConn.LocalID(), c.recvConn.RemoteID())
+	} else if c.recvConn == nil {
+		return fmt.Sprintf("[%s]->[%s]", c.sendConn.LocalID(), c.sendConn.RemoteID())
+	} else if c.sendConn == nil {
+		return fmt.Sprintf("[%s]<-[%s]", c.recvConn.LocalID(), c.recvConn.RemoteID())
 	} else {
 		return ""
 	}
@@ -64,15 +71,7 @@ func (c *DualConn) String() string {
 		return ""
 	}
 
-	//localId, localListenAddr, localAddr, remoteId, remoteListenAddr, remoteAddr := "", "", "", "", "", ""
-	//localId = availableConn.LocalID()
-	//localAddr = availableConn.LocalAddr().String()
-	//localListenAddr = availableConn.LocalListenAddr().String()
-	//remoteId = availableConn.RemoteID()
-	//remoteListenAddr = availableConn.RemoteListenAddr().String()
-	//remoteAddr = availableConn.RemoteAddr().String()
-
-	return fmt.Sprintf("Conn info: {Network: %s, From: %s(%s,%s), To: %s(%s,%s), Status: %s, Timeout: %s}",
+	return fmt.Sprintf("DualConn info: {Network: %s, From: %s(%s,%s), To: %s(%s,%s), Status: %s, Timeout: %s}",
 		availableConn.Network(),
 		availableConn.LocalID(), availableConn.LocalListenAddr().String(), availableConn.LocalAddr().String(),
 		availableConn.RemoteID(), availableConn.RemoteListenAddr().String(), availableConn.RemoteAddr().String(),
@@ -90,7 +89,7 @@ func (c *DualConn) Close() error {
 // Send 发送消息
 func (c *DualConn) Send(msg *defines.Message) error {
 	if c.sendConn == nil {
-		log.Printf("Conn(%s) Send quit: send_conn == nil \n", c.Name())
+		log.Printf("DualConn(%s) Send quit: send_conn == nil \n", c.Name())
 		return nil
 	}
 
@@ -121,12 +120,19 @@ func (c *DualConn) Send(msg *defines.Message) error {
 // TODO: 链接关闭时退出
 func (c *DualConn) RecvLoop() {
 	if c.recvConn == nil {
-		log.Printf("Conn(%s) RecvLoop quit: recv_conn == nil \n", c.Name())
+		log.Printf("DualConn(%s) RecvLoop quit: recv_conn == nil \n", c.Name())
 		return
 	}
 
-	c.status = ConnStatus_Running
-	log.Printf("Conn(%s) running\n", c.Name())
+	if c.status == ConnStatus_OnlySend {
+		c.status = ConnStatus_SendRecv
+	} else if c.status == ConnStatus_Closed {
+		c.status = ConnStatus_OnlyRecv
+	} else {	// OnlyRecv || SendRecv
+		return
+	}
+
+	log.Printf("DualConn(%s) RecvLoop running\n", c.Name())
 
 	var err error
 	magic, msglen := uint32(0), uint32(0)
@@ -134,27 +140,45 @@ func (c *DualConn) RecvLoop() {
 		// 循环读取数据包，解析成Message
 		err = binary.Read(c.recvConn, binary.BigEndian, &magic)
 		if err != nil {
-			log.Printf("Conn(%s) met error: %s\n", c.Name(), err)
-
-			continue
+			log.Printf("DualConn(%s) RecvLoop met error: %s\n", c.Name(), err)
+			if err == io.EOF {
+				continue
+			} else {
+				c.status = ConnStatus_Closed
+				log.Printf("DualConn(%s) RecvLoop closed\n", c.Name())
+				return
+			}
 		}
 		err = binary.Read(c.recvConn, binary.BigEndian, &msglen)
 		if err != nil {
-			log.Printf("Conn(%s) met error: %s\n", c.Name(), err)
-			continue
+			log.Printf("DualConn(%s) RecvLoop met error: %s\n", c.Name(), err)
+			if err == io.EOF {
+				continue
+			} else {
+				c.status = ConnStatus_Closed
+				log.Printf("DualConn(%s) RecvLoop closed\n", c.Name())
+				return
+			}
 		}
 		msgbytes := make([]byte, msglen)
 		err = binary.Read(c.recvConn, binary.BigEndian, msgbytes)
 		if err != nil {
-			log.Printf("Conn(%s) met error: %s\n", c.Name(), err)
-			continue
+			log.Printf("DualConn(%s) RecvLoop met error: %s\n", c.Name(), err)
+			if err == io.EOF {
+				continue
+			} else {
+				c.status = ConnStatus_Closed
+				log.Printf("DualConn(%s) RecvLoop closed\n", c.Name())
+				return
+			}
 		}
 
 		msg := new(defines.Message)
 		err = msg.Decode(msgbytes)
 		if err != nil { // 遇到错误就断开连接
-			log.Printf("Conn(%s) met error: %s\n", c.Name(), err)
+			log.Printf("DualConn(%s) RecvLoop met error: %s\n", c.Name(), err)
 			c.status = ConnStatus_Closed
+			log.Printf("DualConn(%s) RecvLoop closed\n", c.Name())
 			return
 		}
 		// 塞到msgChan(来自Net.msgout)
