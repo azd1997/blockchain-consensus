@@ -71,10 +71,26 @@ func (c *DualConn) String() string {
 		return ""
 	}
 
-	return fmt.Sprintf("DualConn info: {Network: %s, From: %s(%s,%s), To: %s(%s,%s), Status: %s, Timeout: %s}",
+	//localId, localListenAddr, localAddr, remoteId, remoteListenAddr, remoteAddr := "", "", "", "", "", ""
+	//localId = availableConn.LocalID()
+	//localAddr = availableConn.LocalAddr().String()
+	//localListenAddr = availableConn.LocalListenAddr().String()
+	//remoteId = availableConn.RemoteID()
+	//remoteListenAddr = availableConn.RemoteListenAddr().String()
+	//remoteAddr = availableConn.RemoteAddr().String()
+
+	localAddr, remoteAddr := "", ""
+	if c.sendConn != nil {
+		localAddr = c.sendConn.LocalAddr().String()
+	}
+	if c.recvConn != nil {
+		remoteAddr = c.recvConn.RemoteAddr().String()
+	}
+
+	return fmt.Sprintf("DualConn info: {Network: %s, Local: %s(%s,%s), Remote: %s(%s,%s), Status: %s, Timeout: %s}",
 		availableConn.Network(),
-		availableConn.LocalID(), availableConn.LocalListenAddr().String(), availableConn.LocalAddr().String(),
-		availableConn.RemoteID(), availableConn.RemoteListenAddr().String(), availableConn.RemoteAddr().String(),
+		availableConn.LocalID(), availableConn.LocalListenAddr().String(), localAddr,
+		availableConn.RemoteID(), availableConn.RemoteListenAddr().String(), remoteAddr,
 		c.status.String(), c.timeout.String())
 }
 
@@ -181,6 +197,7 @@ func (c *DualConn) RecvLoop() {
 			log.Printf("DualConn(%s) RecvLoop closed\n", c.Name())
 			return
 		}
+		log.Printf("DualConn(%s) RecvLoop: recv msg: %s\n", c.Name(), msg)
 		// 塞到msgChan(来自Net.msgout)
 		c.msgChan <- msg
 	}

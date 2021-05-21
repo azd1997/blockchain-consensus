@@ -198,7 +198,27 @@ func (n *DualNet) RecvLoop() {
 	// 空实现
 }
 
-
+func (n *DualNet) DisplayAllConns(brief bool) string {
+	str := ""
+	if brief { // 打印名字
+		str += fmt.Sprintf("\nAll Conns of [%s]: (brief version)\n", n.id)
+		n.connsLock.RLock()
+		for _, v := range n.conns {
+			str += fmt.Sprintf("%s\n", v.Name())
+		}
+		n.connsLock.RUnlock()
+		str += "\n"
+	} else {
+		str += fmt.Sprintf("\nAll Conns of [%s]: \n", n.id)
+		n.connsLock.RLock()
+		for _, v := range n.conns {
+			str += fmt.Sprintf("%s\n", v.String())
+		}
+		n.connsLock.RUnlock()
+		str += "\n"
+	}
+	return str
+}
 
 
 // connect 返回 由本机向某个id的节点发起的连接
@@ -218,6 +238,9 @@ func (n *DualNet) connect(to, raddr string) (*DualConn, error) {
 	var dc *DualConn
 	var exists bool
 
+	// 注意：检测->更改
+	// 这个逻辑应该锁在一起，不然当主动创建连接和被动接收连接同时时，会出现问题，“吞掉”其中一个
+
 	n.connsLock.RLock()
 	dc, exists = n.conns[to]
 	n.connsLock.RUnlock()
@@ -234,15 +257,19 @@ func (n *DualNet) connect(to, raddr string) (*DualConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !exists || dc==nil {
-		dc = ToDualConn(sendConn, nil, n.msgout) // c传输过来的消息会写到msgout传出去
-		// 记录连接
-		n.connsLock.Lock()
-		n.conns[to] = dc
-		n.connsLock.Unlock()
-	} else {
+	n.connsLock.Lock()
+	if !exists || dc==nil {		// 这是旧的检测结果，此时应该重新检测一次
+		dc, exists = n.conns[to]
+		if !exists || dc == nil {
+			dc = ToDualConn(sendConn, nil, n.msgout) // c传输过来的消息会写到msgout传出去
+			n.conns[to] = dc
+		} else {
+			dc.sendConn = sendConn
+		}
+	} else {	// 旧的检测结果已经检测出存在了
 		dc.sendConn = sendConn
 	}
+	n.connsLock.Unlock()
 
 	return dc, nil
 }
@@ -286,7 +313,7 @@ func (n *DualNet) listenLoop() {
 			return
 		default:
 			// 接受连接
-			conn, err := n.ln.Accept()
+			recvConn, err := n.ln.Accept()
 			if err != nil {
 				n.Errorf("listenLoop: accept fail: %s", err)
 				continue
@@ -295,16 +322,16 @@ func (n *DualNet) listenLoop() {
 			// 两种情况
 			var dc *DualConn
 			var exists bool
-			n.connsLock.RLock()
-			dc, exists = n.conns[conn.RemoteID()]
-			n.connsLock.RUnlock()
+
+			n.connsLock.Lock()	// 枷锁
+			dc, exists = n.conns[recvConn.RemoteID()]
 			// 1. 原先不存在该DualConn
 			if !exists || dc==nil {
 				// 启动连接，循环接收消息
-				c := ToDualConn(nil, conn, n.msgout)
+				c := ToDualConn(nil, recvConn, n.msgout)
 				// 记录连接
 				n.connsLock.Lock()
-				n.conns[conn.RemoteID()] = c
+				n.conns[recvConn.RemoteID()] = c
 				n.connsLock.Unlock()
 				// 启动连接
 				n.startConn(c)
@@ -312,9 +339,12 @@ func (n *DualNet) listenLoop() {
 				// 不管原先的recv是否存在都替换
 				// 原因是：recv是对端发起的连接，对端先关闭之后立马又建立，
 				// 这种情况下本机节点可能还没有将recv清除
-				dc.recvConn = conn	// 将新建立的连接conn放入dualconn中，并启动
-				n.startConn(dc)
+				dc.recvConn = recvConn	// 将新建立的连接conn放入dualconn中，并启动
+				if dc.status == ConnStatus_Closed || dc.status == ConnStatus_OnlySend {
+					n.startConn(dc)
+				}	// 避免重复 go dc.RecvLoop()
 			}
+			n.connsLock.Unlock()	// 解锁
 		}
 	}
 }

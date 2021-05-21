@@ -189,3 +189,9 @@ func (un *UDPNet) RecvLoop() {
 		}
 	}
 }
+
+
+func (un *UDPNet) DisplayAllConns(brief bool) string {
+	return "\nUDPNet\n"
+}
+

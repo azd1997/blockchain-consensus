@@ -73,7 +73,7 @@ func (T *TCPListener) Accept() (requires.Conn, error) {
 		return nil, err
 	}
 
-	log.Printf("listener accept {from: %s(%s), to: %s(%s)} succ\n",
+	log.Printf("listener accept {remote: %s(%s), local: %s(%s)} succ\n",
 		rc.RemoteID(), rc.RemoteListenAddr(), T.localId, T.localListenAddr)
 	return rc, nil
 }

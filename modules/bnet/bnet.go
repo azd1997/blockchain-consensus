@@ -43,6 +43,8 @@ type BNet interface {
 	SetMsgOutChan(bus chan *defines.Message) // 给结构体设置一个消息总线chan，用于将得到的消息传输出来
 	// RecvLoop [不可调用]
 	RecvLoop() // go RecvLoop() 消息塞入msgout
+
+	DisplayAllConns(brief bool) string // 展示所有连接信息
 }
 
 // NewBNet

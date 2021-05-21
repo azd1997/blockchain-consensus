@@ -73,7 +73,7 @@ func (T *TCPDialer) Dial(addr, remoteId string) (requires.Conn, error) {
 		return nil, err
 	}
 
-	log.Printf("dialer dial {from: %s(%s), to: %s(%s)} succ\n", T.localId, T.localListenAddr, remoteId, remoteAddr)
+	log.Printf("dialer dial {local: %s(%s), remote: %s(%s)} succ\n", T.localId, T.localListenAddr, remoteId, remoteAddr)
 	return rc, nil
 }
 

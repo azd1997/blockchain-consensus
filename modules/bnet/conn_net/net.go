@@ -275,6 +275,28 @@ func (n *Net) RecvLoop() {
 }
 
 
+func (n *Net) DisplayAllConns(brief bool) string {
+	str := ""
+	if brief { // 打印名字
+		str += fmt.Sprintf("\nAll Conns of [%s]: (brief version)\n", n.id)
+		n.connsLock.RLock()
+		for _, v := range n.conns {
+			str += fmt.Sprintf("%s\n", v.Name())
+		}
+		n.connsLock.RUnlock()
+		str += "\n"
+	} else {
+		str += fmt.Sprintf("\nAll Conns of [%s]: \n", n.id)
+		n.connsLock.RLock()
+		for _, v := range n.conns {
+			str += fmt.Sprintf("%s\n", v.String())
+		}
+		n.connsLock.RUnlock()
+		str += "\n"
+	}
+	return str
+}
+
 
 // NewNet
 //func NewNet(opt *Option) (*Net, error) {
@@ -498,7 +520,9 @@ func (n *Net) listenLoop() {
 			// 启动连接，循环接收消息
 			c := ToConn(conn, n.msgout)
 			// 记录连接
+			n.connsLock.Lock()
 			n.conns[conn.RemoteID()] = c
+			n.connsLock.Unlock()
 			// 启动连接
 			n.startConn(c)
 		}

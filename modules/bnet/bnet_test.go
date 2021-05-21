@@ -7,6 +7,7 @@
 package bnet
 
 import (
+	"fmt"
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
 	"net"
@@ -23,33 +24,61 @@ func testBNet(t *testing.T, network NetType) {
 	log.InitGlobalLogger(id2, true, true)
 
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(4)
+
+	chanA := make(chan *defines.Message, 100)
+	chanB := make(chan *defines.Message, 100)
 
 	go func() {
-		peerA, _ := NewBNet(id1, network, addr1.String(), make(chan *defines.Message, 100))
+		peerA, _ := NewBNet(id1, network, addr1.String(), chanA)
 		if err := peerA.Init(); err != nil {
 			t.Error(err)
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(1 * time.Second)		// peerA先等一会，让peerB先发
 		if err := peerA.Send(id2, addr2.String(), &defines.Message{
 			Desc: "ping to #2: " + addr2.String(),
 		}); err != nil {
 			t.Error(err)
 		}
+		//fmt.Print("yyyy\n")
+		//// 展示本机节点所有连接
+		fmt.Print(peerA.DisplayAllConns(false))
+		//fmt.Print("xxxx\n")
+
 		wg.Done()
 	}()
 
 	go func() {
-		peerB, _ := NewBNet(id2, network, addr2.String(), make(chan *defines.Message, 100))
+		peerB, _ := NewBNet(id2, network, addr2.String(), chanB)
 		if err := peerB.Init(); err != nil {
 			t.Error(err)
 		}
-		time.Sleep(1 * time.Second)
+		//time.Sleep(1 * time.Second)
 		if err := peerB.Send(id1, addr1.String(), &defines.Message{
 			Desc: "ping to #1: " + addr1.String(),
 		}); err != nil {
 			t.Error(err)
 		}
+
+		//fmt.Print("zzzz\n")
+		//
+		//// 展示本机节点所有连接
+		fmt.Print(peerB.DisplayAllConns(false))
+		//
+		//fmt.Print("sssss\n")
+
+		wg.Done()
+	}()
+
+	// 两个goroutine读接收到的数据
+	go func() {
+		data := <- chanA
+		t.Logf("chanA recv: %v\n", data)
+		wg.Done()
+	}()
+	go func() {
+		data := <- chanB
+		t.Logf("chanB recv: %v\n", data)
 		wg.Done()
 	}()
 
