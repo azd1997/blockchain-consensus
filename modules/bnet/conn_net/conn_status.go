@@ -8,20 +8,19 @@ package conn_net
 
 type ConnStatus uint8
 
+// 对于ConnStatus，由于每次更新基本是只更新一边（send或recv），所以ConnSTATUS最好是不依赖于当前是什么状态，只根据遇到什么事而更改
 const (
 	ConnStatus_OnlySend ConnStatus = 0x01 << iota
 	ConnStatus_OnlyRecv
 	ConnStatus_SendRecv = ConnStatus_OnlySend | ConnStatus_OnlyRecv
 	ConnStatus_Closed = 0x00
 
-	//ConnStatus_Ready   ConnStatus = 0
-	//ConnStatus_Running ConnStatus = 1
-	//ConnStatus_Closed  ConnStatus = 2
+	// 0000 0011 最后一位标志send，倒数第二位标志Recv
+	ConnStatus_MASK_Send = 0x01	// 0000 0001
+	ConnStatus_MASK_Recv = 0x02	// 0000 0010
 )
 
 var connStatusString = map[ConnStatus]string{
-	//ConnStatus_Ready:   "Ready",
-	//ConnStatus_Running: "Running",
 	ConnStatus_Closed:  "Closed",
 	ConnStatus_OnlySend: "OnlySend",
 	ConnStatus_OnlyRecv:"OnlyRecv",
@@ -30,4 +29,20 @@ var connStatusString = map[ConnStatus]string{
 
 func (cs ConnStatus) String() string {
 	return connStatusString[cs]
+}
+
+func (cs *ConnStatus) EnableSend() {
+	*cs |= ConnStatus_MASK_Send
+}
+
+func (cs *ConnStatus) DisableSend() {
+	*cs &= ConnStatus(^uint8(ConnStatus_MASK_Send))
+}
+
+func (cs *ConnStatus) EnableRecv() {
+	*cs |= ConnStatus_MASK_Recv
+}
+
+func (cs *ConnStatus) DisableRecv() {
+	*cs &= ConnStatus(^uint8(ConnStatus_MASK_Recv))
 }

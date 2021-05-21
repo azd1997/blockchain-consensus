@@ -75,7 +75,7 @@ func (p *Pot) initForSeedFirstStart() error {
 		// 不断重试
 		retryWhenInit++
 		time.Sleep(retryDurationWhenInit * time.Duration(retryWhenInit))
-		p.Infof("initForPeerFirstStart: retryWhenInit: %d", retryWhenInit)
+		p.Infof("initForPeerFirstStart: [RN] retryWhenInit: %d", retryWhenInit)
 		if retryWhenInit > retryMaxTimesWhenInit {
 			return errors.New("retry too much times when init")
 		}
@@ -185,7 +185,7 @@ func (p *Pot) initForPeerFirstStart() error {
 		// 不断重试
 		retryWhenInit++
 		time.Sleep(retryDurationWhenInit * time.Duration(retryWhenInit))
-		p.Infof("initForPeerFirstStart: retryWhenInit: %d\n", retryWhenInit)
+		p.Infof("initForPeerFirstStart: [RN] retryWhenInit: %d\n", retryWhenInit)
 		if retryWhenInit > retryMaxTimesWhenInit {
 			return errors.New("retry too much times when init")
 		}
@@ -194,17 +194,17 @@ func (p *Pot) initForPeerFirstStart() error {
 	p.Infof("initForPeerFirstStart: seedsAllFail: %v\n", seedsAllFail)
 
 	// 2. 请求1号区块，初始化时钟	// TODO: 1号区块距当前最新区块太远导致时间偏差较大问题，待解决
+	retryWhenInit = 0
 	p.setStage(StageType_PreInited_RequestFirstBlock)
 	firstBlock, err := p.requestOneBlockAndWait(seedsAllFail, 1)
 	//if err != nil {
 	//	return err
 	//}
-	retryWhenInit = 0
 	for err != nil {
 		// 不断重试
 		retryWhenInit++
 		time.Sleep(retryDurationWhenInit * time.Duration(retryWhenInit))
-		p.Infof("initForPeerFirstStart: retryWhenInit: %d\n", retryWhenInit)
+		p.Infof("initForPeerFirstStart: [RFB] retryWhenInit: %d\n", retryWhenInit)
 		if retryWhenInit > retryMaxTimesWhenInit {
 			return errors.New("retry too much times when init")
 		}

@@ -215,6 +215,7 @@ func (p *Pot) handleMsgReqBlockByIndex(msg *defines.Message) error {
 	}
 
 	// TODO
+	p.Debugf("handleMsgReqBlockByIndex: msg=%s", msg)
 
 	// 查询
 	bs, err := p.bc.GetBlocksByRange(msg.ReqBlockIndexStart, msg.ReqBlockIndexCount)
@@ -259,6 +260,8 @@ func (p *Pot) handleMsgReqBlockByHash(msg *defines.Message) error {
 	}
 
 	// TODO
+
+	p.Debugf("handleMsgReqBlockByHash: msg=%s", msg)
 
 	// 查询
 	bs, err := p.bc.GetBlocksByHashes(msg.Hashes)

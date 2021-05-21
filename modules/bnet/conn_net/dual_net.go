@@ -235,8 +235,11 @@ func (n *DualNet) connect(to, raddr string) (*DualConn, error) {
 	// 如果连接存在，并且其中的send_conn可用，那么直接返回该连接
 	if exists &&
 		(dc.status == ConnStatus_SendRecv || dc.status == ConnStatus_OnlySend) {
+		n.Debugf("connect: dc(-><%s, %s>) exists, return it", to, raddr)
 		return dc, nil
 	}
+
+	n.Debugf("connect: dc(-><%s, %s>) does not exist, dial it. dc=%v", to, raddr, dc)
 
 	// 否则的话，新键send_conn
 	// 连接不存在(或原来的连接已经停止了)，创建连接 和to建立连接
@@ -252,6 +255,7 @@ func (n *DualNet) connect(to, raddr string) (*DualConn, error) {
 			n.conns[to] = dc
 		} else {
 			dc.sendConn = sendConn
+			// TODO
 		}
 	} else {	// 旧的检测结果已经检测出存在了
 		dc.sendConn = sendConn
