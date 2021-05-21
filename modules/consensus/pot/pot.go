@@ -360,10 +360,13 @@ func (p *Pot) MsgHandleLoop() {
 			p.Infof("MsgHandleLoop: return ...")
 			return
 		case msg := <-p.msgin:
-			err = p.HandleMsg(msg)
-			if err != nil {
-				p.Errorf("MsgHandleLoop: handle msg(%s) fail: msg=%s,err=%s", msg.Desc, msg, err)
-			}
+			go func(msg *defines.Message) {		// 另外处理
+				p.Debugf("MsgHandleLoop: handle msg(%s) start: msg=%s", msg.Desc, msg)
+				err = p.HandleMsg(msg)
+				if err != nil {
+					p.Errorf("MsgHandleLoop: handle msg(%s) fail: msg=%s,err=%s", msg.Desc, msg, err)
+				}
+			}(msg)
 		}
 	}
 }

@@ -302,6 +302,8 @@ func (p *Pot) handleMsgReqPeers(msg *defines.Message) error {
 
 	// 验证msg.From与msg.Data[0]携带的peerinfo是否匹配
 
+	p.Debugf("handleMsgReqPeers: msg=%s", msg)
+
 	// 查询
 	pis := p.pit.Peers()
 
@@ -313,6 +315,8 @@ func (p *Pot) handleMsgReqPeers(msg *defines.Message) error {
 		}
 		piBytes = append(piBytes, piByte)
 	}
+
+	p.Debugf("handleMsgReqPeers: 1111, msg=%s", msg)
 
 	// 回复
 	reply := &defines.Message{
@@ -331,6 +335,8 @@ func (p *Pot) handleMsgReqPeers(msg *defines.Message) error {
 		return err
 	}
 
+	p.Debugf("handleMsgReqPeers: 2222, msg=%s", msg)
+
 	// 将msg.Data[0]携带的peerinfo加入到本地，并转发给其他节点
 	if _, err := p.pit.Get(msg.From); err == nil { // 如果已经有该节点的地址信息，则直接返回，无须继续广播
 		return nil
@@ -338,6 +344,8 @@ func (p *Pot) handleMsgReqPeers(msg *defines.Message) error {
 	if err := p.broadcastPeers(nil, msg.Data, true, true); err != nil {
 		return err
 	}
+
+	p.Debugf("handleMsgReqPeers: 3333, msg=%s", msg)
 
 	return nil
 }

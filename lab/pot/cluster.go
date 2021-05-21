@@ -105,7 +105,7 @@ func StartCluster(nSeed int, nPeer int,
 			}
 
 			if err != nil {
-				panic(err)
+				panic(fmt.Sprintf("%s: %s", id, err))
 			}
 			c.seeds[id] = node
 		}(idx, idaddr)
@@ -128,7 +128,7 @@ func StartCluster(nSeed int, nPeer int,
 			node, err := StartNode(id, addr, sat, cat, enableClients,
 				seedsm, peersm, debug, addCaller)
 			if err != nil {
-				panic(err)
+				panic(fmt.Sprintf("%s: %s", id, err))
 			}
 			c.peers[id] = node
 		}(idx, idaddr)

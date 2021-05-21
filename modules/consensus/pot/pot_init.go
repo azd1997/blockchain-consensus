@@ -8,6 +8,7 @@ package pot
 
 import (
 	"errors"
+	"fmt"
 	"github.com/azd1997/blockchain-consensus/defines"
 	"time"
 )
@@ -184,19 +185,32 @@ func (p *Pot) initForPeerFirstStart() error {
 		// 不断重试
 		retryWhenInit++
 		time.Sleep(retryDurationWhenInit * time.Duration(retryWhenInit))
-		p.Infof("initForPeerFirstStart: retryWhenInit: %d", retryWhenInit)
+		p.Infof("initForPeerFirstStart: retryWhenInit: %d\n", retryWhenInit)
 		if retryWhenInit > retryMaxTimesWhenInit {
 			return errors.New("retry too much times when init")
 		}
 		seedsAllFail, err = p.requestNeighborsAndWait()
 	}
+	p.Infof("initForPeerFirstStart: seedsAllFail: %v\n", seedsAllFail)
 
 	// 2. 请求1号区块，初始化时钟	// TODO: 1号区块距当前最新区块太远导致时间偏差较大问题，待解决
 	p.setStage(StageType_PreInited_RequestFirstBlock)
 	firstBlock, err := p.requestOneBlockAndWait(seedsAllFail, 1)
-	if err != nil {
-		return err
+	//if err != nil {
+	//	return err
+	//}
+	retryWhenInit = 0
+	for err != nil {
+		// 不断重试
+		retryWhenInit++
+		time.Sleep(retryDurationWhenInit * time.Duration(retryWhenInit))
+		p.Infof("initForPeerFirstStart: retryWhenInit: %d\n", retryWhenInit)
+		if retryWhenInit > retryMaxTimesWhenInit {
+			return errors.New("retry too much times when init")
+		}
+		firstBlock, err = p.requestOneBlockAndWait(seedsAllFail, 1)
 	}
+
 	p.b1Time = firstBlock.Timestamp
 	// 初始化时钟
 	p.clock.Start(firstBlock)
@@ -204,6 +218,7 @@ func (p *Pot) initForPeerFirstStart() error {
 	if err := p.bc.AddNewBlock(firstBlock); err != nil {
 		p.Errorf("add first block fail: %s", err)
 	}
+	p.Infof("initForPeerFirstStart: firstBlock: %v\n", firstBlock)
 
 	// 3. 等待一段时间，到达PotStart时刻
 	<-p.potStartBeforeReady
@@ -269,12 +284,12 @@ func (p *Pot) requestNeighborsAndWait() (seedsAllFail bool, err error) {
 		// 尝试向peer请求
 		_, succ, err = p.broadcastRequestNeighbors(false, true)
 		if err != nil { // 全部失败则退出
-			return true, errors.New("request neighbors to seeds and peers all fail")
+			return true, errors.New("requestNeighborsAndWait: request neighbors to seeds and peers all fail")
 		}
 	}
 	nWait := succ                         // 需要等待succ个节点的回信
 	if err := p.wait(nWait); err != nil { // 一个都没等到
-		return seedsAllFail, err // 退出启动
+		return seedsAllFail, fmt.Errorf("requestNeighborsAndWait: %s", err) // 退出启动
 	}
 	return seedsAllFail, nil
 }
@@ -290,13 +305,13 @@ func (p *Pot) requestOneBlockAndWait(seedsAllFail bool, index int64) (*defines.B
 		_, succ, err = p.broadcastRequestBlocksByIndex(index, 1, false, true)
 	}
 	if err != nil { // 全部发信失败，则退出
-		return nil, errors.New("request one block to seeds and peers all fail")
+		return nil, errors.New("requestOneBlockAndWait: request one block to seeds and peers all fail")
 	}
 	// 部分成功或全部成功
 	nWait = succ // 设置等待数量
 	// 等待该区块，并从众多回复中确定接收哪一个
 	if wb, err := p.waitAndDecideOneBlock(index, nWait); err != nil { // 一个都没等到
-		return nil, err // 退出启动
+		return nil, fmt.Errorf("requestOneBlockAndWait: %s", err) // 退出启动
 	} else {
 		return wb, nil
 	}

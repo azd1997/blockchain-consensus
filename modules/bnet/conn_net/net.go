@@ -99,7 +99,7 @@ type Net struct {
 	done chan struct{}
 }
 
-// NewNewNet 新建
+// NewNet 新建
 func NewNet(id string, addr string, logger *log.Logger,
 		msgchan chan *defines.Message,
 		ln requires.Listener, d requires.Dialer) (*Net, error) {

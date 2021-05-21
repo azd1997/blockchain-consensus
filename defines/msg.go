@@ -139,7 +139,8 @@ func (msg *Message) Check() error {
 }
 
 // Encode 编码
-// magic + length + encodedmsg
+// 应该为：magic + length + encodedmsg
+// 但是这里只是encodedmsg。这是考虑到像UDP这样的发包式通信
 func (msg *Message) Encode() ([]byte, error) {
 	buf1 := new(bytes.Buffer)
 	err := gob.NewEncoder(buf1).Encode(msg)

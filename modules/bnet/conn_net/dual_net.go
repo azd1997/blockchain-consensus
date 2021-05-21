@@ -27,19 +27,6 @@ type DualNet struct {
 	conns     map[string]*DualConn
 	connsLock sync.RWMutex
 
-	/*
-		消息的流动顺序：
-		Conn从网络中接收Message
-		（Conn共享外部使用者提供的msgout）
-		外部使用者处理收到的Message，作出相应
-		响应的Message通过msgin传递到Net
-
-		Conn的注意：
-		Conn会在两种情况下建立：
-		1. Net自身监听后接收连接
-		2. Net主动连接别的节点的网络模块
-	*/
-
 	// 消息传出chan
 	msgout chan *defines.Message
 
@@ -324,16 +311,15 @@ func (n *DualNet) listenLoop() {
 			var exists bool
 
 			n.connsLock.Lock()	// 枷锁
+			//fmt.Printf("%s: 1111\n", n.id)
 			dc, exists = n.conns[recvConn.RemoteID()]
 			// 1. 原先不存在该DualConn
 			if !exists || dc==nil {
 				// 启动连接，循环接收消息
 				c := ToDualConn(nil, recvConn, n.msgout)
-				// 记录连接
-				n.connsLock.Lock()
 				n.conns[recvConn.RemoteID()] = c
-				n.connsLock.Unlock()
 				// 启动连接
+				//fmt.Printf("%s: 2222\n", n.id)
 				n.startConn(c)
 			} else {// 该连接原先已创建 dc!=nil
 				// 不管原先的recv是否存在都替换
@@ -343,6 +329,7 @@ func (n *DualNet) listenLoop() {
 				if dc.status == ConnStatus_Closed || dc.status == ConnStatus_OnlySend {
 					n.startConn(dc)
 				}	// 避免重复 go dc.RecvLoop()
+				//fmt.Printf("%s: 3333\n", n.id)
 			}
 			n.connsLock.Unlock()	// 解锁
 		}

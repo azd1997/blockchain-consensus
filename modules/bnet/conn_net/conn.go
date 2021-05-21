@@ -7,6 +7,7 @@
 package conn_net
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/azd1997/blockchain-consensus/utils/binary"
 	"log"
@@ -90,8 +91,16 @@ func (c *Conn) Send(msg *defines.Message) error {
 		return err
 	}
 
+	// 给实际内容前面封装magic和消息长度
+	length := uint32(len(b))
+	buf2 := new(bytes.Buffer)
+	err = binary.Write(buf2, binary.BigEndian, defines.MessageMagicNumber, length, b)
+	if err != nil {
+		return err
+	}
+
 	// 发送
-	_, err = c.conn.Write(b)
+	_, err = c.conn.Write(buf2.Bytes())
 	if err != nil {
 		return err
 	}
@@ -120,31 +129,46 @@ func (c *Conn) RecvLoop() {
 		err = binary.Read(c.conn, binary.BigEndian, &magic)
 		if err != nil {
 			log.Printf("Conn(%s) met error: %s\n", c.Name(), err)
-
-			continue
+			c.closeConn()
+			return	// 退出接收循环
+		}
+		if magic != defines.MessageMagicNumber {	// 说明对面不按格式发消息
+			log.Printf("Conn(%s) RecvLoop met error: magic(%x) != MessageMagicNumber(%x)\n",
+				c.Name(), magic, defines.MessageMagicNumber)
+			c.closeConn()
+			return
 		}
 		err = binary.Read(c.conn, binary.BigEndian, &msglen)
 		if err != nil {
 			log.Printf("Conn(%s) met error: %s\n", c.Name(), err)
-			continue
+			c.closeConn()
+			return	// 退出接收循环
 		}
 		msgbytes := make([]byte, msglen)
 		err = binary.Read(c.conn, binary.BigEndian, msgbytes)
 		if err != nil {
 			log.Printf("Conn(%s) met error: %s\n", c.Name(), err)
-			continue
+			c.closeConn()
+			return	// 退出接收循环
 		}
 
 		msg := new(defines.Message)
 		err = msg.Decode(msgbytes)
 		if err != nil { // 遇到错误就断开连接
 			log.Printf("Conn(%s) met error: %s\n", c.Name(), err)
-			c.status = ConnStatus_Closed
-			return
+			c.closeConn()
+			return	// 退出接收循环
 		}
+		log.Printf("Conn(%s) RecvLoop: recv msg: %s\n", c.Name(), msg)
 		// 塞到msgChan(来自Net.msgout)
 		c.msgChan <- msg
 	}
+}
+
+func (c *Conn) closeConn() {
+	c.conn.Close()
+	c.status = ConnStatus_Closed
+	log.Printf("Conn(%s) RecvLoop closed\n", c.Name())
 }
 
 // MsgChan 对外提供只读的msgChan
