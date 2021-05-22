@@ -68,12 +68,13 @@ func (c *Conn) Status() string {
 
 // Name Conn名称
 func (c *Conn) Name() string {
-	return fmt.Sprintf("[%s]<->[%s]", c.conn.LocalID(), c.conn.RemoteID())
+	return fmt.Sprintf("[%s]<->[%s](%s)", c.conn.LocalID(), c.conn.RemoteID(), c.conn.HashCode())
 }
 
 // String 描述
 func (c *Conn) String() string {
-	return fmt.Sprintf("Conn info: {Network: %s, From: %s(%s), To: %s(%s), Status: %s, Timeout: %s}",
+	return fmt.Sprintf("Conn %s info: {Network: %s, From: %s(%s), To: %s(%s), Status: %s, Timeout: %s}",
+		c.Name(),
 		c.conn.Network(), c.conn.LocalID(), c.conn.LocalAddr().String(),
 		c.conn.RemoteID(), c.conn.RemoteAddr().String(), c.status.String(), c.timeout.String())
 }

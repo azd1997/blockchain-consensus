@@ -11,6 +11,7 @@ import (
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -30,7 +31,9 @@ func generateLongString(length int) string {
 	return str
 }
 
-func testBNet(t *testing.T, network NetType, longContent bool) {
+func testBNet(t *testing.T, network NetType, longContent bool, sendTimes int) {
+	if sendTimes < 1 {return}
+
 	addr1 := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 9981}
 	addr2 := &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 9982}
 	id1, id2 := "peerA", "peerB"
@@ -49,15 +52,20 @@ func testBNet(t *testing.T, network NetType, longContent bool) {
 			t.Error(err)
 		}
 		time.Sleep(1 * time.Second)		// peerA先等一会，让peerB先发
-		desc := "ping to #2: " + addr2.String()
-		if longContent {
-			desc += generateLongString(longStringLength)
+
+		for i:=1; i<=sendTimes; i++ {
+			desc := "<" + strconv.Itoa(i) + ">" + "ping to #2: " + addr2.String()
+			if longContent {
+				desc += generateLongString(longStringLength)
+			}
+			if err := peerA.Send(id2, addr2.String(), &defines.Message{
+				Desc: desc,
+			}); err != nil {
+				t.Error(err)
+			}
 		}
-		if err := peerA.Send(id2, addr2.String(), &defines.Message{
-			Desc: desc,
-		}); err != nil {
-			t.Error(err)
-		}
+
+
 		//fmt.Print("yyyy\n")
 		//// 展示本机节点所有连接
 		fmt.Print(peerA.DisplayAllConns(false))
@@ -72,14 +80,17 @@ func testBNet(t *testing.T, network NetType, longContent bool) {
 			t.Error(err)
 		}
 		//time.Sleep(1 * time.Second)
-		desc := "ping to #1: " + addr2.String()
-		if longContent {
-			desc += generateLongString(longStringLength)
-		}
-		if err := peerB.Send(id1, addr1.String(), &defines.Message{
-			Desc: desc,
-		}); err != nil {
-			t.Error(err)
+
+		for i:=1; i<=sendTimes; i++ {
+			desc := "<" + strconv.Itoa(i) + ">" + "ping to #1: " + addr1.String()
+			if longContent {
+				desc += generateLongString(longStringLength)
+			}
+			if err := peerB.Send(id1, addr1.String(), &defines.Message{
+				Desc: desc,
+			}); err != nil {
+				t.Error(err)
+			}
 		}
 
 		//fmt.Print("zzzz\n")
@@ -94,13 +105,17 @@ func testBNet(t *testing.T, network NetType, longContent bool) {
 
 	// 两个goroutine读接收到的数据
 	go func() {
-		data := <- chanA
-		t.Logf("chanA recv: %v\n", data)
+		for i:=1;i<=sendTimes;i++{
+			data := <- chanA
+			t.Logf("chanA recv: %v\n", data)
+		}
 		wg.Done()
 	}()
 	go func() {
-		data := <- chanB
-		t.Logf("chanB recv: %v\n", data)
+		for i:=1;i<=sendTimes;i++ {
+			data := <-chanB
+			t.Logf("chanB recv: %v\n", data)
+		}
 		wg.Done()
 	}()
 
@@ -110,11 +125,11 @@ func testBNet(t *testing.T, network NetType, longContent bool) {
 }
 
 func TestBNet_bUDP(t *testing.T) {
-	testBNet(t, NetType_bUDP, false)
+	testBNet(t, NetType_bUDP, false, 3)
 }
 
 func TestBNet_bUDP_LongContent(t *testing.T) {
-	testBNet(t, NetType_bUDP, true)
+	testBNet(t, NetType_bUDP, true, 3)
 }
 // longStringLength = 1MB 时
 // write udp 127.0.0.1:9981->127.0.0.1:9982: wsasendto: A message sent on a datagram socket was larger than the internal message buffer or some other network limit, or the buffer used to receive a datagram into was smaller than the datagram itself.
@@ -124,9 +139,9 @@ func TestBNet_bUDP_LongContent(t *testing.T) {
 // 可行，抓包得到UDP包大小2294，没有超过1500
 
 func TestBNet_bTCP(t *testing.T) {
-	testBNet(t, NetType_bTCP, false)
+	testBNet(t, NetType_bTCP, false, 3)
 }
 
 func TestBNet_bTCP_Dual(t *testing.T) {
-	testBNet(t, NetType_bTCP_Dual, false)
+	testBNet(t, NetType_bTCP_Dual, false, 3)
 }

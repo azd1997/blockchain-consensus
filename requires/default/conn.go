@@ -8,6 +8,7 @@ package _default
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"time"
 )
@@ -98,4 +99,8 @@ func (T *TCPConn) LocalListenAddr() net.Addr {
 
 func (T *TCPConn) RemoteListenAddr() net.Addr {
 	return T.remoteListenAddr
+}
+
+func (T *TCPConn) HashCode() string {
+	return fmt.Sprintf("%p", T)	// 直接拿地址
 }

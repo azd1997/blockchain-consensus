@@ -233,13 +233,12 @@ func (n *DualNet) connect(to, raddr string) (*DualConn, error) {
 	n.connsLock.RUnlock()
 
 	// 如果连接存在，并且其中的send_conn可用，那么直接返回该连接
-	if exists &&
-		(dc.status == ConnStatus_SendRecv || dc.status == ConnStatus_OnlySend) {
-		n.Debugf("connect: dc(-><%s, %s>) exists, return it", to, raddr)
+	if exists && dc.status.CanSend() {
+		n.Debugf("connect: dc(->[%s, %s]) exists, return it", to, raddr)
 		return dc, nil
 	}
 
-	n.Debugf("connect: dc(-><%s, %s>) does not exist, dial it. dc=%v", to, raddr, dc)
+	n.Debugf("connect: dc(->[%s, %s]) does not exist, dial it. dc=%v", to, raddr, dc)
 
 	// 否则的话，新键send_conn
 	// 连接不存在(或原来的连接已经停止了)，创建连接 和to建立连接
@@ -254,11 +253,10 @@ func (n *DualNet) connect(to, raddr string) (*DualConn, error) {
 			dc = ToDualConn(sendConn, nil, n.msgout) // c传输过来的消息会写到msgout传出去
 			n.conns[to] = dc
 		} else {
-			dc.sendConn = sendConn
-			// TODO
+			dc.SetSendConn(sendConn)
 		}
 	} else {	// 旧的检测结果已经检测出存在了
-		dc.sendConn = sendConn
+		dc.SetSendConn(sendConn)
 	}
 	n.connsLock.Unlock()
 
@@ -266,13 +264,13 @@ func (n *DualNet) connect(to, raddr string) (*DualConn, error) {
 }
 
 // startConn 启动连接
-func (n *DualNet) startConn(c *DualConn) {
-	if c == nil {
-		return
-	}
-	// 启动其接收循环
-	go c.RecvLoop()
-}
+//func (n *DualNet) startConn(c *DualConn) {
+//	if c == nil {
+//		return
+//	}
+//	// 启动其接收循环
+//	go c.RecvLoop()
+//}
 
 // send 向对端节点发送消息
 // 如果net.id与to之间已经有Conn，那么通过该Conn发送消息
@@ -322,18 +320,11 @@ func (n *DualNet) listenLoop() {
 				// 启动连接，循环接收消息
 				c := ToDualConn(nil, recvConn, n.msgout)
 				n.conns[recvConn.RemoteID()] = c
-				// 启动连接
-				//fmt.Printf("%s: 2222\n", n.id)
-				n.startConn(c)
 			} else {// 该连接原先已创建 dc!=nil
 				// 不管原先的recv是否存在都替换
 				// 原因是：recv是对端发起的连接，对端先关闭之后立马又建立，
 				// 这种情况下本机节点可能还没有将recv清除
-				dc.recvConn = recvConn	// 将新建立的连接conn放入dualconn中，并启动
-				if dc.status == ConnStatus_Closed || dc.status == ConnStatus_OnlySend {
-					n.startConn(dc)
-				}	// 避免重复 go dc.RecvLoop()
-				//fmt.Printf("%s: 3333\n", n.id)
+				dc.SetRecvConn(recvConn)
 			}
 			n.connsLock.Unlock()	// 解锁
 		}

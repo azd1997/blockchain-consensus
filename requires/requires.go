@@ -115,6 +115,7 @@ type Conn interface {
 	RemoteID() string           // 获取对端的ID
 	LocalListenAddr() net.Addr  // 获取自己的监听地址
 	RemoteListenAddr() net.Addr // 获取对方的监听地址
+	HashCode() string // 获取自己（对象）的哈希码
 }
 
 //////////////////////////////////////////////////
