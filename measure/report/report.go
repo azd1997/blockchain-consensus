@@ -32,10 +32,30 @@ func ReportNewBlock(nb *defines.Block) error {
 	return nil
 }
 
+// ReportNewTx 汇报新交易，只统计数字
+func ReportNewTx(tx *defines.Transaction) error {
+
+}
+
 ///////////////////////////// 日志输出地 ////////////////////////////////
 
 type Destination interface {
-	WriteTo(data []byte) (n int, err error)
+	ReportNewBlock(nb *defines.Block) error
+	// ReportNewTx 以后可能要按照类别统计数量，所以把tx传入。暂时不使用
+	ReportNewTx(tx *defines.Transaction) error
+}
+
+// LocalMemoryMonitor 本机内存监视器，监视器代码也一并写在此处
+type LocalMemoryMonitor struct {
+
+}
+
+func (l *LocalMemoryMonitor) ReportNewBlock(nb *defines.Block) error {
+	panic("implement me")
+}
+
+func (l *LocalMemoryMonitor) ReportNewTx(tx *defines.Transaction) error {
+	panic("implement me")
 }
 
 // WebsocketMonitor 通过WebSocket传输给另一进程
@@ -48,3 +68,4 @@ type WebsocketMonitor struct {
 type DefaultMonitor struct {
 
 }
+
