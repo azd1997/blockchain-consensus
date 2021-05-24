@@ -2,7 +2,7 @@ package monitor
 
 import (
 	"github.com/azd1997/blockchain-consensus/defines"
-	"github.com/azd1997/blockchain-consensus/measure/echarts"
+	"github.com/azd1997/blockchain-consensus/measure/common"
 	"github.com/azd1997/blockchain-consensus/modules/bnet/cs_net"
 )
 
@@ -13,7 +13,7 @@ type EchartsMonitor struct {
 	// TCPServer
 	tcpServer *cs_net.Server
 	msgchan chan *defines.Message
-	mdataChan chan echarts.MeasureData
+	mdataChan chan common.MeasureData
 
 	// TODO: 数据库用于存储确定的区块数据
 

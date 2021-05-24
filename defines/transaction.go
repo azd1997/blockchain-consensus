@@ -12,10 +12,12 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"time"
 )
 
 // Transaction 交易
 type Transaction struct {
+	Timestamp int64	
 	TxHash      []byte
 	From        string
 	To          string
@@ -90,6 +92,7 @@ func (tx *Transaction) Hash() error {
 // NewTransaction 构造新区块
 func NewTransactionAndSign(from, to string, amount int64, fields map[string][]byte, description string) (*Transaction, error) {
 	tx := &Transaction{
+		Timestamp: time.Now().UnixNano(),
 		TxHash:      nil,
 		From:        from,
 		To:          to,

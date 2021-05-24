@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/azd1997/blockchain-consensus/measure/echarts"
+	"github.com/azd1997/blockchain-consensus/measure/common"
 )
 
 func main() {
 	host := "localhost:9999"
-	mdChan := make(chan echarts.MeasureData, echarts.DefaultDataChanSize)
+	mdChan := make(chan common.MeasureData, common.DefaultDataChanSize)
 
 	// 定时随机生成数据
 	tick := time.Tick(3 * time.Second)
@@ -18,7 +19,7 @@ func main() {
 		for {
 			select {
 			case <-tick:
-				mdChan <- echarts.MeasureData{
+				mdChan <- common.MeasureData{
 					BlockTime: time.Now().UnixNano()/1e6,
 					InstantBlockDuration: rand.Intn(10),
 					AverageBlockDuration: rand.Intn(10),

@@ -2,15 +2,16 @@ package echarts
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"sync"
 	"time"
-	"net/http"
+
+	"github.com/azd1997/blockchain-consensus/measure/common"
 
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/components"
@@ -36,9 +37,6 @@ import (
 // Gauge
 
 const (
-	DefaultShowBlockNum = 20 // 只取最近的一百个区块统计数据
-	DefaultDataChanSize = 5   // 因为数据产生速度很慢，所以其实这个chan 无size都可以，这里还是写个5，就是玩
-
 	// writeWait is the time allowed to write the file to the client.
 	writeWait = 10 * time.Second
 	// pongWait is the time allowed to read the next pong message from the client.
@@ -47,26 +45,7 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 )
 
-// MeasureData 表征一轮新计算出来的各项测量数据
-type MeasureData struct {
-	BlockTime             int64  `json:"block_time"`              // 区块时间，横轴数据
-	InstantBlockDuration  int     `json:"instant_block_duration"`  // s
-	AverageBlockDuration  int     `json:"average_block_duration"`  // s
-	InstantTxThroughput   int     `json:"instant_tx_throughput"`   // 个
-	AverageTxThroughput   int     `json:"average_tx_throughput"`   // 个
-	InstantTxConfirmation int     `json:"instant_tx_confirmation"` // ms
-	AverageTxConfirmation int     `json:"average_tx_confirmation"` // ms
-	TxOutInRatio          float64 `json:"tx_out_in_ratio"`         // 0.x
-}
 
-// JSON json序列化
-func (md MeasureData) JSON() []byte {
-	data, err := json.Marshal(md)
-	if err != nil {
-		return nil
-	}
-	return data
-}
 
 // DefaultEchartsPageRunner 默认的EchartsPageRunner
 var DefaultEchartsPageRunner = &EchartsPageRunner{}
@@ -83,14 +62,14 @@ type EchartsPageRunner struct {
 	page *EchartsPage
 	Host string // HTTP/Websocket主机地址
 
-	mdChan <-chan MeasureData // 数据chan。 由外部（EchartsMonitor）传入
+	mdChan <-chan common.MeasureData // 数据chan。 由外部（EchartsMonitor）传入
 	
 	dispatches map[net.Addr]chan<- []byte	// <remoteAddr, dataC> 分发给各个连接
 	dispatchesLock sync.RWMutex	
 }
 
 // Run 阻塞式运行
-func (epr *EchartsPageRunner) Run(host string, mdChan <-chan MeasureData) {
+func (epr *EchartsPageRunner) Run(host string, mdChan <-chan common.MeasureData) {
 	epr.Host = host
 	epr.mdChan = mdChan
 	epr.dispatches = make(map[net.Addr]chan<- []byte)
@@ -237,7 +216,7 @@ func (epr *EchartsPageRunner) ok() bool {
 type EchartsPage struct {
 	page              *components.Page
 	host              string
-	dataChan          chan MeasureData
+	dataChan          chan common.MeasureData
 
 	// page中所含的chart
 	// 如果要修改page中所含的chart，一定也要跟着修改ScriptFmt以及genScript()的方法
@@ -267,7 +246,7 @@ func NewEchartsPage(wsHost string) *EchartsPage {
 		txConfirmationDL:  txConfirmation,
 		txOutInRatioGauge: txRatio,
 		host:              wsHost,
-		dataChan:          make(chan MeasureData, DefaultDataChanSize),
+		dataChan:          make(chan common.MeasureData, common.DefaultDataChanSize),
 	}
 }
 
@@ -377,9 +356,9 @@ type DoubleLine struct {
 }
 
 func NewDoubleLine(title, series1Name, series2Name, xAxisName, yAxisName string) *DoubleLine {
-	xAixs := make([]string, DefaultShowBlockNum)
-	series1 := make([]int, DefaultShowBlockNum)
-	series2 := make([]int, DefaultShowBlockNum)
+	xAixs := make([]string, common.DefaultShowBlockNum)
+	series1 := make([]int, common.DefaultShowBlockNum)
+	series2 := make([]int, common.DefaultShowBlockNum)
 
 	line := charts.NewLine()
 	line.SetGlobalOptions(
