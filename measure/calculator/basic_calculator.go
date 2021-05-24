@@ -1,6 +1,7 @@
 package calculator
 
 import (
+	"fmt"
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/measure/common"
 )
@@ -48,22 +49,26 @@ type BasicCalculator struct {
 }
 
 func (c *BasicCalculator) AddBlock(b *defines.Block) {
+	fmt.Printf("AddBlock: %s\n", b.Key())
+	fmt.Printf("================ c.blockVoteIndex=%d, b,Index=%d\n", c.blockVoteIndex, b.Index)
 	if b == nil {return}
 	// 检查b.Index和c.blockVoteIndex关系
 	if c.blockVoteIndex == 0 {	// 这是第一次准备收集区块
 		c.blockVoteIndex = b.Index
 	}
 	if b.Index == c.blockVoteIndex + 1 {	// 这一轮收集结束了，将blockVoteMap整理下
-		// 获取本轮整个集群确定的区块
+		// 获取本轮整个集群确定的区块，并且重置blockVoteMap，blockVoteIndex++
 		decidedBlock := c.decideCurBlock()
 		if decidedBlock == nil {return}		// 这种情况不会出现
+		fmt.Printf("Decide Block: %s\n", decidedBlock.Key())
 		// 根据decidedBlock计算MeasureData
 		md := c.calculate(decidedBlock)
-		// 将部分状态保存/更新
-
 		// 将md写入mdChan
 		if c.mdChan == nil {return}
 		c.mdChan <- *md
+		fmt.Printf("Send MeasureData: %v\n", md)
+		// 将新区块加入到重置后的blockVoteMap
+		c.blockVoteMap[b.Key()] = &BlockVote{B:b, Votes: 1}
 	} else if b.Index == c.blockVoteIndex {	// 说明新加进来的区块是本轮decidedBlock的候选者
 		k := b.Key()
 		if blockVote, ok := c.blockVoteMap[k]; ok {
@@ -71,10 +76,13 @@ func (c *BasicCalculator) AddBlock(b *defines.Block) {
 		} else {
 			c.blockVoteMap[k] = &BlockVote{B: b, Votes: 1}
 		}
-	} else {}	// 其他情况不会出现，忽略
+	} else {
+		panic(fmt.Sprintf("c.blockVoteIndex=%d, b,Index=%d", c.blockVoteIndex, b.Index))
+	}	// 其他情况不会出现，忽略
 }
 
 func (c *BasicCalculator) AddTx(tx *defines.Transaction) {
+	fmt.Printf("AddTx: %s\n", tx.Key())
 	c.totalTxGenNum++
 }
 
@@ -110,6 +118,8 @@ func (c *BasicCalculator) calculate(decidedBlock *defines.Block) *common.Measure
 	c.calculateStep6_CurAverageAndRangeAverageTxThroughput(md, curBlockInfo)
 	// 计算CurAverageTxConfirmation和RangeAverageTxConfirmation
 	c.calculateStep7_CurAverageAndRangeAverageTxConfirmation(md, curBlockInfo)
+	// 计算
+	c.calculateStep8_CurAndRangeTxOutInRatio(md)
 
 	// 最后将decidedBlocks更新
 	c.decidedBlocks = append(c.decidedBlocks[1:], curBlockInfo)
@@ -144,6 +154,7 @@ func (c *BasicCalculator) calculateStep1_curBlockInfo(decidedBlock *defines.Bloc
 
 func (c *BasicCalculator) calculateStep2_fillNums(md *common.MeasureData, curBlockInfo *BlockInfo, totalTxGenNum int64) {
 	md.BlockTime = curBlockInfo.B.Timestamp		// 当前区块构造时间
+	md.BlockKey = curBlockInfo.B.Key()
 
 	// 总区块数及其更新
 	md.TotalBlockNum = c.totalBlockNum + 1	// 总区块数
@@ -200,7 +211,7 @@ func (c *BasicCalculator) calculateStep5_CurAndRangeAndRangeAverageBlockDuration
 
 	// 根据lastBlock是否为空处理
 	lastBlockInfo := c.decidedBlocks[len(c.decidedBlocks)-1]	// 取最后一个区块
-	if lastBlockInfo == nil {
+	if lastBlockInfo.B == nil {
 		md.CurBlockDuration = 0
 		md.RangeBlockDuration = 0
 		md.RangeAverageBlockDuration = 0
@@ -209,7 +220,7 @@ func (c *BasicCalculator) calculateStep5_CurAndRangeAndRangeAverageBlockDuration
 		md.RangeBlockDuration = c.lastRangeBlockDuration + md.CurBlockDuration
 		// 这个地方要注意第一个区块的BlockDuration=0这个情况
 		if c.lastNonnilBlockInRangeNum < int64(len(c.decidedBlocks)) {
-			md.RangeAverageBlockDuration = md.RangeBlockDuration / (md.RangeBlockNum - 1)
+			md.RangeAverageBlockDuration = md.RangeBlockDuration / (md.RangeBlockNum - 1)	// 这里不用担心除数为0
 		} else {
 			md.RangeAverageBlockDuration = md.RangeBlockDuration / md.RangeBlockNum
 		}
@@ -233,11 +244,11 @@ func (c *BasicCalculator) calculateStep5_CurAndRangeAndRangeAverageBlockDuration
 func (c *BasicCalculator) calculateStep6_CurAverageAndRangeAverageTxThroughput(md *common.MeasureData, curBlockInfo *BlockInfo) {
 	// 根据lastBlock是否为空处理（为空的话，一部分数值需要填为0）
 	lastBlockInfo := c.decidedBlocks[len(c.decidedBlocks)-1]	// 取最后一个区块
-	if lastBlockInfo == nil {
+	if lastBlockInfo.B == nil {
 		md.CurAverageTxThroughput = 0
 		md.RangeAverageTxThroughput = 0
 	} else {
-		md.CurAverageTxThroughput = float64(curBlockInfo.TxOutNum) / float64(md.CurBlockDuration)
+		md.CurAverageTxThroughput = float64(curBlockInfo.TxOutNum) / float64(md.CurBlockDuration)	// 这里也不用担心除数为0
 		// 由于牵扯到RangeBlockDuration，如果实际RangeBlockNum范围的第一个区块其BlockDuration为0，应排除
 		// 假设len(c.decidedBlocks)=5， md.RangeBlockNum（含新区块）（1，2，3，4，5）
 		// [b1, b2, b3, b4, b5] b6		------   md.RangeBlockNum=5
@@ -258,8 +269,17 @@ func (c *BasicCalculator) calculateStep6_CurAverageAndRangeAverageTxThroughput(m
 // 计算CurAverageTxConfirmation和RangeAverageTxConfirmation
 // RangeAverageTxConfirmation 取的是 包括本轮区块在内的n个区块总交易数 / 总交易数
 func (c *BasicCalculator) calculateStep7_CurAverageAndRangeAverageTxConfirmation(md *common.MeasureData, curBlockInfo *BlockInfo) {
-	md.CurAverageTxConfirmation = curBlockInfo.TotalTxConfirmation / curBlockInfo.TxOutNum
-	md.RangeAverageTxConfirmation = (c.lastRangeTotalTxConfirmation + curBlockInfo.TotalTxConfirmation) / md.RangeTxOutNum
+	if curBlockInfo.TxOutNum > 0 {
+		md.CurAverageTxConfirmation = curBlockInfo.TotalTxConfirmation / curBlockInfo.TxOutNum
+	} else {
+		md.CurAverageTxConfirmation = 0		// 0表示异常
+	}
+
+	if md.RangeTxOutNum > 0 {
+		md.RangeAverageTxConfirmation = (c.lastRangeTotalTxConfirmation + curBlockInfo.TotalTxConfirmation) / md.RangeTxOutNum
+	} else {
+		md.RangeAverageTxConfirmation = 0
+	}
 
 	// 更新c.lastRangeTotalTxConfirmation
 	head := int64(0)
@@ -269,6 +289,21 @@ func (c *BasicCalculator) calculateStep7_CurAverageAndRangeAverageTxConfirmation
 	c.lastRangeTotalTxConfirmation += (curBlockInfo.TotalTxConfirmation - head)
 }
 
+// 计算CurTxOutInRatio和RangeTxOutInRatio
+// RangeAverageTxConfirmation 取的是 包括本轮区块在内的n个区块总交易数 / 总交易数
+func (c *BasicCalculator) calculateStep8_CurAndRangeTxOutInRatio(md *common.MeasureData) {
+	md.CurTxOutInRatio = 0
+	if md.CurTxGenNum > 0 {
+		md.CurTxOutInRatio = float64(md.CurTxOutNum) / float64(md.CurTxGenNum)
+	}
+
+	md.RangeTxOutInRatio = 0
+	if md.RangeTxGenNum > 0 {
+		md.RangeTxOutInRatio = float64(md.RangeTxOutNum) / float64(md.RangeTxGenNum)
+	}
+}
+
+// 确定出当前轮的区块，并将blockVoteMap重置，blockVoteIndex++
 func (c *BasicCalculator) decideCurBlock() *defines.Block {
 	maxBlockVote := &BlockVote{Votes: 0}
 	for _, blockVote := range c.blockVoteMap {
@@ -279,6 +314,7 @@ func (c *BasicCalculator) decideCurBlock() *defines.Block {
 
 	// 清除blockVoteMap
 	c.blockVoteMap = make(map[string]*BlockVote)
+	c.blockVoteIndex++
 
 	return maxBlockVote.B
 }

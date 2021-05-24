@@ -184,6 +184,7 @@ func (epr *EchartsPageRunner) dispatchLoop() {
 	if !epr.ok() {return}
 
 	for mdata := range epr.mdChan {
+		log.Println("EchartsPageRunner Recv mdata: ", mdata)
 		chs := make([]chan<- []byte, 0)
 
 		// 将dispatched表中的ch弄到一个数组中
@@ -223,18 +224,20 @@ type EchartsPage struct {
 	blockDurationDL   *DoubleLine
 	txThroughputDL    *DoubleLine
 	txConfirmationDL  *DoubleLine
-	txOutInRatioGauge *Gauge	
+	curTxOutInRatioGauge *Gauge
+	rangeTxOutInRatioGauge *Gauge
 }
 
 func NewEchartsPage(wsHost string) *EchartsPage {
 	blockDuration := NewDoubleLine("区块间隔", "瞬时区块间隔", "平均区块间隔", "时间", "间隔/s")
 	txThroughput := NewDoubleLine("交易吞吐量", "瞬时交易吞吐量", "平均交易吞吐量", "时间", "数量/笔")
 	txConfirmation := NewDoubleLine("交易确认时间", "瞬时交易确认时间", "平均交易确认时间", "时间", "确认时间/s")
-	txRatio := NewGauge("交易 输出量/输入量 —— 表征系统交易处理能力是否达到上限（降至100%以下）", "输出/输入", "交易O/I")
+	txRatio1 := NewGauge("当前 交易 输出量/输入量 —— 表征系统交易处理能力是否达到上限（降至100%以下）", "输出/输入", "交易O/I")
+	txRatio2 := NewGauge("范围 交易 输出量/输入量 —— 表征系统交易处理能力是否达到上限（降至100%以下）", "输出/输入", "交易O/I")
 
 	page := components.NewPage()
 	page.SetLayout(components.PageFlexLayout)
-	page.AddCharts(blockDuration.line, txThroughput.line, txConfirmation.line, txRatio.gauge)
+	page.AddCharts(blockDuration.line, txThroughput.line, txConfirmation.line, txRatio1.gauge, txRatio2.gauge)
 	page.PageTitle = "Eiger's Monitor"
 	
 	page.Validate()
@@ -244,7 +247,8 @@ func NewEchartsPage(wsHost string) *EchartsPage {
 		blockDurationDL:   blockDuration,
 		txThroughputDL:    txThroughput,
 		txConfirmationDL:  txConfirmation,
-		txOutInRatioGauge: txRatio,
+		curTxOutInRatioGauge: txRatio1,
+		rangeTxOutInRatioGauge: txRatio2,
 		host:              wsHost,
 		dataChan:          make(chan common.MeasureData, common.DefaultDataChanSize),
 	}
@@ -274,33 +278,42 @@ var ScriptFmt = `
 	var blockDurationDL = goecharts_%s;
 	var txThroughputDL = goecharts_%s;
 	var txConfirmationDL = goecharts_%s;
-	var txOutInRatioGauge = goecharts_%s;
+	var curTxOutInRatioGauge = goecharts_%s;
+	var rangeTxOutInRatioGauge = goecharts_%s;
 	// 为opt对象起别名（引用）
 	var blockDurationDLOpt = option_%s;
 	var txThroughputDLOpt = option_%s;
 	var txConfirmationDLOpt = option_%s;
-	var txOutInRatioGaugeOpt = option_%s;
+	var curTxOutInRatioGaugeOpt = option_%s;
+	var rangeTxOutInRatioGaugeOpt = option_%s;
 
 	// 建立websocket连接
     let conn = new WebSocket("ws://%s/ws");
+	// 连接建立时动作
+	conn.onopen = function(evt) {
+		console.log("connection established")
+	}
 	// 连接关闭时的动作
     conn.onclose = function(evt) {
-        console.log("connection closed");
+        console.log("connection closed. code=", evt.code, ", reason=", evt.reason, ", wasClean=", evt.wasClean);
     }
 	// 通过连接收到消息时的动作，evt.data就是收到的数据（evt的类型是MessageEvent，是默认的参数）
     conn.onmessage = function(evt) {
         let data = JSON.parse(evt.data);	// 将json内容转为json对象
 
-		// 更新charts的选项 data.xxx名称要和go代码里的tag对应起来
-		updateDoubleLine(blockDurationDLOpt, data.block_time, data.instant_block_duration, data.average_block_duration);
-		updateDoubleLine(txThroughputDLOpt, data.block_time, data.instant_tx_throughput, data.average_tx_throughput);
-		updateDoubleLine(txConfirmationDLOpt, data.block_time, data.instant_tx_confirmation, data.average_tx_confirmation);
-		updateGauge(txOutInRatioGaugeOpt, data.tx_out_in_ratio);	
+		// 更新charts的选项 data.xxx名称要和go代码(common/common.go)里的tag对应起来
+		// 传过来的数据都是ns为单位 
+		updateDoubleLine(blockDurationDLOpt, ns2s(data.block_time), ns2ms(data.cur_block_duration), ns2ms(data.range_average_block_duration) );
+		updateDoubleLine(txThroughputDLOpt, ns2s(data.block_time), ns2s_divide(data.cur_average_tx_throughput), ns2s_divide(data.range_average_tx_throughput));
+		updateDoubleLine(txConfirmationDLOpt, ns2s(data.block_time), ns2ms(data.cur_average_tx_confirmation), ns2ms(data.range_average_tx_confirmation));
+		updateGauge(curTxOutInRatioGaugeOpt, (data.cur_tx_out_in_ratio * 100).toFixed(1));	
+		updateGauge(rangeTxOutInRatioGaugeOpt, (data.range_tx_out_in_ratio * 100).toFixed(1));
 		// 重新渲染charts
         blockDurationDL.setOption(blockDurationDLOpt);
 		txThroughputDL.setOption(txThroughputDLOpt);
 		txConfirmationDL.setOption(txConfirmationDLOpt);
-		txOutInRatioGauge.setOption(txOutInRatioGaugeOpt);
+		curTxOutInRatioGauge.setOption(curTxOutInRatioGaugeOpt);
+		rangeTxOutInRatioGauge.setOption(rangeTxOutInRatioGaugeOpt);
 
 		// 打印接受的数据
         console.log('Received data:', data);
@@ -329,6 +342,22 @@ var ScriptFmt = `
 	function updateGauge(gaugeOpt, value) {
 		gaugeOpt.series[0].data[0].value = value;
 	}
+
+	// 将ns转为s
+	function ns2s(x) {
+		return Math.round(x / 1e9);
+	}
+
+	// 将ns转为ms
+	function ns2ms(x) {
+		return Math.round(x / 1e6);
+	}
+
+	// 将除以ns得到的数转化为除以s得到的数
+	function ns2s_divide(x) {
+		return Math.round(x * 1e9);
+	} 
+
 </script>
 
 </body>
@@ -339,11 +368,13 @@ func (ep *EchartsPage) genScript() string {
 		ep.blockDurationDL.line.ChartID, 	// 
 		ep.txThroughputDL.line.ChartID,
 		ep.txConfirmationDL.line.ChartID,
-		ep.txOutInRatioGauge.gauge.ChartID,
+		ep.curTxOutInRatioGauge.gauge.ChartID,
+		ep.rangeTxOutInRatioGauge.gauge.ChartID,
 		ep.blockDurationDL.line.ChartID, 	// 
 		ep.txThroughputDL.line.ChartID,
 		ep.txConfirmationDL.line.ChartID,
-		ep.txOutInRatioGauge.gauge.ChartID,
+		ep.curTxOutInRatioGauge.gauge.ChartID,
+		ep.rangeTxOutInRatioGauge.gauge.ChartID,
 		ep.host)
 	return script
 }
