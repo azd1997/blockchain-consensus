@@ -7,6 +7,7 @@ require (
 	github.com/azd1997/ego v0.1.0
 	github.com/go-echarts/go-echarts/v2 v2.2.4
 	github.com/gorilla/websocket v1.4.2
+	github.com/mattn/go-sqlite3 v1.14.7
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20190912160710-24e19bdeb0f2

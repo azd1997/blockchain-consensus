@@ -8,5 +8,5 @@ import (
 
 func TestEchartsRun(t *testing.T) {
 	host := "localhost:9999"
-	echarts.Run(host)
+	echarts.Run(host, make(<-chan echarts.MeasureData))
 }
