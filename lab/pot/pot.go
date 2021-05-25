@@ -86,6 +86,7 @@ func NewNode(
 	shutdownAtTi int, cheatAtTi []int, enableClients bool,
 	seeds map[string]string, //预配置的种子节点
 	peers map[string]string, // 预配置的共识节点
+	monitorId, monitorHost string,
 	genesis ...string,		// 待写入创世区块内容。只有第一个节点需要设置此项
 ) (*Node, error) {
 
@@ -144,7 +145,7 @@ func NewNode(
 	node.net = netmod
 
 	// 构建共识状态机
-	pm, err := pot.New(id, duty, pit, bc, netmod, msgchan, genesis...)
+	pm, err := pot.New(id, duty, pit, bc, netmod, msgchan, monitorId, monitorHost, genesis...)
 	if err != nil {
 		return nil, err
 	}

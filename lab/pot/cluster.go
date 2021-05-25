@@ -67,7 +67,7 @@ func (c *Cluster) DisplayAllNodes() (string, bool) {
 
 // StartCluster
 // shutdownAtTiMap k>0时表示peer idno; k<0时表示seed idno。 cheatAtTiMap同理
-func StartCluster(nSeed int, nPeer int,
+func StartCluster(nSeed int, nPeer int, monitorId, monitorHost string,
 	shutdownAtTi int, shutdownAtTiMap map[int]int, cheatAtTiMap map[int][]int,
 	debug bool, addCaller bool, enableClients bool) (*Cluster, error) {
 
@@ -97,10 +97,10 @@ func StartCluster(nSeed int, nPeer int,
 			var node *Node
 			var err error
 			if id == "seed01" {
-				node, err = StartNode(id, addr, sat, cat, enableClients,
+				node, err = StartNode(id, addr, monitorId, monitorHost, sat, cat, false,
 					seedsm, peersm, debug, addCaller, "genesis string")
 			} else {
-				node, err = StartNode(id, addr, sat, cat, enableClients,
+				node, err = StartNode(id, addr, monitorId, monitorHost, sat, cat, false,
 					seedsm, peersm, debug, addCaller)
 			}
 
@@ -125,7 +125,7 @@ func StartCluster(nSeed int, nPeer int,
 			if cheatAtTiMap != nil && cheatAtTiMap[idx+1] != nil {
 				cat = cheatAtTiMap[idx+1]
 			}
-			node, err := StartNode(id, addr, sat, cat, enableClients,
+			node, err := StartNode(id, addr, monitorId, monitorHost, sat, cat, enableClients,
 				seedsm, peersm, debug, addCaller)
 			if err != nil {
 				panic(fmt.Sprintf("%s: %s", id, err))
@@ -143,7 +143,7 @@ func (c *Cluster) Shutdown(node string) {
 
 }
 
-func StartNode(id, addr string,
+func StartNode(id, addr string, monitorId, monitorHost string,
 	shutdownAtTi int, cheatAtTi []int, enableClients bool,
 	seeds, peers map[string]string, debug bool, addCaller bool,
 	genesis ...string) (*Node, error) {
@@ -162,7 +162,8 @@ func StartNode(id, addr string,
 		return nil, errors.New("unknown duty")
 	}
 
-	node, err := NewNode(id, duty, addr, shutdownAtTi, cheatAtTi, enableClients, seeds, peers, genesis...)
+	node, err := NewNode(id, duty, addr, shutdownAtTi, cheatAtTi, enableClients, seeds, peers,
+		monitorId, monitorHost, genesis...)
 	if err != nil {
 		return nil, err
 	}

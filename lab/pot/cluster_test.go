@@ -19,6 +19,11 @@ import (
 // 注意：由于测试阶段，所有数据都是维护在内存中，所以交易不能产生过多，节点数量不能过大，否则会爆内存
 // 而且交易数的话，可能会超出5M的区块大小限制，使得广播区块失败。 记得调整UDP缓冲大小
 
+var (
+	monitorId = "Monitor"
+	monitorHost = "127.0.0.1:9998"
+)
+
 func TestCluster(t *testing.T) {
 	// 清理当前目录下的日志文件
 	if err := clearLogsInCurDir(); err != nil {
@@ -28,7 +33,7 @@ func TestCluster(t *testing.T) {
 	// 运行集群
 	nSeed := 1
 	nPeer := 3
-	shutdownAtTi := 21
+	shutdownAtTi := 101
 	var cheatAtTiMap map[int][]int = map[int][]int{
 		//1: []int{13}, // peer03在t19时伪造证明。 这会导致比E1区块链少出1个区块
 	} // 这两张表用于为部分节点设置提前关闭/作弊等行为
@@ -36,8 +41,8 @@ func TestCluster(t *testing.T) {
 		//1:13,	// 设置第3号peer t19关闭
 	}
 	E := 1 // E1，全部正常； E2，某节点中间断线； E3，某节点中间作弊
-	c, err := StartCluster(nSeed, nPeer, shutdownAtTi, shutdownAtTiMap, cheatAtTiMap,
-		true, true, false)
+	c, err := StartCluster(nSeed, nPeer, monitorId, monitorHost, shutdownAtTi, shutdownAtTiMap, cheatAtTiMap,
+		true, true, true)
 	// shutdownAtTiMap优先级比shutdownAtTi高，如果未设置Map，那么所有节点都按照shutdownAtTi关闭
 	if err != nil {
 		t.Error(err)
@@ -72,7 +77,7 @@ func TestCluster(t *testing.T) {
 func TestStartNode(t *testing.T) {
 	_, _, seedsm, peersm := GenIdsAndAddrs(1, 3)
 	peer01 := "peer01"
-	_, err := StartNode(peer01, peersm[peer01], 13, nil,
+	_, err := StartNode(peer01, peersm[peer01], monitorId, monitorHost, 13, nil,
 		false, seedsm, peersm, false, true)
 	if err != nil {
 		t.Error(err)

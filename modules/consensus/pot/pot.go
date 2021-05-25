@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
+	"github.com/azd1997/blockchain-consensus/measure/report"
 	"github.com/azd1997/blockchain-consensus/modules/bnet"
 	"github.com/azd1997/blockchain-consensus/modules/ledger"
 	"github.com/azd1997/blockchain-consensus/modules/pitable"
@@ -93,6 +94,10 @@ type Pot struct {
 
 	net bnet.BNet
 
+	// 报告器
+	monitorId, monitorHost string
+	report.Reporter
+
 	////////////////////////// 本地依赖 /////////////////////////
 
 	*log.Logger
@@ -166,12 +171,19 @@ func (p *Pot) CheatShutdownAt(shutdownAt int, cheatAt ...int) {
 func New(id string, duty defines.PeerDuty,
 	pit pitable.Pit, bc requires.BlockChain,
 	net bnet.BNet, msgchan chan *defines.Message,
+	monitorId, monitorHost string,
 	//genesisId, genesisAddr string,
 	genesisData ...string) (*Pot, error) {
 
 	logger := log.NewLogger(Module_Css, id)
 	if logger == nil {
 		return nil, errors.New("nil logger, please init logger first")
+	}
+
+	// 构建reporter
+	reporter, err := report.NewEchartsReporter(monitorId, monitorHost, id, net.Addr())
+	if err != nil {
+		return nil, fmt.Errorf("NewEchartsReporter fail: %s", err)
 	}
 
 	var latestBlockHash []byte
@@ -210,6 +222,10 @@ func New(id string, duty defines.PeerDuty,
 		net:                 net,
 		done:                make(chan struct{}),
 		Logger:              logger,
+		// 报告器
+		monitorId: monitorId,
+		monitorHost: monitorHost,
+		Reporter:reporter,
 	}
 
 	if pit == nil || !pit.Inited() {

@@ -31,7 +31,8 @@ func TestNode_PeerInit(t *testing.T) {
 			"peer1": "127.0.0.1:7991",
 			"peer2": "127.0.0.1:7992",
 			"peer3": "127.0.0.1:7993",
-		})
+		},
+		"Monitor", "127.0.0.1:9999")
 	tError(t, err)
 	node = node
 }
@@ -55,7 +56,8 @@ func TestNode_SeedInit(t *testing.T) {
 			"peer1": "127.0.0.1:7991",
 			"peer2": "127.0.0.1:7992",
 			"peer3": "127.0.0.1:7993",
-		})
+		},
+		"Monitor", "127.0.0.1:9999")
 	tError(t, err)
 	node = node
 }
@@ -80,6 +82,7 @@ func TestNode_GenesisInit(t *testing.T) {
 			"peer2": "127.0.0.1:7992",
 			"peer3": "127.0.0.1:7993",
 		},
+		"Monitor", "127.0.0.1:9999",
 		"genesis string")
 	tError(t, err)
 	node = node

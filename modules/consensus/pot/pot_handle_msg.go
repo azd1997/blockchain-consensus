@@ -130,6 +130,11 @@ func (p *Pot) handleMsgLocalTxs(msg *defines.Message) error {
 		if err := p.bc.AddTx(tx); err != nil {
 			p.Errorf("AddLocalTx %s fail. err=%s", tx.Key(), err)
 		}
+
+		// 上报
+		if err := p.ReportNewTx(tx); err != nil {
+			p.Errorf("ReportNewTx fail: %s", err)
+		}
 	}
 
 	// 广播给其他节点
