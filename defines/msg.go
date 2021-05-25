@@ -601,3 +601,84 @@ func (msg *Message) WriteDesc(keyValues ...string) error {
 	msg.Desc = string(res)
 	return nil
 }
+
+////////////////////////////////////////////////////////////////////
+
+
+func NewMessage_NewBlock(from, to string, epoch int64, nb *Block) (*Message, error) {
+	// 构建区块消息
+	blockBytes, err := nb.Encode()
+	if err != nil {
+		return nil, err
+	}
+
+	// msg模板
+	msg := &Message{
+		Version:   CodeVersion,
+		Type:      MessageType_NewBlock,
+		From:      from,
+		To:        to,
+		Epoch: epoch,
+		Base:      nb.PrevHash,
+		BaseIndex: nb.Index - 1,
+		Data:      [][]byte{blockBytes},
+	}
+	if err := msg.WriteDesc("type", "newblock"); err != nil {
+		panic(err)
+	}
+
+	return msg, nil
+}
+
+func NewMessageAndSign_NewBlock(from, to string, epoch int64, nb *Block) (*Message, error) {
+	msg, err := NewMessage_NewBlock(from, to, epoch, nb)
+	if err != nil {
+		return nil, err
+	}
+	err = msg.Sign()
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+func NewMessage_Txs(from, to string, epoch int64, txs []*Transaction) (*Message, error) {
+
+	// 编码
+	txBytes := make([][]byte, len(txs))
+	for i := 0; i < len(txs); i++ {
+		if txs[i] != nil {
+			enced, err := txs[i].Encode()
+			if err != nil {
+				return nil, err
+			}
+			txBytes[i] = enced
+		}
+	}
+
+	// msg模板
+	msg := &Message{
+		Version: CodeVersion,
+		Type:    MessageType_Txs,
+		From:    from,
+		To:      to,
+		Epoch: epoch,
+		Data:    txBytes,
+	}
+	if err := msg.WriteDesc("type", "txs"); err != nil {
+		return nil, err
+	}
+
+	return msg, nil
+}
+
+func NewMessageAndSign_Txs(from, to string, epoch int64, txs []*Transaction) (*Message, error) {
+
+	msg, err := NewMessage_Txs(from, to, epoch, txs)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
+}
+
+// TODO: 把其他消息的构建方法也完成

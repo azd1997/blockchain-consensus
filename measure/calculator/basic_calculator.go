@@ -13,7 +13,7 @@ func NewBasicCalculator(mdChan chan<-common.MeasureData) *BasicCalculator {
 	bc := &BasicCalculator{
 		mdChan: mdChan,
 		blockVoteMap: make(map[string]*BlockVote),
-		decidedBlocks: make([]*BlockInfo, common.DefaultShowBlockNum),	// WARN: 这个长度不要小于2，计算MeasureData的方法没有考虑到这个边界情况
+		decidedBlocks: make([]*BlockInfo, common.DefaultRangeBlockNum),	// WARN: 这个长度不要小于2，计算MeasureData的方法没有考虑到这个边界情况
 	}
 	// 必需确保bc.decidedBlocks所有元素都已初始化！！！
 	for i:=0; i<len(bc.decidedBlocks); i++ {

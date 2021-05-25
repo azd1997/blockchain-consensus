@@ -3,7 +3,8 @@ package common
 import "encoding/json"
 
 const (
-	DefaultShowBlockNum = 20 // 只取最近的一百个区块统计数据
+	DefaultShowBlockNum = 15 // 给echarts用的，只画出15个区块的数据
+	DefaultRangeBlockNum = 100	// 给calculator用的，对100个区块取平均值
 	DefaultDataChanSize = 5  // 因为数据产生速度很慢，所以其实这个chan 无size都可以，这里还是写个5，就是玩
 )
 

@@ -46,18 +46,10 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			// 构建区块消息
-			blockBytes, err := b.Encode()
-			if err != nil {
-				panic(err)
-			}
 
-			msg := &defines.Message{
-				Version:   defines.CodeVersion,
-				Type:      defines.MessageType_NewBlock,
-				Data:      [][]byte{blockBytes},
-			}
-			if err := msg.WriteDesc("type", "newblock"); err != nil {
+			// 构建区块消息
+			msg, err := defines.NewMessage_NewBlock("", "", 0, b)
+			if err != nil {
 				panic(err)
 			}
 			// 发送区块消息
@@ -90,25 +82,8 @@ func main() {
 			txs = append(txs, atxs...)
 			txsLock.Unlock()
 			// 构建交易消息
-			// 编码
-			txBytes := make([][]byte, len(atxs))
-			for i := 0; i < len(atxs); i++ {
-				if atxs[i] != nil {
-					enced, err := atxs[i].Encode()
-					if err != nil {
-						panic(err)
-					}
-					txBytes[i] = enced
-				}
-			}
-
-			// msg模板
-			msg := &defines.Message{
-				Version: defines.CodeVersion,
-				Type:    defines.MessageType_Txs,
-				Data:    txBytes,
-			}
-			if err := msg.WriteDesc("type", "txs"); err != nil {
+			msg, err := defines.NewMessage_Txs("", "", 0, atxs)
+			if err != nil {
 				panic(err)
 			}
 			// 发送交易消息

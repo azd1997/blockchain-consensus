@@ -303,9 +303,9 @@ var ScriptFmt = `
 
 		// 更新charts的选项 data.xxx名称要和go代码(common/common.go)里的tag对应起来
 		// 传过来的数据都是ns为单位 
-		updateDoubleLine(blockDurationDLOpt, ns2s(data.block_time), ns2ms(data.cur_block_duration), ns2ms(data.range_average_block_duration) );
-		updateDoubleLine(txThroughputDLOpt, ns2s(data.block_time), ns2s_divide(data.cur_average_tx_throughput), ns2s_divide(data.range_average_tx_throughput));
-		updateDoubleLine(txConfirmationDLOpt, ns2s(data.block_time), ns2ms(data.cur_average_tx_confirmation), ns2ms(data.range_average_tx_confirmation));
+		updateDoubleLine(blockDurationDLOpt, ns2s(data.block_time), ns2s_fixed1(data.cur_block_duration), ns2s_fixed1(data.range_average_block_duration) );
+		updateDoubleLine(txThroughputDLOpt, ns2s(data.block_time), ns2s_divide_fixed1(data.cur_average_tx_throughput), ns2s_divide_fixed1(data.range_average_tx_throughput));
+		updateDoubleLine(txConfirmationDLOpt, ns2s(data.block_time), ns2s_fixed1(data.cur_average_tx_confirmation), ns2s_fixed1(data.range_average_tx_confirmation));
 		updateGauge(curTxOutInRatioGaugeOpt, (data.cur_tx_out_in_ratio * 100).toFixed(1));	
 		updateGauge(rangeTxOutInRatioGaugeOpt, (data.range_tx_out_in_ratio * 100).toFixed(1));
 		// 重新渲染charts
@@ -348,6 +348,11 @@ var ScriptFmt = `
 		return Math.round(x / 1e9);
 	}
 
+	// 将ns转为s
+	function ns2s_fixed1(x) {
+		return (x / 1e9).toFixed(1);
+	}
+
 	// 将ns转为ms
 	function ns2ms(x) {
 		return Math.round(x / 1e6);
@@ -356,6 +361,11 @@ var ScriptFmt = `
 	// 将除以ns得到的数转化为除以s得到的数
 	function ns2s_divide(x) {
 		return Math.round(x * 1e9);
+	} 
+
+	// 保留一位小数
+ 	function ns2s_divide_fixed1(x) {
+		return (x * 1e9).toFixed(1);
 	} 
 
 </script>
