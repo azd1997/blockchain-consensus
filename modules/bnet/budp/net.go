@@ -139,6 +139,10 @@ func (un *UDPNet) Send(id, raddr string, msg *defines.Message) error {
 	return nil
 }
 
+func (un *UDPNet) Broadcast(msg *defines.Message) error {
+	return errors.New("broadcast is not supported in bUDP")
+}
+
 func (un *UDPNet) SetMsgOutChan(bus chan *defines.Message) {
 	un.msgout = bus
 }

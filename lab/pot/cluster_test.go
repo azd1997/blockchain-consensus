@@ -32,8 +32,8 @@ func TestCluster(t *testing.T) {
 
 	// 运行集群
 	nSeed := 1
-	nPeer := 3
-	shutdownAtTi := 101
+	nPeer := 7
+	shutdownAtTi := 45
 	var cheatAtTiMap map[int][]int = map[int][]int{
 		//1: []int{13}, // peer03在t19时伪造证明。 这会导致比E1区块链少出1个区块
 	} // 这两张表用于为部分节点设置提前关闭/作弊等行为
@@ -42,7 +42,7 @@ func TestCluster(t *testing.T) {
 	}
 	E := 1 // E1，全部正常； E2，某节点中间断线； E3，某节点中间作弊
 	c, err := StartCluster(nSeed, nPeer, monitorId, monitorHost, shutdownAtTi, shutdownAtTiMap, cheatAtTiMap,
-		true, true, true)
+		false, false, false)
 	// shutdownAtTiMap优先级比shutdownAtTi高，如果未设置Map，那么所有节点都按照shutdownAtTi关闭
 	if err != nil {
 		t.Error(err)

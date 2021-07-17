@@ -264,6 +264,34 @@ func (n *Net) Send(id, raddr string, msg *defines.Message) error {
 	return nil
 }
 
+func (n *Net) Broadcast(msg *defines.Message) error {
+	conns := map[string]*Conn{}
+	n.connsLock.RLock()
+	for k, v := range n.conns {
+		conns[k] = v
+	}
+	n.connsLock.RUnlock()
+
+	for _, v := range conns {
+		go func(conn *Conn, msg defines.Message) {
+			// 对msg设置to，重新签名
+			msg.To = conn.conn.RemoteID()
+			err := msg.Sign()
+			if err != nil {
+				return
+			}
+			// 发送
+			err = conn.Send(&msg)
+			if err != nil {
+				n.Errorf("ConnNet send msg(%s) fail. raddr=%s, err=%s, msg=%v",
+					msg.Type.String(), conn.conn.RemoteAddr(), err, msg)
+			}
+		}(v, *msg)	// 把msg复制一份
+	}
+	n.Debugf("ConnNet broadcast msg(%s) succ. n=%d, msg=%v", msg.Type.String(), n, msg)
+	return nil
+}
+
 func (n *Net) SetMsgOutChan(bus chan *defines.Message) {
 	if n.msgout == nil {
 		n.msgout = bus

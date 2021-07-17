@@ -1,4 +1,4 @@
-package echarts
+package echarts_old
 
 import (
 	"bytes"

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/azd1997/blockchain-consensus/measure/common"
-	"github.com/azd1997/blockchain-consensus/measure/echarts"
+	"github.com/azd1997/blockchain-consensus/measure/mdwriter/echarts"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 			select {
 			case <-tick:
 				mdChan <- common.MeasureData{
-					BlockTime: time.Now().UnixNano()/1e6,
+					BlockTime: time.Now().UnixNano(),
 					CurBlockDuration: int64(rand.Intn(10)),
 					RangeAverageBlockDuration: int64(rand.Intn(10)),
 					CurAverageTxThroughput: float64(rand.Intn(1000)),
@@ -29,9 +29,11 @@ func main() {
 					RangeAverageTxConfirmation: int64(rand.Intn(500)),
 					CurTxOutInRatio: float64(rand.Intn(100)),
 				}
+			case md := <- mdChan:
+				echarts.MDWrite(md)
 			}
 		}
 	}()
 
-	echarts.Run(host, mdChan)
+	echarts.Run(host)
 }

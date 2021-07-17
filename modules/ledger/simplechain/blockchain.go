@@ -10,12 +10,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/azd1997/blockchain-consensus/utils/math"
 	"sync"
 	"time"
 
 	"github.com/azd1997/blockchain-consensus/defines"
 	"github.com/azd1997/blockchain-consensus/log"
+	"github.com/azd1997/blockchain-consensus/utils/math"
 )
 
 const (
@@ -24,7 +24,7 @@ const (
 )
 
 var (
-	// 这个错误用于提示上层
+	// ErrWrongChain 这个错误用于提示上层
 	ErrWrongChain = errors.New("wrong blocks in chain")
 )
 
@@ -71,9 +71,11 @@ type BlockChain struct {
 	chain []*BlockSegment
 	//blocks map[string]*defines.Block
 
+	// [0,1,2,3,4,5,6,...]
+
 	// [0,1,2,3]
 	// [10,11]	// 10是启动时收到的最新的区块
-	// [20, 21]
+	// [20, 21] [12,13,14, ..., 19,20,21]
 	// 一旦产生了多个分段，也就是链还未连续，由于只信任每个分段的第1个区块(通过多数法选出的)
 	// 所以所有空缺的补全都必须从可信任的区块开始倒序填充
 
@@ -318,6 +320,14 @@ func (bc *BlockChain) AddNewBlock(nb *defines.Block) error {
 			blocks: &([]*defines.Block{nb}),
 		}
 		bc.chain = append(bc.chain, newSeg) // 将新区块放在新分段中，新分段添加进chain
+
+		// [0,]
+		// [10]
+
+		// [0]
+		// {10}
+
+		// block11
 	}
 
 	// 添加哈希键的索引

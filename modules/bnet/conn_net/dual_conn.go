@@ -12,6 +12,11 @@ import (
 	"github.com/azd1997/blockchain-consensus/utils/binary"
 )
 
+
+// 自己         对方
+// server  <-    client          recvConn
+// client   ->   server			sendConn
+
 // DualConn 双链接
 // 注意：在任何对sendConn/recvConn新建\销毁等操作上必须将其与状态ConnStatus绑定，此外recvConn还需要和RecvLoop绑定
 // 不要将这些关系留给使用者去做！

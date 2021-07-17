@@ -175,6 +175,34 @@ func (n *DualNet) Send(id, raddr string, msg *defines.Message) error {
 	return nil
 }
 
+func (n *DualNet) Broadcast(msg *defines.Message) error {
+	conns := map[string]*DualConn{}
+	n.connsLock.RLock()
+	for k, v := range n.conns {
+		conns[k] = v
+	}
+	n.connsLock.RUnlock()
+
+	for _, v := range conns {
+		go func(conn *DualConn, msg defines.Message) {
+			// 对msg设置to，重新签名
+			msg.To = conn.sendConn.RemoteID()
+			err := msg.Sign()
+			if err != nil {
+				return
+			}
+			// 发送
+			err = conn.Send(&msg)
+			if err != nil {
+				n.Errorf("DualConnNet send msg(%s) fail. raddr=%s, err=%s, msg=%v",
+					msg.Type.String(), conn.sendConn.RemoteAddr(), err, msg)
+			}
+		}(v, *msg)	// msg复制一份
+	}
+	n.Debugf("DualConnNet broadcast msg(%s) succ. n=%d, msg=%v", msg.Type.String(), n, msg)
+	return nil
+}
+
 func (n *DualNet) SetMsgOutChan(bus chan *defines.Message) {
 	if n.msgout == nil {
 		n.msgout = bus

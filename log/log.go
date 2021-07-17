@@ -20,7 +20,8 @@ type Logger struct {
 // NewLogger 新建
 func NewLogger(module string, id string) *Logger {
 	if loggers[id] == nil {
-		panic("init global zap logger first")
+		InitGlobalLogger(id, true, true)
+		fmt.Printf("loggers[id] == nil。 create a logger {id=%s, debug=%v, addCaller=%v, logFileName=%v}\n", id, true, true, nil)
 	}
 
 	prefix := fmt.Sprintf("\t[%s](%s)\t", module, id)

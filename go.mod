@@ -10,7 +10,6 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.7
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	go.uber.org/zap v1.16.0
-	golang.org/x/net v0.0.0-20190912160710-24e19bdeb0f2
-	golang.org/x/tools v0.0.0-20191029190741-b9c20aec41a5
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 )
+

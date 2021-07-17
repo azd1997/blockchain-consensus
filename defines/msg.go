@@ -56,23 +56,29 @@ const (
 
 	// 其他控制类消息 200-255
 	MessageType_Heartbeat        MessageType = 200 // 心跳消息
+	MessageType_GenTxFaster      MessageType = 201	// 通知交易产生更快一些
+	MessageType_MonitorPong			MessageType = 202	// monitor模块收到节点的上报数据后回发Pong消息
+	MessageType_StopNode MessageType = 203	// 通知节点停止
 )
 
 var mtStrMap = map[MessageType]string{
 	// 0-99 数据类
 	MessageType_Blocks:   "blocks",
-	MessageType_NewBlock: "newblock",
+	MessageType_NewBlock: "new_block",
 	MessageType_Txs:      "txs",
 	MessageType_Peers:    "peers",
 	MessageType_Proof:    "proof",
 
 	// 1-199 请求类
-	MessageType_ReqBlockByIndex: "reqblockbyindex",
-	MessageType_ReqBlockByHash:  "reqblockbyhash",
-	MessageType_ReqPeers:        "reqpeers",
+	MessageType_ReqBlockByIndex: "req_block_by_index",
+	MessageType_ReqBlockByHash:  "req_block_by_hash",
+	MessageType_ReqPeers:        "req_peers",
 
 	// 200-255 控制类
 	MessageType_Heartbeat:"heartbeat",
+	MessageType_GenTxFaster:"gen_tx_faster",
+	MessageType_MonitorPong:"monitor_pong",
+	MessageType_StopNode:"stop_node",
 }
 
 func (mt MessageType) String() string {
@@ -602,83 +608,3 @@ func (msg *Message) WriteDesc(keyValues ...string) error {
 	return nil
 }
 
-////////////////////////////////////////////////////////////////////
-
-
-func NewMessage_NewBlock(from, to string, epoch int64, nb *Block) (*Message, error) {
-	// 构建区块消息
-	blockBytes, err := nb.Encode()
-	if err != nil {
-		return nil, err
-	}
-
-	// msg模板
-	msg := &Message{
-		Version:   CodeVersion,
-		Type:      MessageType_NewBlock,
-		From:      from,
-		To:        to,
-		Epoch: epoch,
-		Base:      nb.PrevHash,
-		BaseIndex: nb.Index - 1,
-		Data:      [][]byte{blockBytes},
-	}
-	if err := msg.WriteDesc("type", "newblock"); err != nil {
-		panic(err)
-	}
-
-	return msg, nil
-}
-
-func NewMessageAndSign_NewBlock(from, to string, epoch int64, nb *Block) (*Message, error) {
-	msg, err := NewMessage_NewBlock(from, to, epoch, nb)
-	if err != nil {
-		return nil, err
-	}
-	err = msg.Sign()
-	if err != nil {
-		return nil, err
-	}
-	return msg, nil
-}
-
-func NewMessage_Txs(from, to string, epoch int64, txs []*Transaction) (*Message, error) {
-
-	// 编码
-	txBytes := make([][]byte, len(txs))
-	for i := 0; i < len(txs); i++ {
-		if txs[i] != nil {
-			enced, err := txs[i].Encode()
-			if err != nil {
-				return nil, err
-			}
-			txBytes[i] = enced
-		}
-	}
-
-	// msg模板
-	msg := &Message{
-		Version: CodeVersion,
-		Type:    MessageType_Txs,
-		From:    from,
-		To:      to,
-		Epoch: epoch,
-		Data:    txBytes,
-	}
-	if err := msg.WriteDesc("type", "txs"); err != nil {
-		return nil, err
-	}
-
-	return msg, nil
-}
-
-func NewMessageAndSign_Txs(from, to string, epoch int64, txs []*Transaction) (*Message, error) {
-
-	msg, err := NewMessage_Txs(from, to, epoch, txs)
-	if err != nil {
-		return nil, err
-	}
-	return msg, nil
-}
-
-// TODO: 把其他消息的构建方法也完成

@@ -38,6 +38,10 @@ type BNet interface {
 	Closed() bool
 
 	Send(id string, raddr string, msg *defines.Message) error // 向某人发送消息
+	// Broadcast 这个无差别广播是基于已经建立的连接进行广播，会对所传入的msg，替换to并重新签名
+	Broadcast(msg *defines.Message) error // 无差别广播
+	// IDAddrs 获取当前net模块内所有可用的节点。[2]string{ID,Addr}
+	IDAddrs() [][2]string
 
 	// SetMsgOutChan [不建议调用]
 	SetMsgOutChan(bus chan *defines.Message) // 给结构体设置一个消息总线chan，用于将得到的消息传输出来

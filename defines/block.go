@@ -19,7 +19,7 @@ import (
 
 // Block 区块
 type Block struct {
-	Index       int64
+	Index       int64	// 从1开始递增
 	Maker       string
 	Timestamp   int64
 	SelfHash    []byte

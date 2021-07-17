@@ -17,7 +17,6 @@ import (
 	"github.com/azd1997/blockchain-consensus/modules/pitable"
 	"github.com/azd1997/blockchain-consensus/requires"
 	"github.com/azd1997/blockchain-consensus/utils/math"
-	"sort"
 	"strings"
 	"sync"
 )
@@ -35,12 +34,6 @@ const (
 
 // Pot pot节点
 type Pot struct {
-
-	// 测试用的一些变量
-	test         bool // test=true时才考虑定时关闭和cheat
-	testOnce     sync.Once
-	shutdownAtTi int   // ti时定时关闭，若<=0则不生效
-	cheatAtTi    []int // ti时广播虚假的证明，将自己的证明数报至一个非常大的数：99999999
 
 	id   string           // 账户、节点、客户端共用一个ID
 	duty defines.PeerDuty // 普通结点/种子节点/工人节点
@@ -108,61 +101,6 @@ type Pot struct {
 
 }
 
-////////////////////////// 测试阶段用于修改行为 //////////////////////////////
-
-// ShutdownAt 定时关闭。i为ti，或者说全网第几个TICK
-func (p *Pot) ShutdownAt(i int) {
-	p.testOnce.Do(func() {
-		if i > 0 {
-			p.test = true
-			p.shutdownAtTi = i
-		}
-	})
-}
-
-// CheatAt 设置定时作弊
-func (p *Pot) CheatAt(is ...int) {
-	p.testOnce.Do(func() {
-		sort.Ints(is)
-		idx := 0
-		for j, i := range is {
-			if i > 0 {
-				idx = j
-				break
-			}
-		}
-		is = is[idx:]
-		if len(is) > 0 {
-			p.test = true
-			p.cheatAtTi = is
-		}
-	})
-}
-
-// CheatShutdownAt 设置定时作弊与关闭
-func (p *Pot) CheatShutdownAt(shutdownAt int, cheatAt ...int) {
-	p.testOnce.Do(func() {
-		if shutdownAt > 0 {
-			p.test = true
-			p.shutdownAtTi = shutdownAt
-		}
-
-		sort.Ints(cheatAt)
-		idx := 0
-		for j, i := range cheatAt {
-			if i > 0 {
-				idx = j
-				break
-			}
-		}
-		cheatAt = cheatAt[idx:]
-		if len(cheatAt) > 0 {
-			p.test = true
-			p.cheatAtTi = cheatAt
-		}
-	})
-}
-
 ////////////////////////  ///////////////////////
 // 正常运行都需要的成员不使用SetXXX注入，全放进New()中，
 // 这样可以约束调用者，避免出错。
@@ -181,9 +119,9 @@ func New(id string, duty defines.PeerDuty,
 	}
 
 	// 构建reporter
-	reporter, err := report.NewEchartsReporter(monitorId, monitorHost, id, net.Addr())
+	reporter, err := report.NewGeneralReporter(monitorId, monitorHost, net)
 	if err != nil {
-		return nil, fmt.Errorf("NewEchartsReporter fail: %s", err)
+		return nil, fmt.Errorf("NewGeneralReporter fail: %s", err)
 	}
 
 	var latestBlockHash []byte
@@ -246,7 +184,7 @@ func New(id string, duty defines.PeerDuty,
 func (p *Pot) Init() (err error) {
 	p.Infof("Init start")
 
-	// 启动消息处理循环
+	// 启动消息处理循环x
 	go p.MsgHandleLoop()
 	// 启动状态切换循环(没有clock触发)
 	go p.StateMachineLoop()
@@ -408,16 +346,7 @@ func (p *Pot) MsgHandleLoop() {
 //}
 
 func (p *Pot) handleTick(m Moment) {
-	ti := math.RoundTickNo(m.Time.UnixNano(), p.b1Time, TickMs)
-
-	// test模式下才检查定时关闭
-	if p.test {
-		if p.shutdownAtTi > 0 && ti >= p.shutdownAtTi {
-			p.Infof("close at t[%d]", ti)
-			p.Close()
-			return
-		}
-	}
+	//ti := math.RoundTickNo(m.Time.UnixNano(), p.b1Time, TickMs)
 
 	// 根据当前状态来进行状态变换
 	stage := p.getStage()
@@ -455,7 +384,7 @@ func (p *Pot) handleTick(m Moment) {
 	if m.Type == MomentType_PotStart {
 		p.setStage(StageType_InPot)
 
-		// decide新区块
+		// decide新区块 decide上一轮PoT竞争结束后得到的新区块
 		p.decide(m)
 
 		// 重置proofs
@@ -469,25 +398,8 @@ func (p *Pot) handleTick(m Moment) {
 			// 做competitor的事
 			p.Info("start pot competetion. broadcast self proof")
 
-			// test模式下检查是否有定时cheat
-			cheatNow := false
-			if p.test {
-				idx := 0
-				for i, elem := range p.cheatAtTi {
-					if ti == elem {
-						idx = i + 1
-						cheatNow = true
-						break
-					}
-					if ti > elem {
-						idx = i
-						break
-					}
-				}
-				p.cheatAtTi = p.cheatAtTi[idx:]
-			}
 			// 构造新区块并广播其证明，同时附带自身进度
-			if err := p.broadcastSelfProof(cheatNow); err != nil {
+			if err := p.broadcastSelfProof(false); err != nil {
 				p.Errorf("start pot fail: %s", err)
 			}
 		} else { // not ready peer 以及 非peer的节点 在 PotStart时刻到来时成为 witness
@@ -507,9 +419,9 @@ func (p *Pot) handleTick(m Moment) {
 
 	// PotOver到来
 	if m.Type == MomentType_PotOver {
-		p.setStage(StageType_InPot)
+		p.setStage(StageType_PostPot)
 
-		// 重置udbt
+		// 重置udbt，为后面接收新区块做准备
 		latestBlock := p.bc.GetLatestBlock()
 		if latestBlock == nil {
 			p.udbt.Reset(0)

@@ -44,7 +44,7 @@ type Pit interface {
 	NPeer() int
 }
 
-// New
+// New pitable.New(PitType_SimplePit, your_id)
 func New(pittype PitType, id string) (Pit, error) {
 	switch pittype {
 	case PitType_SimplePit:

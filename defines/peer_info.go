@@ -38,7 +38,7 @@ const (
 	PeerRole_Hospital PeerRole = 2
 )
 
-// PeerDuty 节点职责: 普通、种子、工人
+// PeerDuty 节点职责: 普通、种子、工人（共识节点）
 type PeerDuty uint8
 
 // 预定义的三种节点职责：None/Seed/Peer
@@ -69,7 +69,7 @@ type PeerInfo struct {
 	Addr string
 	Duty PeerDuty
 	Attr PeerAttr
-	Data []byte
+	Data []byte	// json编码你的一个map[string]string  {"alias":"Eiger"}
 }
 
 // String

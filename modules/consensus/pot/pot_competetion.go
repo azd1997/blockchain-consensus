@@ -104,9 +104,13 @@ func (p *Pot) decide(moment Moment) {
 			p.Errorf("BC add block fail: %s", err)
 		}
 		// 上报新区块
-		if err := p.ReportNewBlock(decidedWinnerBlock); err != nil {
-			p.Errorf("ReportNewBlock fail: %s", err)
-		}
+		go func() {
+			// 报告这部分逻辑放在goroutine中，因为监控模块不是必需的。如果放在外面阻塞，会导致超时，影响正常的运行
+			if err := p.ReportNewBlock(decidedWinnerBlock); err != nil {
+				p.Errorf("ReportNewBlock fail: %s", err)
+			}
+		}()
+
 		// 刷新进度表并更新自己进度 （暂时没使用）
 		//p.processes.refresh(decidedWinnerBlock)
 	} else { // decided为nil说明，此时proofs表一个证明都没收到，正常情况下只有seed启动时会遇到。 异常情况下则是自己掉线了
